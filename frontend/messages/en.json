@@ -1,0 +1,80 @@
+{
+  "nav": {
+    "dashboards": "Dashboards",
+    "aiChat": "AI Chat",
+    "datasets": "Datasets",
+    "dataSources": "Data Sources",
+    "dataModels": "Data Models",
+    "notebook": "Notebook",
+    "alerts": "Alerts",
+    "referrals": "Refer & Earn",
+    "settings": "Settings",
+    "admin": "Admin",
+    "logOut": "Log out",
+    "language": "Language"
+  },
+  "common": {
+    "save": "Save",
+    "saveChanges": "Save changes",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "loading": "Loading...",
+    "somethingWentWrong": "Something went wrong."
+  },
+  "auth": {
+    "login": {
+      "brand": "Daha BI",
+      "title": "Log in",
+      "demoNotice": "Demo account: demo@daha.bi / password",
+      "email": "Email",
+      "password": "Password",
+      "forgotPassword": "Forgot password?",
+      "submit": "Log in",
+      "submitting": "Logging in...",
+      "noAccount": "No account?",
+      "register": "Register"
+    },
+    "register": {
+      "title": "Create your account",
+      "subtitle": "Free forever. No credit card required.",
+      "referredNotice": "You were invited by a friend — sign up to get started.",
+      "name": "Name",
+      "email": "Email",
+      "password": "Password",
+      "minLength": "At least 8 characters",
+      "agreePrefix": "I agree to the",
+      "termsOfService": "Terms of Service",
+      "and": "and",
+      "privacyPolicy": "Privacy Policy",
+      "submit": "Create account",
+      "submitting": "Creating account...",
+      "haveAccount": "Already have an account?",
+      "login": "Log in"
+    }
+  },
+  "dashboards": {
+    "title": "Dashboards",
+    "subtitle": "Build and browse your BI dashboards.",
+    "newDashboard": "+ New dashboard",
+    "fromTemplate": "From template",
+    "emptyTitle": "No dashboards yet",
+    "emptyDescription": "Create your first dashboard to start building charts from your data."
+  },
+  "settings": {
+    "title": "Account settings",
+    "profile": "Profile",
+    "plan": "Plan",
+    "password": "Password",
+    "organization": "Organization",
+    "activity": "Activity"
+  },
+  "chartBuilder": {
+    "title": "New chart",
+    "chartTitle": "Title",
+    "type": "Type",
+    "dataset": "Dataset",
+    "selectPlaceholder": "Select...",
+    "addChart": "+ Add chart"
+  }
+}

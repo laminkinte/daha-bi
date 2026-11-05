@@ -1,0 +1,80 @@
+{
+  "nav": {
+    "dashboards": "لوحات المعلومات",
+    "aiChat": "محادثة الذكاء الاصطناعي",
+    "datasets": "مجموعات البيانات",
+    "dataSources": "مصادر البيانات",
+    "dataModels": "نماذج البيانات",
+    "notebook": "دفتر الملاحظات",
+    "alerts": "التنبيهات",
+    "referrals": "الإحالة والربح",
+    "settings": "الإعدادات",
+    "admin": "الإدارة",
+    "logOut": "تسجيل الخروج",
+    "language": "اللغة"
+  },
+  "common": {
+    "save": "حفظ",
+    "saveChanges": "حفظ التغييرات",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "loading": "جارٍ التحميل...",
+    "somethingWentWrong": "حدث خطأ ما."
+  },
+  "auth": {
+    "login": {
+      "brand": "داها بي آي",
+      "title": "تسجيل الدخول",
+      "demoNotice": "حساب تجريبي: demo@daha.bi / password",
+      "email": "البريد الإلكتروني",
+      "password": "كلمة المرور",
+      "forgotPassword": "هل نسيت كلمة المرور؟",
+      "submit": "تسجيل الدخول",
+      "submitting": "جارٍ تسجيل الدخول...",
+      "noAccount": "ليس لديك حساب؟",
+      "register": "إنشاء حساب"
+    },
+    "register": {
+      "title": "أنشئ حسابك",
+      "subtitle": "مجاني للأبد. لا حاجة لبطاقة ائتمان.",
+      "referredNotice": "تمت دعوتك من قبل صديق — سجّل للبدء.",
+      "name": "الاسم",
+      "email": "البريد الإلكتروني",
+      "password": "كلمة المرور",
+      "minLength": "8 أحرف على الأقل",
+      "agreePrefix": "أوافق على",
+      "termsOfService": "شروط الخدمة",
+      "and": "و",
+      "privacyPolicy": "سياسة الخصوصية",
+      "submit": "إنشاء حساب",
+      "submitting": "جارٍ إنشاء الحساب...",
+      "haveAccount": "لديك حساب بالفعل؟",
+      "login": "تسجيل الدخول"
+    }
+  },
+  "dashboards": {
+    "title": "لوحات المعلومات",
+    "subtitle": "أنشئ لوحات معلومات الذكاء التجاري وتصفحها.",
+    "newDashboard": "+ لوحة معلومات جديدة",
+    "fromTemplate": "من قالب",
+    "emptyTitle": "لا توجد لوحات معلومات بعد",
+    "emptyDescription": "أنشئ لوحة معلوماتك الأولى لبدء إنشاء الرسوم البيانية من بياناتك."
+  },
+  "settings": {
+    "title": "إعدادات الحساب",
+    "profile": "الملف الشخصي",
+    "plan": "الخطة",
+    "password": "كلمة المرور",
+    "organization": "المؤسسة",
+    "activity": "النشاط"
+  },
+  "chartBuilder": {
+    "title": "مخطط جديد",
+    "chartTitle": "العنوان",
+    "type": "النوع",
+    "dataset": "مجموعة البيانات",
+    "selectPlaceholder": "اختر...",
+    "addChart": "+ إضافة مخطط"
+  }
+}
