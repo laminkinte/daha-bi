@@ -132,16 +132,17 @@ function AddChartForm({
   }
 
   const selectClass =
-    "w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1.5 outline-none focus:border-[var(--series-1)]";
+    "w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1.5 outline-none focus:border-[var(--accent)]";
   const labelClass = "mb-1 block text-xs font-medium text-[var(--text-secondary)]";
 
   if (!open) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="rounded-md border border-dashed border-[var(--border)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:border-[var(--series-1)] hover:text-[var(--series-1)]"
+        className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-white shadow-sm"
       >
-        {t("addChart")}
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+        {t("addChart").replace(/^\+\s*/, "")}
       </button>
     );
   }
@@ -380,7 +381,7 @@ function AddChartForm({
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-md bg-[var(--series-1)] px-3 py-1.5 font-medium text-white disabled:opacity-60"
+          className="rounded-md bg-[var(--accent)] px-3 py-1.5 font-medium text-white disabled:opacity-60"
         >
           Add
         </button>
@@ -453,7 +454,7 @@ function AiPromptPanel({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 rounded-md border border-dashed border-[var(--border)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:border-[var(--series-1)] hover:text-[var(--series-1)]"
+        className="inline-flex items-center gap-2 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-4 py-2.5 text-sm font-medium text-[var(--accent)] transition-colors hover:border-[var(--accent)]/60"
       >
         <SparkleIcon />
         Ask AI
@@ -476,7 +477,7 @@ function AiPromptPanel({
           <select
             value={datasetId}
             onChange={(e) => setDatasetId(Number(e.target.value))}
-            className="w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1.5 outline-none focus:border-[var(--series-1)]"
+            className="w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1.5 outline-none focus:border-[var(--accent)]"
           >
             {datasets.map((d) => (
               <option key={d.id} value={d.id}>
@@ -493,7 +494,7 @@ function AiPromptPanel({
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="e.g. revenue by region as a bar chart"
-            className="w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1.5 outline-none focus:border-[var(--series-1)]"
+            className="w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1.5 outline-none focus:border-[var(--accent)]"
           />
         </div>
       </div>
@@ -502,7 +503,7 @@ function AiPromptPanel({
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-md bg-[var(--series-1)] px-3 py-1.5 font-medium text-white disabled:opacity-60"
+          className="rounded-md bg-[var(--accent)] px-3 py-1.5 font-medium text-white disabled:opacity-60"
         >
           {submitting ? "Thinking..." : "Ask"}
         </button>
@@ -602,7 +603,7 @@ function ExportButton({ dashboard, chartsRef }: { dashboard: Dashboard; chartsRe
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 rounded-md border border-[var(--border)] px-3 py-1.5 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+        className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-[13px] font-medium text-[var(--text-secondary)] shadow-sm transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
       >
         <DownloadIcon />
         Export
@@ -684,7 +685,7 @@ function ShareButton({
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 rounded-md border border-[var(--border)] px-3 py-1.5 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+        className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-[13px] font-medium text-[var(--text-secondary)] shadow-sm transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
       >
         <ShareIcon />
         {dashboard.is_shared ? "Shared" : "Share"}
@@ -700,7 +701,7 @@ function ShareButton({
               <button
                 onClick={enable}
                 disabled={busy}
-                className="mt-3 w-full rounded-md bg-[var(--series-1)] px-3 py-1.5 font-medium text-white disabled:opacity-60"
+                className="mt-3 w-full rounded-md bg-[var(--accent)] px-3 py-1.5 font-medium text-white disabled:opacity-60"
               >
                 {busy ? "Enabling..." : "Enable public link"}
               </button>
@@ -797,7 +798,7 @@ function CollaboratorsPanel({ dashboard }: { dashboard: Dashboard }) {
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 rounded-md border border-[var(--border)] px-3 py-1.5 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+        className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-[13px] font-medium text-[var(--text-secondary)] shadow-sm transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
       >
         <TeamIcon />
         Team
@@ -845,7 +846,7 @@ function CollaboratorsPanel({ dashboard }: { dashboard: Dashboard }) {
             <button
               type="submit"
               disabled={busy}
-              className="shrink-0 rounded-md bg-[var(--series-1)] px-2.5 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+              className="shrink-0 rounded-md bg-[var(--accent)] px-2.5 py-1.5 text-xs font-medium text-white disabled:opacity-60"
             >
               Invite
             </button>
@@ -882,7 +883,7 @@ function AiRecommendationsPanel({ dashboard }: { dashboard: Dashboard }) {
     <div className="relative">
       <button
         onClick={() => (open ? setOpen(false) : onOpen())}
-        className="flex items-center gap-1.5 rounded-md border border-[var(--border)] px-3 py-1.5 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+        className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-[13px] font-medium text-[var(--text-secondary)] shadow-sm transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
       >
         <SparkleIcon />
         AI insights
@@ -982,7 +983,7 @@ function ReportSchedulesPanel({ dashboard }: { dashboard: Dashboard }) {
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 rounded-md border border-[var(--border)] px-3 py-1.5 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+        className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-[13px] font-medium text-[var(--text-secondary)] shadow-sm transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
       >
         <ReportIcon />
         Reports
@@ -1005,7 +1006,7 @@ function ReportSchedulesPanel({ dashboard }: { dashboard: Dashboard }) {
                       {s.time_of_day.slice(0, 5)}
                     </div>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => onSendNow(s.id)} className="text-[var(--series-1)]">
+                      <button onClick={() => onSendNow(s.id)} className="text-[var(--accent)]">
                         Send now
                       </button>
                       <button onClick={() => onRemove(s.id)} className="text-[var(--text-muted)] hover:text-[var(--status-critical)]">
@@ -1057,7 +1058,7 @@ function ReportSchedulesPanel({ dashboard }: { dashboard: Dashboard }) {
               <button
                 type="submit"
                 disabled={busy}
-                className="shrink-0 rounded-md bg-[var(--series-1)] px-2.5 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+                className="shrink-0 rounded-md bg-[var(--accent)] px-2.5 py-1.5 text-xs font-medium text-white disabled:opacity-60"
               >
                 Schedule
               </button>
@@ -1074,17 +1075,26 @@ function ReportSchedulesPanel({ dashboard }: { dashboard: Dashboard }) {
 const GRID_ROW_HEIGHT = 32;
 const GRID_COLS = 12;
 
+/**
+ * Smallest height (in grid rows) each chart type stays readable at. Older dashboards stored
+ * h values of 2–4 from before the drag grid existed, which rendered charts ~100px tall; this
+ * floor keeps every chart legible regardless of what was saved. 4 rows ≈ 176px, 9 ≈ 416px.
+ */
+const MIN_ROWS: Partial<Record<Chart["type"], number>> = { kpi: 4, table: 9 };
+const DEFAULT_MIN_ROWS = 8;
+
 function chartsToLayout(charts: Chart[]): Layout {
   return charts.map((chart, i) => {
     const pos = chart.position;
+    const minH = MIN_ROWS[chart.type] ?? DEFAULT_MIN_ROWS;
     return {
       i: String(chart.id),
       x: pos?.x ?? (i * 6) % GRID_COLS,
-      y: pos?.y ?? Math.floor(i / 2) * 8,
+      y: pos?.y ?? Math.floor(i / 2) * 9,
       w: Math.min(GRID_COLS, Math.max(3, pos?.w ?? 6)),
-      h: Math.max(4, pos?.h ?? 8),
+      h: Math.max(minH, pos?.h ?? 9),
       minW: 3,
-      minH: 4,
+      minH,
     };
   });
 }
@@ -1122,6 +1132,23 @@ function DraggableChartGrid({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboard.id, charts.length]);
 
+  // Phones/narrow screens: stack every chart full-width in the desktop reading order (top-to-bottom,
+  // then left-to-right). This is a display-only layout — dragging is off and nothing is persisted,
+  // so opening a dashboard on a phone never rewrites its desktop arrangement.
+  const isNarrow = mounted && width < 768;
+  const displayLayout: Layout = isNarrow
+    ? (() => {
+        let y = 0;
+        return [...layout]
+          .sort((a, b) => a.y - b.y || a.x - b.x)
+          .map((item) => {
+            const stacked = { ...item, x: 0, y, w: GRID_COLS };
+            y += item.h;
+            return stacked;
+          });
+      })()
+    : layout;
+
   async function persist(newLayout: Layout) {
     for (const item of newLayout) {
       const chart = charts.find((c) => String(c.id) === item.i);
@@ -1143,13 +1170,19 @@ function DraggableChartGrid({
         {mounted && (
           <GridLayout
             width={width}
-            layout={layout}
-            gridConfig={{ cols: GRID_COLS, rowHeight: GRID_ROW_HEIGHT, margin: [16, 16] }}
-            dragConfig={{ enabled: canEdit, handle: ".chart-drag-handle" }}
-            resizeConfig={{ enabled: canEdit }}
-            onLayoutChange={setLayout}
-            onDragStop={(l) => persist(l)}
-            onResizeStop={(l) => persist(l)}
+            layout={displayLayout}
+            gridConfig={{ cols: GRID_COLS, rowHeight: GRID_ROW_HEIGHT, margin: isNarrow ? [0, 12] : [16, 16] }}
+            dragConfig={{ enabled: canEdit && !isNarrow, handle: ".chart-drag-handle" }}
+            resizeConfig={{ enabled: canEdit && !isNarrow }}
+            onLayoutChange={(l) => {
+              if (!isNarrow) setLayout(l);
+            }}
+            onDragStop={(l) => {
+              if (!isNarrow) persist(l);
+            }}
+            onResizeStop={(l) => {
+              if (!isNarrow) persist(l);
+            }}
           >
             {charts.map((chart) => (
               <div key={String(chart.id)} className="h-full">
@@ -1209,7 +1242,7 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
           action={
             <Link
               href="/dashboards"
-              className="rounded-md bg-[var(--series-1)] px-4 py-2 text-sm font-medium text-white"
+              className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white"
             >
               Back to dashboards
             </Link>
@@ -1236,25 +1269,35 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
   const canEdit = role === "owner" || role === "editor";
 
   return (
-    <div className="mx-auto max-w-[1600px] px-6 py-6">
-      <Link href="/dashboards" className="text-sm text-[var(--series-1)]">
-        &larr; Dashboards
-      </Link>
-      <div className="mt-2 flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold">{dashboard.name}</h1>
+    <div className="mx-auto max-w-[1600px] px-4 py-5 sm:px-6 sm:py-6">
+      <nav className="flex items-center gap-1.5 text-[13px] text-[var(--text-muted)]">
+        <Link href="/dashboards" className="hover:text-[var(--accent)]">
+          Dashboards
+        </Link>
+        <span aria-hidden>/</span>
+        <span className="truncate text-[var(--text-secondary)]">{dashboard.name}</span>
+      </nav>
+      <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-[26px] font-semibold leading-tight tracking-tight">{dashboard.name}</h1>
             {role !== "owner" && (
-              <span className="rounded-full bg-[var(--page-plane)] px-2 py-0.5 text-xs capitalize text-[var(--text-muted)]">
+              <span className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-medium capitalize text-[var(--text-secondary)]">
                 {role}
               </span>
             )}
+            {dashboard.is_shared && (
+              <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--accent)]">
+                Public link on
+              </span>
+            )}
           </div>
-          {dashboard.description && (
-            <p className="mt-1 text-sm text-[var(--text-muted)]">{dashboard.description}</p>
-          )}
+          <p className="mt-1 text-sm text-[var(--text-muted)]">
+            {dashboard.description ? `${dashboard.description} · ` : ""}
+            {dashboard.charts?.length ?? 0} chart{dashboard.charts?.length === 1 ? "" : "s"}
+          </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {dashboard.charts && dashboard.charts.length > 0 && <ExportButton dashboard={dashboard} chartsRef={chartsRef} />}
           {dashboard.charts && dashboard.charts.length > 0 && <AiRecommendationsPanel dashboard={dashboard} />}
           {canEdit && <ReportSchedulesPanel dashboard={dashboard} />}
@@ -1264,11 +1307,11 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
       </div>
 
       {canEdit && (
-        <div className="mt-6 flex flex-wrap gap-3">
+        <div className="mt-5 flex flex-wrap items-start gap-2 border-t border-[var(--border)] pt-5">
           {datasets.length === 0 ? (
             <p className="text-sm text-[var(--text-muted)]">
               No datasets available yet.{" "}
-              <Link href="/data-sources" className="text-[var(--series-1)]">
+              <Link href="/data-sources" className="text-[var(--accent)]">
                 Add a data source
               </Link>{" "}
               first.
@@ -1283,11 +1326,11 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
       )}
 
       {crossFilter && (
-        <div className="mt-6 flex items-center gap-2 rounded-md bg-[var(--series-1)]/10 px-3 py-2 text-sm text-[var(--series-1)]">
+        <div className="mt-6 flex items-center gap-2 rounded-md bg-[var(--accent)]/10 px-3 py-2 text-sm text-[var(--accent)]">
           Filtering dashboard where <strong>{crossFilter.field}</strong> = {crossFilter.value}
           <button
             onClick={() => setCrossFilter(null)}
-            className="ml-auto rounded-md border border-[var(--series-1)]/30 px-2 py-0.5 text-xs hover:bg-[var(--series-1)]/10"
+            className="ml-auto rounded-md border border-[var(--accent)]/30 px-2 py-0.5 text-xs hover:bg-[var(--accent)]/10"
           >
             Clear
           </button>

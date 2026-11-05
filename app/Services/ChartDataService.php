@@ -161,8 +161,8 @@ class ChartDataService
             ->get();
 
         $axisLimit = $this->rowLimit(50, $user);
-        $xLabels = $rows->pluck('x')->unique()->sort()->values()->take($axisLimit)->all();
-        $yLabels = $rows->pluck('y')->unique()->sort()->values()->take($axisLimit)->all();
+        $xLabels = $this->sortLabels($rows->pluck('x')->unique()->sort()->values()->take($axisLimit)->all());
+        $yLabels = $this->sortLabels($rows->pluck('y')->unique()->sort()->values()->take($axisLimit)->all());
 
         $cells = $rows
             ->filter(fn ($row) => in_array($row->x, $xLabels, true) && in_array($row->y, $yLabels, true))
@@ -291,10 +291,74 @@ class ChartDataService
             ->limit($limit)
             ->get();
 
-        return [
-            'labels' => $rows->pluck('label')->all(),
-            'values' => $rows->pluck('value')->map(fn ($v) => is_numeric($v) ? (float) $v : 0)->all(),
-        ];
+        $labels = $rows->pluck('label')->all();
+        $values = $rows->pluck('value')->map(fn ($v) => is_numeric($v) ? (float) $v : 0)->all();
+
+        if ($order = $this->calendarOrder($labels)) {
+            $labels = array_values(array_map(fn ($i) => $labels[$i], $order));
+            $values = array_values(array_map(fn ($i) => $values[$i], $order));
+        }
+
+        return ['labels' => $labels, 'values' => $values];
+    }
+
+    protected const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+    protected const WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+
+    /**
+     * SQL sorts labels alphabetically, which puts month names in the wrong order (Apr, Feb, Jan…)
+     * and silently breaks trend lines and period-over-period insights. When *every* label is a
+     * month name (or every label a weekday), returns the indexes in calendar order; otherwise null
+     * so ordinary categories and ISO dates (which already sort correctly) are left untouched.
+     *
+     * @param  array<int, mixed>  $labels
+     * @return array<int, int>|null
+     */
+    public function calendarOrder(array $labels): ?array
+    {
+        if (count($labels) < 2) {
+            return null;
+        }
+
+        foreach ([self::MONTHS, self::WEEKDAYS] as $sequence) {
+            $positions = [];
+            foreach ($labels as $i => $label) {
+                $key = substr(strtolower(trim((string) $label)), 0, 3);
+                $position = array_search($key, $sequence, true);
+                if ($position === false || ! $this->isNameOf((string) $label, $sequence[$position])) {
+                    continue 2;
+                }
+                $positions[$i] = $position;
+            }
+            asort($positions);
+
+            return array_keys($positions);
+        }
+
+        return null;
+    }
+
+    /** "Mar", "March", "mar." count as March; "Marketing" does not. */
+    protected function isNameOf(string $label, string $abbr): bool
+    {
+        $label = rtrim(strtolower(trim($label)), '.');
+        $full = [
+            'jan' => 'january', 'feb' => 'february', 'mar' => 'march', 'apr' => 'april', 'may' => 'may',
+            'jun' => 'june', 'jul' => 'july', 'aug' => 'august', 'sep' => 'september', 'oct' => 'october',
+            'nov' => 'november', 'dec' => 'december', 'mon' => 'monday', 'tue' => 'tuesday',
+            'wed' => 'wednesday', 'thu' => 'thursday', 'fri' => 'friday', 'sat' => 'saturday', 'sun' => 'sunday',
+        ][$abbr];
+
+        return $label === $abbr || $label === $full || ($abbr === 'sep' && $label === 'sept');
+    }
+
+    /** @param  array<int, mixed>  $labels */
+    protected function sortLabels(array $labels): array
+    {
+        $order = $this->calendarOrder($labels);
+
+        return $order ? array_values(array_map(fn ($i) => $labels[$i], $order)) : $labels;
     }
 
     /**
@@ -314,7 +378,7 @@ class ChartDataService
             ->limit($this->rowLimit(1000, $user))
             ->get();
 
-        $labels = $rows->pluck('label')->unique()->sort()->values()->take($this->rowLimit(50, $user))->all();
+        $labels = $this->sortLabels($rows->pluck('label')->unique()->sort()->values()->take($this->rowLimit(50, $user))->all());
         $seriesNames = $rows->pluck('series')->unique()->sort()->values()->take($this->rowLimit(8, $user))->all();
 
         $lookup = [];

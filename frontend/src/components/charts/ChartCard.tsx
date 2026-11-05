@@ -69,6 +69,35 @@ function FlagIcon() {
   );
 }
 
+function FilterIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 5h18l-7 8.5V19l-4 2v-7.5L3 5Z" />
+    </svg>
+  );
+}
+
+function CopyIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="9" width="12" height="12" rx="2" />
+      <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6" />
+    </svg>
+  );
+}
+
+/** Compact, always-visible toolbar button for the chart card header. */
+const TOOL_BTN =
+  "flex h-7 w-7 items-center justify-center rounded-md text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]";
+
 function GripIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -247,7 +276,7 @@ function ChartStylePanel({
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+        className={`${TOOL_BTN} ${open ? "bg-[var(--accent-soft)] !text-[var(--accent)]" : ""}`}
         title="Customize"
       >
         <PaletteIcon />
@@ -571,7 +600,7 @@ function AlertsPanel({ chart }: { chart: Chart }) {
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className={`flex items-center gap-1 ${breached ? "text-[var(--status-critical)]" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
+        className={`${TOOL_BTN} w-auto min-w-7 gap-1 px-1.5 ${breached ? "!text-[var(--status-critical)]" : ""}`}
         title="Alerts"
       >
         <BellIcon />
@@ -738,7 +767,7 @@ function GoalsPanel({ chart }: { chart: Chart }) {
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className={`flex items-center gap-1 ${anyAchieved ? "text-[var(--status-good)]" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
+        className={`${TOOL_BTN} w-auto min-w-7 gap-1 px-1.5 ${anyAchieved ? "!text-[var(--status-good)]" : ""}`}
         title="Goals"
       >
         <FlagIcon />
@@ -868,7 +897,7 @@ function ScenarioPanel({
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+        className={`${TOOL_BTN} ${open ? "bg-[var(--accent-soft)] !text-[var(--accent)]" : ""}`}
         title="What-if scenario"
       >
         <FlaskIcon />
@@ -1033,25 +1062,28 @@ export default function ChartCard({
   const canDrillDown = !!onDrillDown && !!chart.config.x_field;
 
   return (
-    <div className="group flex h-full flex-col rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-4 transition-shadow hover:shadow-sm">
-      <div className="flex shrink-0 items-start justify-between">
-        <div className="flex items-start gap-1.5">
+    <div className="group flex h-full flex-col rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-4 transition-shadow hover:shadow-lg">
+      <div className="flex shrink-0 flex-wrap items-start justify-between gap-x-3 gap-y-1">
+        {/* min width keeps the title readable — on narrow cards the toolbar wraps below instead. */}
+        <div className="flex min-w-[9rem] flex-1 items-start gap-1.5">
           {canEdit && !readOnly && (
             <span
-              className="chart-drag-handle mt-0.5 cursor-grab text-[var(--text-muted)] active:cursor-grabbing"
+              className="chart-drag-handle -ml-1 mt-0.5 shrink-0 cursor-grab rounded p-0.5 text-[var(--text-muted)] hover:bg-[var(--surface-2)] active:cursor-grabbing"
               title="Drag to move"
             >
               <GripIcon />
             </span>
           )}
-          <div>
-            <h3 className="font-medium text-[var(--text-primary)]">{chart.title}</h3>
-            <span className="text-xs uppercase tracking-wide text-[var(--text-muted)]">
-              {chart.type}
+          <div className="min-w-0">
+            <h3 className="truncate text-[15px] font-semibold tracking-tight text-[var(--text-primary)]" title={chart.title}>
+              {chart.title}
+            </h3>
+            <span className="text-[10.5px] font-medium uppercase tracking-[0.08em] text-[var(--text-muted)]">
+              {chart.type.replace("_", " ")}
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-3 text-xs">
+        <div className="-mr-1 flex shrink-0 items-center gap-0.5 text-xs [&>*]:shrink-0">
           {!readOnly && chart.type === "kpi" && <AlertsPanel chart={chart} />}
           {!readOnly && chart.type === "kpi" && <GoalsPanel chart={chart} />}
           {data &&
@@ -1067,16 +1099,19 @@ export default function ChartCard({
           {chart.type !== "table" && chart.type !== "kpi" && (
             <button
               onClick={() => setShowFilter((s) => !s)}
-              className="text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              className={`${TOOL_BTN} ${showFilter || manualFilters.length > 0 ? "bg-[var(--accent-soft)] !text-[var(--accent)]" : ""}`}
+              title="Filter"
+              aria-label="Filter"
             >
-              Filter
+              <FilterIcon />
             </button>
           )}
           {data && (
             <button
               onClick={() => downloadChartCsv(chart, data)}
-              className="flex items-center gap-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              className={TOOL_BTN}
               title="Export CSV"
+              aria-label="Export CSV"
             >
               <DownloadIcon />
             </button>
@@ -1087,23 +1122,26 @@ export default function ChartCard({
                 chartAreaRef.current &&
                 downloadChartPng(chartAreaRef.current, `${chart.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`)
               }
-              className="flex items-center gap-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              className={TOOL_BTN}
               title="Export PNG"
+              aria-label="Export PNG"
             >
               <ImageIcon />
             </button>
           )}
           {!readOnly && canEdit && (
-            <button onClick={onDuplicate} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]">
-              Duplicate
+            <button onClick={onDuplicate} className={TOOL_BTN} title="Duplicate" aria-label="Duplicate chart">
+              <CopyIcon />
             </button>
           )}
           {!readOnly && canEdit && (
             <button
               onClick={onDelete}
-              className="text-[var(--status-critical)] hover:opacity-80"
+              className={`${TOOL_BTN} hover:!bg-[var(--status-critical)]/10 hover:!text-[var(--status-critical)]`}
+              title="Delete"
+              aria-label="Delete chart"
             >
-              Delete
+              <TrashIcon />
             </button>
           )}
         </div>

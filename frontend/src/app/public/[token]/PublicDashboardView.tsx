@@ -22,7 +22,7 @@ export default function PublicDashboardView({ token }: { token: string }) {
     <div className="min-h-screen bg-[var(--page-plane)]">
       <header className="border-b border-[var(--border)] bg-[var(--surface-1)]">
         <div className="mx-auto flex max-w-6xl items-center gap-2 px-8 py-4">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--series-1)] text-xs font-bold text-white">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--accent)] text-xs font-bold text-white">
             D
           </div>
           <span className="font-semibold text-[var(--text-primary)]">Daha BI</span>
