@@ -89,7 +89,7 @@ function AlertsList() {
                   {a.last_status === "breached" ? "Breached" : "OK"}
                 </span>
                 {a.chart?.dashboard_id && (
-                  <Link href={`/dashboards/${a.chart.dashboard_id}`} className="text-[var(--series-1)]">
+                  <Link href={`/dashboards/${a.chart.dashboard_id}`} className="text-[var(--accent)]">
                     View
                   </Link>
                 )}

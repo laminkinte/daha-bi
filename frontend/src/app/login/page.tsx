@@ -39,7 +39,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-8">
         <div className="mb-6 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--series-1)] text-sm font-bold text-white">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent)] text-sm font-bold text-white">
             D
           </div>
           <span className="font-semibold text-[var(--text-primary)]">{t("brand")}</span>
@@ -61,13 +61,13 @@ export default function LoginPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--series-1)]"
+              className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
             />
           </div>
           <div>
             <div className="mb-1 flex items-center justify-between">
               <label className="block text-sm text-[var(--text-secondary)]">{t("password")}</label>
-              <Link href="/forgot-password" className="text-xs text-[var(--series-1)]">
+              <Link href="/forgot-password" className="text-xs text-[var(--accent)]">
                 {t("forgotPassword")}
               </Link>
             </div>
@@ -87,7 +87,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="mt-2 rounded-md bg-[var(--series-1)] px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+            className="mt-2 rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
           >
             {submitting ? t("submitting") : t("submit")}
           </button>
@@ -95,7 +95,7 @@ export default function LoginPage() {
 
         <p className="mt-6 text-center text-sm text-[var(--text-muted)]">
           {t("noAccount")}{" "}
-          <Link href="/register" className="text-[var(--series-1)]">
+          <Link href="/register" className="text-[var(--accent)]">
             {t("register")}
           </Link>
         </p>

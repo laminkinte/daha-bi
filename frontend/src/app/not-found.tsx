@@ -5,7 +5,7 @@ import Link from "next/link";
 export default function NotFound() {
   return (
     <div className="flex min-h-[70vh] flex-col items-center justify-center px-6 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[var(--series-1)] text-xl font-bold text-white">
+      <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[var(--accent)] text-xl font-bold text-white">
         D
       </div>
       <h1 className="mt-6 text-3xl font-semibold text-[var(--text-primary)]">Page not found</h1>
@@ -14,7 +14,7 @@ export default function NotFound() {
       </p>
       <Link
         href="/"
-        className="mt-6 rounded-md bg-[var(--series-1)] px-5 py-2.5 text-sm font-medium text-white"
+        className="mt-6 rounded-md bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-white"
       >
         Back to daha-bi
       </Link>

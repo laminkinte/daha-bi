@@ -11,7 +11,10 @@
     "settings": "الإعدادات",
     "admin": "الإدارة",
     "logOut": "تسجيل الخروج",
-    "language": "اللغة"
+    "language": "اللغة",
+    "sectionAnalyze": "التحليل",
+    "sectionData": "البيانات",
+    "sectionMonitor": "المتابعة"
   },
   "common": {
     "save": "حفظ",
@@ -56,7 +59,7 @@
   "dashboards": {
     "title": "لوحات المعلومات",
     "subtitle": "أنشئ لوحات معلومات الذكاء التجاري وتصفحها.",
-    "newDashboard": "+ لوحة معلومات جديدة",
+    "newDashboard": "لوحة معلومات جديدة",
     "fromTemplate": "من قالب",
     "emptyTitle": "لا توجد لوحات معلومات بعد",
     "emptyDescription": "أنشئ لوحة معلوماتك الأولى لبدء إنشاء الرسوم البيانية من بياناتك."

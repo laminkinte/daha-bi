@@ -103,7 +103,7 @@ export default function DataTable<T>({
             value={query}
             onChange={(e) => handleSearch(e.target.value)}
             placeholder="Search..."
-            className="w-full max-w-xs rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-sm outline-none focus:border-[var(--series-1)]"
+            className="w-full max-w-xs rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
           />
         ) : (
           <span />

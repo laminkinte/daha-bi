@@ -11,7 +11,10 @@
     "settings": "Paramètres",
     "admin": "Administration",
     "logOut": "Se déconnecter",
-    "language": "Langue"
+    "language": "Langue",
+    "sectionAnalyze": "Analyser",
+    "sectionData": "Données",
+    "sectionMonitor": "Suivre"
   },
   "common": {
     "save": "Enregistrer",
@@ -56,7 +59,7 @@
   "dashboards": {
     "title": "Tableaux de bord",
     "subtitle": "Créez et parcourez vos tableaux de bord BI.",
-    "newDashboard": "+ Nouveau tableau de bord",
+    "newDashboard": "Nouveau tableau de bord",
     "fromTemplate": "À partir d'un modèle",
     "emptyTitle": "Aucun tableau de bord",
     "emptyDescription": "Créez votre premier tableau de bord pour commencer à construire des graphiques à partir de vos données."

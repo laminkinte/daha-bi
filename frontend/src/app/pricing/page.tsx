@@ -110,12 +110,12 @@ function PricingContent() {
               key={tier.name}
               className={`rounded-xl border p-6 ${
                 tier.highlighted
-                  ? "border-[var(--series-1)] bg-[var(--surface-1)] shadow-sm"
+                  ? "border-[var(--accent)] bg-[var(--surface-1)] shadow-sm"
                   : "border-[var(--border)] bg-[var(--surface-1)]"
               }`}
             >
               {tier.highlighted && (
-                <div className="mb-3 inline-block rounded-full bg-[var(--series-1)] px-2.5 py-0.5 text-xs font-medium text-white">
+                <div className="mb-3 inline-block rounded-full bg-[var(--accent)] px-2.5 py-0.5 text-xs font-medium text-white">
                   Most popular
                 </div>
               )}
@@ -133,7 +133,7 @@ function PricingContent() {
                   href="/register"
                   className={`mt-6 block rounded-md px-4 py-2.5 text-center text-sm font-medium ${
                     tier.highlighted
-                      ? "bg-[var(--series-1)] text-white"
+                      ? "bg-[var(--accent)] text-white"
                       : "border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   }`}
                 >
@@ -161,7 +161,7 @@ function PricingContent() {
                     disabled={busyPlan !== null}
                     className={`mt-6 block w-full rounded-md px-4 py-2.5 text-center text-sm font-medium disabled:opacity-60 ${
                       tier.highlighted
-                        ? "bg-[var(--series-1)] text-white"
+                        ? "bg-[var(--accent)] text-white"
                         : "border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                     }`}
                   >
@@ -170,7 +170,7 @@ function PricingContent() {
                   <button
                     onClick={() => onSelectFlutterwave(tier.plan)}
                     disabled={busyPlan !== null}
-                    className="mt-2 block w-full text-center text-xs text-[var(--series-1)] hover:underline disabled:opacity-60"
+                    className="mt-2 block w-full text-center text-xs text-[var(--accent)] hover:underline disabled:opacity-60"
                   >
                     or pay with Flutterwave (NGN)
                   </button>
@@ -194,7 +194,7 @@ function PricingContent() {
 
       <p className="mt-10 text-center text-sm text-[var(--text-muted)]">
         Need something custom for a larger organization?{" "}
-        <a href="mailto:hello@daha.bi" className="text-[var(--series-1)]">
+        <a href="mailto:hello@daha.bi" className="text-[var(--accent)]">
           Get in touch
         </a>
         .

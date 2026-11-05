@@ -24,7 +24,7 @@ export default function DatasetPreviewToggle({ datasetId }: { datasetId: number 
 
   return (
     <div className="mt-3">
-      <button onClick={() => setShow((s) => !s)} className="text-xs font-medium text-[var(--series-1)]">
+      <button onClick={() => setShow((s) => !s)} className="text-xs font-medium text-[var(--accent)]">
         {show ? "Hide" : "Show"} dataset preview
       </button>
       {show && (

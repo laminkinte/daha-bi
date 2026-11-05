@@ -49,7 +49,7 @@ function StatusBadge({ status }: { status: DataModel["status"] }) {
 }
 
 const selectClass =
-  "w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--series-1)]";
+  "w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--accent)]";
 const labelClass = "mb-1 block text-xs font-medium text-[var(--text-secondary)]";
 
 function FieldInput({
@@ -375,7 +375,7 @@ function PipelineBuilder({
             key={type}
             type="button"
             onClick={() => addStep(type)}
-            className="rounded-md border border-dashed border-[var(--border)] px-2.5 py-1 text-xs text-[var(--text-secondary)] hover:border-[var(--series-1)] hover:text-[var(--series-1)]"
+            className="rounded-md border border-dashed border-[var(--border)] px-2.5 py-1 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
           >
             + {type}
           </button>
@@ -395,7 +395,7 @@ function PipelineBuilder({
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-md bg-[var(--series-1)] px-4 py-2 font-medium text-white disabled:opacity-60"
+          className="rounded-md bg-[var(--accent)] px-4 py-2 font-medium text-white disabled:opacity-60"
         >
           {submitting ? "Running..." : "Save & Run"}
         </button>
@@ -474,7 +474,7 @@ function DataModelsList() {
         ) : (
           <button
             onClick={() => setShowBuilder(true)}
-            className="rounded-md border border-dashed border-[var(--border)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:border-[var(--series-1)] hover:text-[var(--series-1)]"
+            className="rounded-md border border-dashed border-[var(--border)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
           >
             + New data model
           </button>

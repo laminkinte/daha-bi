@@ -55,7 +55,7 @@ function UsersView() {
         <div className="flex items-center gap-1.5">
           {u.name}
           {u.is_admin && (
-            <span className="rounded-full bg-[var(--series-1)]/10 px-1.5 py-0.5 text-[10px] font-medium text-[var(--series-1)]">
+            <span className="rounded-full bg-[var(--accent)]/10 px-1.5 py-0.5 text-[10px] font-medium text-[var(--accent)]">
               admin
             </span>
           )}
@@ -115,7 +115,7 @@ function UsersView() {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search users by name or email..."
-        className="mt-6 w-full max-w-xs rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-sm outline-none focus:border-[var(--series-1)]"
+        className="mt-6 w-full max-w-xs rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
       />
 
       {error && <p className="mt-3 text-sm text-[var(--status-critical)]">{error}</p>}

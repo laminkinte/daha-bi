@@ -41,7 +41,7 @@ function ResetPasswordForm() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-8">
         <div className="mb-6 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--series-1)] text-sm font-bold text-white">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent)] text-sm font-bold text-white">
             D
           </div>
           <span className="font-semibold text-[var(--text-primary)]">Daha BI</span>
@@ -51,7 +51,7 @@ function ResetPasswordForm() {
         {!token || !email ? (
           <p className="mt-4 text-sm text-[var(--status-critical)]">
             This reset link is missing or invalid. Request a new one from the{" "}
-            <Link href="/forgot-password" className="text-[var(--series-1)]">
+            <Link href="/forgot-password" className="text-[var(--accent)]">
               forgot password
             </Link>{" "}
             page.
@@ -71,7 +71,7 @@ function ResetPasswordForm() {
                 minLength={8}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--series-1)]"
+                className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
               />
             </div>
             <div>
@@ -83,7 +83,7 @@ function ResetPasswordForm() {
                 minLength={8}
                 value={passwordConfirmation}
                 onChange={(e) => setPasswordConfirmation(e.target.value)}
-                className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--series-1)]"
+                className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
               />
             </div>
 
@@ -92,7 +92,7 @@ function ResetPasswordForm() {
             <button
               type="submit"
               disabled={submitting}
-              className="mt-2 rounded-md bg-[var(--series-1)] px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+              className="mt-2 rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
             >
               {submitting ? "Resetting..." : "Reset password"}
             </button>

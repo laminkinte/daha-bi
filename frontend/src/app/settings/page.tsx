@@ -171,12 +171,12 @@ function OrganizationSection() {
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="flex-1 rounded-md border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[var(--series-1)]"
+              className="flex-1 rounded-md border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[var(--accent)]"
             />
             <button
               onClick={saveName}
               disabled={savingName || name === org.name}
-              className="rounded-md bg-[var(--series-1)] px-3 py-1.5 text-sm text-white disabled:opacity-60"
+              className="rounded-md bg-[var(--accent)] px-3 py-1.5 text-sm text-white disabled:opacity-60"
             >
               {savingName ? "Saving..." : "Save"}
             </button>
@@ -207,7 +207,7 @@ function OrganizationSection() {
             onChange={(e) => setInviteEmail(e.target.value)}
             type="email"
             placeholder="Invite by email..."
-            className="min-w-0 flex-1 rounded-md border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[var(--series-1)]"
+            className="min-w-0 flex-1 rounded-md border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[var(--accent)]"
           />
           <select
             value={inviteRole}
@@ -425,7 +425,7 @@ function PlanSection() {
                   <button
                     onClick={() => upgradeWithFlutterwave(p)}
                     disabled={busy !== null}
-                    className="text-xs text-[var(--series-1)] hover:underline disabled:opacity-60"
+                    className="text-xs text-[var(--accent)] hover:underline disabled:opacity-60"
                   >
                     or pay with Flutterwave (NGN)
                   </button>
@@ -436,7 +436,7 @@ function PlanSection() {
         </>
       )}
       <p className="mt-4 text-xs text-[var(--text-muted)]">
-        <Link href="/pricing" className="text-[var(--series-1)]">
+        <Link href="/pricing" className="text-[var(--accent)]">
           See full plan comparison
         </Link>
       </p>
@@ -481,7 +481,7 @@ function ProfileForm() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--series-1)]"
+            className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
           />
         </div>
         <div>
@@ -491,7 +491,7 @@ function ProfileForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--series-1)]"
+            className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
           />
         </div>
         <label className="flex items-start gap-2 text-sm text-[var(--text-secondary)]">
@@ -514,7 +514,7 @@ function ProfileForm() {
         <button
           type="submit"
           disabled={saving}
-          className="rounded-md bg-[var(--series-1)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+          className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
         >
           {saving ? "Saving..." : "Save changes"}
         </button>
@@ -568,7 +568,7 @@ function PasswordForm() {
             onChange={(e) => setCurrentPassword(e.target.value)}
             required
             autoComplete="current-password"
-            className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--series-1)]"
+            className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
           />
         </div>
         <div>
@@ -580,7 +580,7 @@ function PasswordForm() {
             required
             minLength={8}
             autoComplete="new-password"
-            className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--series-1)]"
+            className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
           />
         </div>
         <div>
@@ -592,7 +592,7 @@ function PasswordForm() {
             required
             minLength={8}
             autoComplete="new-password"
-            className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--series-1)]"
+            className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
           />
         </div>
       </div>
@@ -601,7 +601,7 @@ function PasswordForm() {
         <button
           type="submit"
           disabled={saving}
-          className="rounded-md bg-[var(--series-1)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+          className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
         >
           {saving ? "Updating..." : "Update password"}
         </button>

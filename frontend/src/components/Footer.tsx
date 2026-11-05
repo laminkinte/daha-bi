@@ -29,7 +29,7 @@ export default function Footer() {
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-5">
           <div className="col-span-2">
             <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--series-1)] text-sm font-bold text-white">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent)] text-sm font-bold text-white">
                 D
               </div>
               <span className="font-semibold text-[var(--text-primary)]">Daha BI</span>

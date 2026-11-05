@@ -337,7 +337,7 @@ function ChartStylePanel({
                       </button>
                     </div>
                   ))}
-                  <button type="button" onClick={addColorRule} className="self-start text-[var(--series-1)]">
+                  <button type="button" onClick={addColorRule} className="self-start text-[var(--accent)]">
                     + Add rule
                   </button>
                 </div>
@@ -478,7 +478,7 @@ function ChartStylePanel({
             <button
               onClick={onSave}
               disabled={saving}
-              className="rounded bg-[var(--series-1)] px-3 py-1.5 font-medium text-white disabled:opacity-60"
+              className="rounded bg-[var(--accent)] px-3 py-1.5 font-medium text-white disabled:opacity-60"
             >
               {saving ? "Saving..." : "Save"}
             </button>
@@ -645,7 +645,7 @@ function AlertsPanel({ chart }: { chart: Chart }) {
             <button
               onClick={onSubmit}
               disabled={submitting}
-              className="rounded bg-[var(--series-1)] px-2 py-1 text-white disabled:opacity-60"
+              className="rounded bg-[var(--accent)] px-2 py-1 text-white disabled:opacity-60"
             >
               Add
             </button>
@@ -763,7 +763,7 @@ function GoalsPanel({ chart }: { chart: Chart }) {
                   <div className="mt-1.5 flex items-center gap-2">
                     <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--border)]">
                       <div
-                        className={`h-full rounded-full ${g.is_achieved ? "bg-[var(--status-good)]" : "bg-[var(--series-1)]"}`}
+                        className={`h-full rounded-full ${g.is_achieved ? "bg-[var(--status-good)]" : "bg-[var(--accent)]"}`}
                         style={{ width: `${g.progress_percent ?? 0}%` }}
                       />
                     </div>
@@ -774,7 +774,7 @@ function GoalsPanel({ chart }: { chart: Chart }) {
                   <button
                     onClick={() => onRecommend(g.id)}
                     disabled={recommending === g.id}
-                    className="mt-1.5 text-[10px] text-[var(--series-1)] hover:underline disabled:opacity-60"
+                    className="mt-1.5 text-[10px] text-[var(--accent)] hover:underline disabled:opacity-60"
                   >
                     {recommending === g.id ? "Thinking..." : "Get AI recommendation"}
                   </button>
@@ -819,7 +819,7 @@ function GoalsPanel({ chart }: { chart: Chart }) {
             <button
               onClick={onSubmit}
               disabled={submitting}
-              className="rounded bg-[var(--series-1)] px-2 py-1 text-white disabled:opacity-60"
+              className="rounded bg-[var(--accent)] px-2 py-1 text-white disabled:opacity-60"
             >
               {submitting ? "Adding..." : "Add goal"}
             </button>
@@ -920,7 +920,7 @@ function ScenarioPanel({
           {hasAdjustments && (
             <button
               onClick={() => setAdjustments({})}
-              className="mt-2 text-[var(--series-1)] hover:underline"
+              className="mt-2 text-[var(--accent)] hover:underline"
             >
               Reset
             </button>
@@ -1141,7 +1141,7 @@ export default function ChartCard({
           />
           <button
             onClick={applyFilter}
-            className="rounded bg-[var(--series-1)] px-2 py-1 text-white"
+            className="rounded bg-[var(--accent)] px-2 py-1 text-white"
           >
             Apply
           </button>
@@ -1151,7 +1151,7 @@ export default function ChartCard({
             <button
               key={r.label}
               onClick={() => applyDateRange(r.days)}
-              className="rounded border border-[var(--border)] px-2 py-1 text-[var(--text-secondary)] hover:border-[var(--series-1)] hover:text-[var(--series-1)]"
+              className="rounded border border-[var(--border)] px-2 py-1 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
             >
               Last {r.label}
             </button>
@@ -1166,7 +1166,7 @@ export default function ChartCard({
       )}
 
       {crossFilterApplies && crossFilter && (
-        <div className="mt-3 flex items-center gap-1.5 rounded-md bg-[var(--series-1)]/10 px-2.5 py-1.5 text-xs text-[var(--series-1)]">
+        <div className="mt-3 flex items-center gap-1.5 rounded-md bg-[var(--accent)]/10 px-2.5 py-1.5 text-xs text-[var(--accent)]">
           Cross-filtered: {crossFilter.field} = {crossFilter.value}
         </div>
       )}

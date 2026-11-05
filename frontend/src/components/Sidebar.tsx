@@ -185,16 +185,50 @@ function ShieldIcon() {
   );
 }
 
-const NAV_ITEMS = [
-  { href: "/dashboards", labelKey: "dashboards", icon: DashboardIcon },
-  { href: "/chat", labelKey: "aiChat", icon: SparkleIcon },
-  { href: "/datasets", labelKey: "datasets", icon: LayersIcon },
-  { href: "/data-sources", labelKey: "dataSources", icon: DatabaseIcon },
-  { href: "/data-models", labelKey: "dataModels", icon: FlowIcon },
-  { href: "/notebook", labelKey: "notebook", icon: NotebookIcon },
-  { href: "/alerts", labelKey: "alerts", icon: BellIcon },
-  { href: "/referrals", labelKey: "referrals", icon: GiftIcon },
+const NAV_SECTIONS = [
+  {
+    labelKey: "sectionAnalyze",
+    items: [
+      { href: "/dashboards", labelKey: "dashboards", icon: DashboardIcon },
+      { href: "/chat", labelKey: "aiChat", icon: SparkleIcon },
+    ],
+  },
+  {
+    labelKey: "sectionData",
+    items: [
+      { href: "/data-sources", labelKey: "dataSources", icon: DatabaseIcon },
+      { href: "/datasets", labelKey: "datasets", icon: LayersIcon },
+      { href: "/data-models", labelKey: "dataModels", icon: FlowIcon },
+      { href: "/notebook", labelKey: "notebook", icon: NotebookIcon },
+    ],
+  },
+  {
+    labelKey: "sectionMonitor",
+    items: [
+      { href: "/alerts", labelKey: "alerts", icon: BellIcon },
+      { href: "/referrals", labelKey: "referrals", icon: GiftIcon },
+    ],
+  },
 ] as const;
+
+function BrandMark({ size = 32 }: { size?: number }) {
+  return (
+    <div
+      className="flex shrink-0 items-center justify-center rounded-[10px] text-white shadow-sm"
+      style={{ width: size, height: size, background: "var(--accent-glow)" }}
+    >
+      <svg width={size * 0.56} height={size * 0.56} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+        <path d="M5 19V11M12 19V5M19 19v-5" />
+      </svg>
+    </div>
+  );
+}
+
+function initials(name?: string | null, email?: string | null) {
+  const source = (name || email || "?").trim();
+  const parts = source.split(/[\s@._-]+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? "?") + (parts[1]?.[0] ?? "")).toUpperCase();
+}
 
 type PlanNotice = { text: string; tone: "warning" | "critical" };
 
@@ -241,9 +275,12 @@ export default function Sidebar({ children }: { children: ReactNode }) {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [switchingOrg, setSwitchingOrg] = useState(false);
 
-  useEffect(() => {
+  // Close the mobile drawer on navigation (state adjusted during render, not in an effect).
+  const [lastPathname, setLastPathname] = useState(pathname);
+  if (pathname !== lastPathname) {
+    setLastPathname(pathname);
     setMobileOpen(false);
-  }, [pathname]);
+  }
 
   useEffect(() => {
     Promise.resolve().then(() => {
@@ -307,62 +344,90 @@ export default function Sidebar({ children }: { children: ReactNode }) {
 
   const navContent = (
     <>
-      <div className={`flex items-center px-5 py-5 ${collapsed ? "md:justify-center md:px-3" : "justify-between"}`}>
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--series-1)] text-sm font-bold text-white">
-            D
-          </div>
-          <span className={`font-semibold text-[var(--text-primary)] ${collapsed ? "md:hidden" : ""}`}>Daha BI</span>
-        </div>
+      <div className={`flex items-center px-4 pb-4 pt-5 ${collapsed ? "md:justify-center md:px-3" : "justify-between"}`}>
+        <Link href="/dashboards" className="flex items-center gap-2.5">
+          <BrandMark />
+          <span className={`leading-tight ${collapsed ? "md:hidden" : ""}`}>
+            <span className="block text-[15px] font-semibold tracking-tight text-[var(--text-primary)]">Daha BI</span>
+            <span className="block max-w-[9.5rem] truncate text-[11px] text-[var(--text-muted)]">
+              {user.current_organization?.name ?? "Workspace"}
+            </span>
+          </span>
+        </Link>
         <button
           onClick={() => setMobileOpen(false)}
-          className="text-[var(--text-muted)] md:hidden"
+          className="rounded-md p-1 text-[var(--text-muted)] hover:bg-[var(--surface-2)] md:hidden"
           aria-label="Close menu"
         >
           <CloseIcon />
         </button>
+        <button
+          onClick={toggleCollapsed}
+          className={`hidden rounded-md p-1.5 text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)] md:block ${
+            collapsed ? "md:hidden" : ""
+          }`}
+          title="Collapse sidebar"
+          aria-label="Collapse sidebar"
+        >
+          <CollapseIcon collapsed={false} />
+        </button>
       </div>
 
-      <button
-        onClick={toggleCollapsed}
-        className="mx-3 mb-2 hidden items-center justify-center gap-2 rounded-md border border-[var(--border)] py-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] md:flex"
-        title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-      >
-        <CollapseIcon collapsed={collapsed} />
-        {!collapsed && "Collapse"}
-      </button>
+      {collapsed && (
+        <button
+          onClick={toggleCollapsed}
+          className="mx-auto mb-2 hidden rounded-md p-1.5 text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)] md:block"
+          title="Expand sidebar"
+          aria-label="Expand sidebar"
+        >
+          <CollapseIcon collapsed />
+        </button>
+      )}
 
-      <nav className="flex flex-1 flex-col gap-1 px-3">
-        {NAV_ITEMS.map(({ href, labelKey, icon: Icon }) => {
-          const active = pathname === href || pathname?.startsWith(href + "/");
-          return (
-            <Link
-              key={href}
-              href={href}
-              title={collapsed ? t(labelKey) : undefined}
-              className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
-                collapsed ? "md:relative md:justify-center md:px-2" : ""
-              } ${
-                active
-                  ? "bg-[var(--series-1)]/10 font-medium text-[var(--series-1)]"
-                  : "text-[var(--text-secondary)] hover:bg-[var(--page-plane)] hover:text-[var(--text-primary)]"
+      <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 pb-3 pt-1">
+        {NAV_SECTIONS.map((section) => (
+          <div key={section.labelKey} className="flex flex-col gap-0.5">
+            <div
+              className={`mb-1 px-3 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)] ${
+                collapsed ? "md:hidden" : ""
               }`}
             >
-              <Icon />
-              <span className={collapsed ? "md:hidden" : ""}>{t(labelKey)}</span>
-              {href === "/alerts" && breachedCount > 0 && (
-                <span
-                  className={`rounded-full bg-[var(--status-critical)] px-1.5 py-0.5 text-[10px] font-semibold text-white ${
-                    collapsed ? "md:absolute md:right-1 md:top-1" : "ml-auto"
+              {t(section.labelKey)}
+            </div>
+            {section.items.map(({ href, labelKey, icon: Icon }) => {
+              const active = pathname === href || pathname?.startsWith(href + "/");
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  title={collapsed ? t(labelKey) : undefined}
+                  className={`group relative flex items-center gap-3 rounded-md px-3 py-2 text-[13.5px] transition-colors ${
+                    collapsed ? "md:justify-center md:px-2" : ""
+                  } ${
+                    active
+                      ? "bg-[var(--accent-soft)] font-medium text-[var(--accent)]"
+                      : "text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
                   }`}
                 >
-                  {breachedCount}
-                </span>
-              )}
-            </Link>
-          );
-        })}
+                  {active && (
+                    <span className="absolute inset-y-1.5 left-0 w-[3px] rounded-r-full bg-[var(--accent)]" aria-hidden />
+                  )}
+                  <Icon />
+                  <span className={collapsed ? "md:hidden" : ""}>{t(labelKey)}</span>
+                  {href === "/alerts" && breachedCount > 0 && (
+                    <span
+                      className={`rounded-full bg-[var(--status-critical)] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white ${
+                        collapsed ? "md:absolute md:right-1 md:top-1" : "ml-auto"
+                      }`}
+                    >
+                      {breachedCount}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       <div className={`border-t border-[var(--border)] px-3 py-3 ${collapsed ? "md:px-2" : ""}`}>
@@ -383,7 +448,7 @@ export default function Sidebar({ children }: { children: ReactNode }) {
           </select>
         )}
         <div
-          className={`mb-2 flex items-center gap-1 rounded-md bg-[var(--page-plane)] p-1 ${collapsed ? "md:hidden" : ""}`}
+          className={`mb-2 flex items-center gap-1 rounded-lg bg-[var(--surface-2)] p-1 ${collapsed ? "md:hidden" : ""}`}
         >
           {THEME_OPTIONS.map(({ value, icon: Icon, label }) => (
             <button
@@ -393,7 +458,7 @@ export default function Sidebar({ children }: { children: ReactNode }) {
               aria-label={label}
               className={`flex flex-1 items-center justify-center rounded py-1.5 transition-colors ${
                 theme === value
-                  ? "bg-[var(--surface-1)] text-[var(--series-1)] shadow-sm"
+                  ? "bg-[var(--surface-1)] text-[var(--accent)] shadow-sm"
                   : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
               }`}
             >
@@ -419,17 +484,28 @@ export default function Sidebar({ children }: { children: ReactNode }) {
         )}
         <Link
           href="/settings"
-          title={collapsed ? user.email : undefined}
-          className={`mb-2 flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${
-            collapsed ? "md:justify-center md:px-2" : ""
+          title={collapsed ? user.email : "Account settings"}
+          className={`mb-2 flex items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-colors ${
+            collapsed ? "md:justify-center md:border-transparent md:px-1" : ""
           } ${
             pathname === "/settings"
-              ? "bg-[var(--series-1)]/10 font-medium text-[var(--series-1)]"
-              : "text-[var(--text-secondary)] hover:bg-[var(--page-plane)] hover:text-[var(--text-primary)]"
+              ? "border-[var(--accent)]/40 bg-[var(--accent-soft)]"
+              : "border-[var(--border)] hover:bg-[var(--surface-2)]"
           }`}
         >
-          <SettingsIcon />
-          <span className={`truncate ${collapsed ? "md:hidden" : ""}`}>{user.email}</span>
+          <span
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white"
+            style={{ background: "var(--accent-glow)" }}
+          >
+            {initials(user.name, user.email)}
+          </span>
+          <span className={`min-w-0 flex-1 leading-tight ${collapsed ? "md:hidden" : ""}`}>
+            <span className="block truncate text-[13px] font-medium text-[var(--text-primary)]">{user.name || user.email}</span>
+            <span className="block truncate text-[11px] text-[var(--text-muted)]">{user.email}</span>
+          </span>
+          <span className={`text-[var(--text-muted)] ${collapsed ? "md:hidden" : ""}`}>
+            <SettingsIcon />
+          </span>
         </Link>
         {user.is_admin && (
           <Link
@@ -462,16 +538,14 @@ export default function Sidebar({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
-      <div className="fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface-1)] px-4 py-3 md:hidden">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--series-1)] text-xs font-bold text-white">
-            D
-          </div>
-          <span className="font-semibold text-[var(--text-primary)]">Daha BI</span>
-        </div>
+      <div className="fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface-1)]/90 px-4 py-3 backdrop-blur md:hidden">
+        <Link href="/dashboards" className="flex items-center gap-2">
+          <BrandMark size={28} />
+          <span className="font-semibold tracking-tight text-[var(--text-primary)]">Daha BI</span>
+        </Link>
         <button
           onClick={() => setMobileOpen(true)}
-          className="text-[var(--text-secondary)]"
+          className="rounded-md p-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-2)]"
           aria-label="Open menu"
         >
           <MenuIcon />
@@ -480,14 +554,14 @@ export default function Sidebar({ children }: { children: ReactNode }) {
 
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/30 md:hidden"
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] md:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       <aside
         className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col overflow-x-hidden border-r border-[var(--border)] bg-[var(--surface-1)] transition-[transform,width] md:sticky md:top-0 md:z-auto md:h-screen md:translate-x-0 ${
-          collapsed ? "md:w-16" : "md:w-56"
+          collapsed ? "md:w-[68px]" : "md:w-60"
         } ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
         {navContent}

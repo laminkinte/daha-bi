@@ -10,9 +10,91 @@ import { EmptyState } from "@/components/EmptyState";
 import { useRouter } from "next/navigation";
 import { api, ApiError, type DashboardTemplate, type DataSource, type Dashboard, type Dataset } from "@/lib/api";
 
-function GridIcon() {
+function PlusIcon() {
   return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+function BarsIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d="M6 20V10M12 20V4M18 20v-7" />
+    </svg>
+  );
+}
+
+function DbIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <ellipse cx="12" cy="5" rx="8" ry="3" />
+      <path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3" />
+    </svg>
+  );
+}
+
+function greeting() {
+  const h = new Date().getHours();
+  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+}
+
+function timeAgo(iso: string) {
+  const seconds = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  const steps: [number, string][] = [
+    [60, "s"], [60, "m"], [24, "h"], [7, "d"], [4.35, "w"], [12, "mo"],
+  ];
+  let value = seconds;
+  let unit = "s";
+  for (const [size, label] of steps) {
+    unit = label;
+    if (value < size) break;
+    value /= size;
+  }
+  if (unit === "s") return "just now";
+  return `${Math.floor(value)}${unit} ago`;
+}
+
+/**
+ * Decorative mini-layout so each card reads as "a dashboard" at a glance. Deterministic per
+ * dashboard id (so cards don't reshuffle on reload) and drawn only in the brand tint — it's an
+ * illustration, not data, so it must not borrow chart-series colors.
+ */
+function DashboardThumbnail({ seed, charts }: { seed: number; charts: number }) {
+  const rand = (n: number) => {
+    const x = Math.sin(seed * 9301 + n * 49297) * 233280;
+    return x - Math.floor(x);
+  };
+  const bars = Array.from({ length: 7 }, (_, i) => 25 + rand(i) * 70);
+
+  return (
+    <div className="relative h-28 border-b border-[var(--border)] bg-[var(--surface-2)] p-3">
+      {charts === 0 ? (
+        <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-[var(--border)] text-xs text-[var(--text-muted)]">
+          Empty dashboard
+        </div>
+      ) : (
+        <div className="grid h-full grid-cols-5 gap-2">
+          <div className="col-span-2 flex flex-col justify-between rounded-lg bg-[var(--surface-1)] p-2.5 shadow-sm">
+            <div className="h-1.5 w-10 rounded-full bg-[var(--text-muted)]/25" />
+            <div className="h-4 w-14 rounded bg-[var(--accent)]/80" />
+            <div className="h-1.5 w-8 rounded-full bg-[var(--accent)]/30" />
+          </div>
+          <div className="col-span-3 flex items-end gap-1 rounded-lg bg-[var(--surface-1)] p-2.5 shadow-sm">
+            {bars.map((h, i) => (
+              <div key={i} className="flex-1 rounded-t-sm bg-[var(--accent)]" style={{ height: `${h}%`, opacity: 0.35 + (i / bars.length) * 0.55 }} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GridIcon({ size = 28 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
       <rect x="3" y="3" width="8" height="8" rx="1.5" />
       <rect x="13" y="3" width="8" height="8" rx="1.5" />
       <rect x="3" y="13" width="8" height="8" rx="1.5" />
@@ -100,11 +182,11 @@ function TemplateGalleryPanel({ onCreated }: { onCreated: (dashboardId: number) 
             onClick={() => selectTemplate(t)}
             className={`flex flex-col items-start gap-1.5 rounded-md border p-3 text-left transition-colors ${
               selected?.key === t.key
-                ? "border-[var(--series-1)] bg-[var(--series-1)]/5"
-                : "border-[var(--border)] hover:border-[var(--series-1)]/50"
+                ? "border-[var(--accent)] bg-[var(--accent)]/5"
+                : "border-[var(--border)] hover:border-[var(--accent)]/50"
             }`}
           >
-            <span className="text-[var(--series-1)]">
+            <span className="text-[var(--accent)]">
               <TemplateIcon icon={t.icon} />
             </span>
             <span className="text-sm font-medium text-[var(--text-primary)]">{t.name}</span>
@@ -119,7 +201,7 @@ function TemplateGalleryPanel({ onCreated }: { onCreated: (dashboardId: number) 
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Dashboard name"
-            className="min-w-0 flex-1 rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--series-1)]"
+            className="min-w-0 flex-1 rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
           />
           <select
             value={datasetId}
@@ -136,7 +218,7 @@ function TemplateGalleryPanel({ onCreated }: { onCreated: (dashboardId: number) 
           <button
             type="submit"
             disabled={creating || !datasetId || !name.trim()}
-            className="rounded-md bg-[var(--series-1)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+            className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
           >
             {creating ? "Creating..." : "Create dashboard"}
           </button>
@@ -228,36 +310,48 @@ function DashboardsList() {
   }, [dashboards, search]);
 
   return (
-    <div className="mx-auto max-w-5xl px-8 py-10">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">{t("title")}</h1>
-          <p className="mt-1 text-sm text-[var(--text-muted)]">
-            {t("subtitle")}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowTemplates((s) => !s)}
-            className="rounded-md border border-[var(--border)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-          >
-            {t("fromTemplate")}
-          </button>
-          <button
-            onClick={() => setShowForm((s) => !s)}
-            className="rounded-md bg-[var(--series-1)] px-4 py-2 text-sm font-medium text-white"
-          >
-            {t("newDashboard")}
-          </button>
+    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-10">
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-1)] p-6 sm:p-8">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full opacity-[0.16] blur-3xl"
+          style={{ background: "var(--accent-glow)" }}
+        />
+        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--accent)]">{greeting()}</p>
+            <h1 className="mt-1.5 text-[28px] font-semibold leading-tight tracking-tight">{t("title")}</h1>
+            <p className="mt-1.5 max-w-md text-sm text-[var(--text-secondary)]">{t("subtitle")}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setShowTemplates((s) => !s)}
+              className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
+                showTemplates
+                  ? "border-[var(--accent)]/50 bg-[var(--accent-soft)] text-[var(--accent)]"
+                  : "border-[var(--border)] bg-[var(--surface-1)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              }`}
+            >
+              <TemplateIcon icon="sprout" />
+              {t("fromTemplate")}
+            </button>
+            <button
+              onClick={() => setShowForm((s) => !s)}
+              className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-white shadow-sm"
+            >
+              <PlusIcon />
+              {t("newDashboard")}
+            </button>
+          </div>
         </div>
       </div>
 
       {showTemplates && <TemplateGalleryPanel onCreated={(id) => router.push(`/dashboards/${id}`)} />}
 
-      <div className="mt-6 grid grid-cols-3 gap-3">
-        <StatCard label="Dashboards" value={dashboards?.length ?? "—"} />
-        <StatCard label="Charts" value={dashboards ? totalCharts : "—"} />
-        <StatCard label="Data Sources" value={dataSources?.length ?? "—"} />
+      <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+        <StatCard label="Dashboards" value={dashboards?.length ?? "—"} icon={<GridIcon size={16} />} />
+        <StatCard label="Charts" value={dashboards ? totalCharts : "—"} icon={<BarsIcon />} />
+        <StatCard label="Data Sources" value={dataSources?.length ?? "—"} icon={<DbIcon />} hint={dataSources?.length === 0 ? "Connect one to start building" : undefined} />
       </div>
 
       {showForm && (
@@ -270,12 +364,12 @@ function DashboardsList() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Dashboard name"
-            className="flex-1 rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--series-1)]"
+            className="flex-1 rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
           />
           <button
             type="submit"
             disabled={creating}
-            className="rounded-md bg-[var(--series-1)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+            className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
           >
             Create
           </button>
@@ -284,27 +378,34 @@ function DashboardsList() {
       {error && <p className="mt-2 text-sm text-[var(--status-critical)]">{error}</p>}
 
       {dashboards && dashboards.length > 0 && (
-        <div className="relative mt-8 max-w-xs">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
-            <SearchIcon />
-          </span>
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search dashboards..."
-            className="w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] py-2 pl-9 pr-3 text-sm outline-none focus:border-[var(--series-1)]"
-          />
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-sm font-semibold text-[var(--text-primary)]">
+            All dashboards <span className="ml-1 font-normal text-[var(--text-muted)]">{filtered?.length ?? 0}</span>
+          </h2>
+          <div className="relative w-full sm:max-w-xs">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
+              <SearchIcon />
+            </span>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search dashboards..."
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-1)] py-2 pl-9 pr-3 text-sm outline-none"
+            />
+          </div>
         </div>
       )}
 
-      <div className="mt-4 grid gap-3">
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {dashboards === null && (
           <>
+            <RowSkeleton />
             <RowSkeleton />
             <RowSkeleton />
           </>
         )}
         {dashboards?.length === 0 && (
+          <div className="sm:col-span-2 lg:col-span-3">
           <EmptyState
             icon={<GridIcon />}
             title={t("emptyTitle")}
@@ -312,52 +413,72 @@ function DashboardsList() {
             action={
               <button
                 onClick={() => setShowForm(true)}
-                className="rounded-md bg-[var(--series-1)] px-4 py-2 text-sm font-medium text-white"
+                className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white"
               >
+                <PlusIcon />
                 {t("newDashboard")}
               </button>
             }
           />
+          </div>
         )}
         {filtered && filtered.length === 0 && dashboards && dashboards.length > 0 && (
-          <p className="py-6 text-center text-sm text-[var(--text-muted)]">
+          <p className="py-6 text-center text-sm text-[var(--text-muted)] sm:col-span-2 lg:col-span-3">
             No dashboards match &ldquo;{search}&rdquo;.
           </p>
         )}
         {filtered?.map((d) => (
           <div
             key={d.id}
-            className="group flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-4 py-3 transition-shadow hover:shadow-sm"
+            className="group flex flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-1)] transition-all hover:-translate-y-0.5 hover:border-[var(--accent)]/40 hover:shadow-lg"
           >
-            <Link href={`/dashboards/${d.id}`} className="flex-1">
-              <div className="flex items-center gap-2">
-                <div className="font-medium text-[var(--text-primary)] group-hover:text-[var(--series-1)]">
-                  {d.name}
+            <Link href={`/dashboards/${d.id}`} className="flex flex-1 flex-col">
+              <DashboardThumbnail seed={d.id} charts={d.charts_count ?? 0} />
+              <div className="flex flex-1 flex-col px-4 pb-3 pt-3.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="line-clamp-1 font-semibold tracking-tight text-[var(--text-primary)] group-hover:text-[var(--accent)]">
+                    {d.name}
+                  </div>
+                  {d.role && d.role !== "owner" && (
+                    <span className="shrink-0 rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-medium capitalize text-[var(--text-secondary)]">
+                      {d.role}
+                    </span>
+                  )}
+                  {d.is_shared && (
+                    <span className="shrink-0 rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--accent)]">
+                      Public
+                    </span>
+                  )}
                 </div>
-                {d.role && d.role !== "owner" && (
-                  <span className="rounded-full bg-[var(--page-plane)] px-2 py-0.5 text-xs capitalize text-[var(--text-muted)]">
-                    {d.role}
+                <div className="mt-1 line-clamp-2 min-h-[2.5rem] text-[13px] text-[var(--text-muted)]">
+                  {d.description || "No description"}
+                </div>
+                <div className="mt-2 flex items-center gap-3 text-xs text-[var(--text-muted)]">
+                  <span className="inline-flex items-center gap-1">
+                    <BarsIcon size={12} />
+                    {d.charts_count ?? 0} chart{d.charts_count === 1 ? "" : "s"}
                   </span>
-                )}
-              </div>
-              {d.description && (
-                <div className="text-sm text-[var(--text-muted)]">{d.description}</div>
-              )}
-              <div className="mt-0.5 text-xs text-[var(--text-muted)]">
-                {d.charts_count ?? 0} chart{d.charts_count === 1 ? "" : "s"}
+                  {d.updated_at && <span>Updated {timeAgo(d.updated_at)}</span>}
+                </div>
               </div>
             </Link>
             {(!d.role || d.role === "owner") && (
-              <div className="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+              <div className="flex items-center gap-1 border-t border-[var(--border)] px-2 py-1.5">
+                <Link
+                  href={`/dashboards/${d.id}`}
+                  className="rounded-md px-2.5 py-1 text-xs font-medium text-[var(--accent)] hover:bg-[var(--accent-soft)]"
+                >
+                  Open
+                </Link>
                 <button
                   onClick={() => onDuplicate(d.id)}
-                  className="rounded-md border border-[var(--border)] px-3 py-1 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  className="rounded-md px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
                 >
                   Duplicate
                 </button>
                 <button
                   onClick={() => onDelete(d.id)}
-                  className="rounded-md border border-[var(--border)] px-3 py-1 text-sm text-[var(--status-critical)]"
+                  className="ml-auto rounded-md px-2.5 py-1 text-xs font-medium text-[var(--status-critical)] hover:bg-[var(--status-critical)]/10"
                 >
                   Delete
                 </button>

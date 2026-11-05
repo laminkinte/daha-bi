@@ -99,7 +99,7 @@ function CsvUploadForm({ onDone }: { onDone: () => void }) {
       <button
         type="submit"
         disabled={submitting}
-        className="self-start rounded-md bg-[var(--series-1)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+        className="self-start rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
       >
         {submitting ? "Uploading..." : "Upload file"}
       </button>
@@ -207,14 +207,14 @@ function DatabaseConnectForm({ driver, onDone }: { driver: DatabaseDriver; onDon
         <button
           type="button"
           onClick={() => setMode("table")}
-          className={`flex-1 rounded py-1.5 ${mode === "table" ? "bg-[var(--surface-1)] font-medium text-[var(--series-1)] shadow-sm" : "text-[var(--text-muted)]"}`}
+          className={`flex-1 rounded py-1.5 ${mode === "table" ? "bg-[var(--surface-1)] font-medium text-[var(--accent)] shadow-sm" : "text-[var(--text-muted)]"}`}
         >
           Pick a table
         </button>
         <button
           type="button"
           onClick={() => setMode("query")}
-          className={`flex-1 rounded py-1.5 ${mode === "query" ? "bg-[var(--surface-1)] font-medium text-[var(--series-1)] shadow-sm" : "text-[var(--text-muted)]"}`}
+          className={`flex-1 rounded py-1.5 ${mode === "query" ? "bg-[var(--surface-1)] font-medium text-[var(--accent)] shadow-sm" : "text-[var(--text-muted)]"}`}
         >
           Write SQL query
         </button>
@@ -250,7 +250,7 @@ function DatabaseConnectForm({ driver, onDone }: { driver: DatabaseDriver; onDon
       <button
         type="submit"
         disabled={submitting}
-        className="col-span-2 self-start rounded-md bg-[var(--series-1)] px-4 py-2 font-medium text-white disabled:opacity-60"
+        className="col-span-2 self-start rounded-md bg-[var(--accent)] px-4 py-2 font-medium text-white disabled:opacity-60"
       >
         {submitting ? "Connecting..." : "Connect & Import"}
       </button>
@@ -288,7 +288,7 @@ function RestApiHeaderFields({ headers, onChange }: { headers: RestApiHeader[]; 
       <button
         type="button"
         onClick={() => onChange([...headers, { key: "", value: "" }])}
-        className="text-xs text-[var(--series-1)] hover:underline"
+        className="text-xs text-[var(--accent)] hover:underline"
       >
         + Add header
       </button>
@@ -505,7 +505,7 @@ function RestApiConnectForm({ onDone }: { onDone: () => void }) {
       <button
         type="submit"
         disabled={submitting}
-        className="col-span-2 self-start rounded-md bg-[var(--series-1)] px-4 py-2 font-medium text-white disabled:opacity-60"
+        className="col-span-2 self-start rounded-md bg-[var(--accent)] px-4 py-2 font-medium text-white disabled:opacity-60"
       >
         {submitting ? "Connecting..." : "Connect & Import"}
       </button>
@@ -695,14 +695,14 @@ function EditDataSourceForm({ dataSource, onDone, onCancel }: { dataSource: Data
             <button
               type="button"
               onClick={() => setMode("table")}
-              className={`flex-1 rounded py-1.5 ${mode === "table" ? "bg-[var(--page-plane)] font-medium text-[var(--series-1)] shadow-sm" : "text-[var(--text-muted)]"}`}
+              className={`flex-1 rounded py-1.5 ${mode === "table" ? "bg-[var(--page-plane)] font-medium text-[var(--accent)] shadow-sm" : "text-[var(--text-muted)]"}`}
             >
               Pick a table
             </button>
             <button
               type="button"
               onClick={() => setMode("query")}
-              className={`flex-1 rounded py-1.5 ${mode === "query" ? "bg-[var(--page-plane)] font-medium text-[var(--series-1)] shadow-sm" : "text-[var(--text-muted)]"}`}
+              className={`flex-1 rounded py-1.5 ${mode === "query" ? "bg-[var(--page-plane)] font-medium text-[var(--accent)] shadow-sm" : "text-[var(--text-muted)]"}`}
             >
               Write SQL query
             </button>
@@ -806,7 +806,7 @@ function EditDataSourceForm({ dataSource, onDone, onCancel }: { dataSource: Data
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-md bg-[var(--series-1)] px-4 py-2 font-medium text-white disabled:opacity-60"
+          className="rounded-md bg-[var(--accent)] px-4 py-2 font-medium text-white disabled:opacity-60"
         >
           {submitting ? "Saving..." : "Save changes"}
         </button>
@@ -845,7 +845,7 @@ function TablesBrowser({ dataSourceId }: { dataSourceId: number }) {
             <div key={t.table}>
               <button
                 onClick={() => setExpanded((e) => (e === t.table ? null : t.table))}
-                className="text-left font-medium text-[var(--text-primary)] hover:text-[var(--series-1)]"
+                className="text-left font-medium text-[var(--text-primary)] hover:text-[var(--accent)]"
               >
                 {t.table}
               </button>
@@ -909,7 +909,7 @@ function DataSourcesList() {
         <div className="mb-4 flex flex-wrap gap-4 text-sm">
           <button
             onClick={() => setTab("csv")}
-            className={tab === "csv" ? "font-medium text-[var(--series-1)]" : "text-[var(--text-muted)]"}
+            className={tab === "csv" ? "font-medium text-[var(--accent)]" : "text-[var(--text-muted)]"}
           >
             Upload CSV / Excel
           </button>
@@ -917,14 +917,14 @@ function DataSourcesList() {
             <button
               key={driver}
               onClick={() => setTab(driver)}
-              className={tab === driver ? "font-medium text-[var(--series-1)]" : "text-[var(--text-muted)]"}
+              className={tab === driver ? "font-medium text-[var(--accent)]" : "text-[var(--text-muted)]"}
             >
               Connect {DRIVER_LABELS[driver]}
             </button>
           ))}
           <button
             onClick={() => setTab("rest_api")}
-            className={tab === "rest_api" ? "font-medium text-[var(--series-1)]" : "text-[var(--text-muted)]"}
+            className={tab === "rest_api" ? "font-medium text-[var(--accent)]" : "text-[var(--text-muted)]"}
           >
             Connect REST API
           </button>

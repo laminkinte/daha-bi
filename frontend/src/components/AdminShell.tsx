@@ -42,7 +42,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       <div className="flex min-h-screen flex-col items-center justify-center gap-2 bg-[var(--page-plane)] px-6 text-center">
         <h1 className="text-xl font-semibold text-[var(--text-primary)]">Not authorized</h1>
         <p className="text-sm text-[var(--text-muted)]">This area is only available to daha-bi administrators.</p>
-        <Link href="/dashboards" className="mt-2 text-sm text-[var(--series-1)]">
+        <Link href="/dashboards" className="mt-2 text-sm text-[var(--accent)]">
           Back to daha-bi
         </Link>
       </div>

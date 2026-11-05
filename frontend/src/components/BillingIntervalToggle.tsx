@@ -22,7 +22,7 @@ export default function BillingIntervalToggle({
           onClick={() => onChange(opt)}
           className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 font-medium transition-colors ${
             value === opt
-              ? "bg-[var(--series-1)] text-white"
+              ? "bg-[var(--accent)] text-white"
               : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
           }`}
         >

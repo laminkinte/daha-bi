@@ -49,7 +49,7 @@ function AiSuggestBox({ placeholder, onGenerate }: { placeholder: string; onGene
         onSubmit={onSubmit}
         className="flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--page-plane)] px-3 py-2"
       >
-        <span className="shrink-0 text-[var(--series-1)]">
+        <span className="shrink-0 text-[var(--accent)]">
           <SparkleIcon />
         </span>
         <input
@@ -61,7 +61,7 @@ function AiSuggestBox({ placeholder, onGenerate }: { placeholder: string; onGene
         <button
           type="submit"
           disabled={!prompt.trim() || loading}
-          className="shrink-0 rounded-md bg-[var(--series-1)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+          className="shrink-0 rounded-md bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
         >
           {loading ? "Generating..." : "Generate"}
         </button>
@@ -115,7 +115,7 @@ function SchemaBrowser({
 
   return (
     <div className="mt-3">
-      <button onClick={() => setShow((s) => !s)} className="text-xs font-medium text-[var(--series-1)]">
+      <button onClick={() => setShow((s) => !s)} className="text-xs font-medium text-[var(--accent)]">
         {show ? "Hide" : "Show"} tables in this database
       </button>
       {show && (
@@ -139,7 +139,7 @@ function SchemaBrowser({
                 </button>
                 <button
                   onClick={() => onInsert(t.table)}
-                  className="shrink-0 rounded border border-[var(--border)] px-2 py-0.5 text-xs text-[var(--series-1)] hover:bg-[var(--series-1)]/10"
+                  className="shrink-0 rounded border border-[var(--border)] px-2 py-0.5 text-xs text-[var(--accent)] hover:bg-[var(--accent)]/10"
                 >
                   Use
                 </button>
@@ -253,7 +253,7 @@ function SqlWorkbench() {
           <select
             value={dataSourceId}
             onChange={(e) => setDataSourceId(Number(e.target.value))}
-            className="w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1.5 outline-none focus:border-[var(--series-1)]"
+            className="w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1.5 outline-none focus:border-[var(--accent)]"
           >
             {sources.map((s) => (
               <option key={s.id} value={s.id}>
@@ -271,7 +271,7 @@ function SqlWorkbench() {
             <select
               value={previewDatasetId}
               onChange={(e) => setPreviewDatasetId(Number(e.target.value))}
-              className="w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1.5 outline-none focus:border-[var(--series-1)]"
+              className="w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1.5 outline-none focus:border-[var(--accent)]"
             >
               {datasetsForSource.map((d) => (
                 <option key={d.id} value={d.id}>
@@ -303,14 +303,14 @@ function SqlWorkbench() {
         placeholder="Write a SELECT query..."
         rows={8}
         spellCheck={false}
-        className="mt-3 w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 font-mono text-sm outline-none focus:border-[var(--series-1)]"
+        className="mt-3 w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 font-mono text-sm outline-none focus:border-[var(--accent)]"
       />
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <button
           onClick={run}
           disabled={running}
-          className="rounded-md bg-[var(--series-1)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+          className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
         >
           {running ? "Running..." : "Run query"}
         </button>
@@ -321,7 +321,7 @@ function SqlWorkbench() {
               value={saveName}
               onChange={(e) => setSaveName(e.target.value)}
               placeholder="Dataset name"
-              className="rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--series-1)]"
+              className="rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--accent)]"
             />
             <button
               onClick={saveAsDataset}
@@ -436,7 +436,7 @@ function PythonWorkbench() {
         <select
           value={datasetId}
           onChange={(e) => setDatasetId(Number(e.target.value))}
-          className="w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1.5 outline-none focus:border-[var(--series-1)]"
+          className="w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1.5 outline-none focus:border-[var(--accent)]"
         >
           {datasets.map((d) => (
             <option key={d.id} value={d.id}>
@@ -464,13 +464,13 @@ function PythonWorkbench() {
         placeholder="Write Python..."
         rows={8}
         spellCheck={false}
-        className="mt-3 w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 font-mono text-sm outline-none focus:border-[var(--series-1)]"
+        className="mt-3 w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 font-mono text-sm outline-none focus:border-[var(--accent)]"
       />
 
       <button
         onClick={run}
         disabled={running}
-        className="mt-3 rounded-md bg-[var(--series-1)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+        className="mt-3 rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
       >
         {running ? "Running..." : "Run Python"}
       </button>
@@ -499,13 +499,13 @@ function Notebook() {
       <div className="mt-6 inline-flex gap-1 rounded-md bg-[var(--surface-1)] border border-[var(--border)] p-1 text-sm">
         <button
           onClick={() => setMode("sql")}
-          className={`rounded px-4 py-1.5 ${mode === "sql" ? "bg-[var(--series-1)] text-white" : "text-[var(--text-secondary)]"}`}
+          className={`rounded px-4 py-1.5 ${mode === "sql" ? "bg-[var(--accent)] text-white" : "text-[var(--text-secondary)]"}`}
         >
           SQL
         </button>
         <button
           onClick={() => setMode("python")}
-          className={`rounded px-4 py-1.5 ${mode === "python" ? "bg-[var(--series-1)] text-white" : "text-[var(--text-secondary)]"}`}
+          className={`rounded px-4 py-1.5 ${mode === "python" ? "bg-[var(--accent)] text-white" : "text-[var(--text-secondary)]"}`}
         >
           Python
         </button>

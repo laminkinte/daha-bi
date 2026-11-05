@@ -403,6 +403,8 @@ export type Dashboard = {
   share_token?: string | null;
   is_shared?: boolean;
   role?: DashboardRole;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type DashboardTemplate = { key: string; name: string; icon: string; description: string };

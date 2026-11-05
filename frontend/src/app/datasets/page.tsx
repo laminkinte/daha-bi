@@ -141,7 +141,7 @@ function RowLevelSecurityPanel({ dataset, canManage }: { dataset: Dataset; canMa
           <button
             onClick={addPolicy}
             disabled={adding || !value}
-            className="rounded bg-[var(--series-1)] px-2 py-1 text-xs text-white disabled:opacity-60"
+            className="rounded bg-[var(--accent)] px-2 py-1 text-xs text-white disabled:opacity-60"
           >
             {adding ? "Adding..." : "Add"}
           </button>
@@ -280,7 +280,7 @@ function DataQualityPanel({ dataset, canManage }: { dataset: Dataset; canManage:
                 {cleaning ? "Removing..." : `Remove ${report.duplicate_row_count} duplicate row(s)`}
               </button>
             )}
-            <button onClick={load} disabled={loading} className="text-xs text-[var(--series-1)] hover:underline disabled:opacity-60">
+            <button onClick={load} disabled={loading} className="text-xs text-[var(--accent)] hover:underline disabled:opacity-60">
               Re-run
             </button>
           </div>

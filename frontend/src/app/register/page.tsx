@@ -96,7 +96,7 @@ function RegisterForm() {
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--series-1)]"
+                className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
               />
             </div>
             <div>
@@ -110,7 +110,7 @@ function RegisterForm() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--series-1)]"
+                className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
               />
             </div>
             <div>
@@ -162,11 +162,11 @@ function RegisterForm() {
               />
               <span>
                 {t("agreePrefix")}{" "}
-                <Link href="/terms" target="_blank" rel="noopener noreferrer" className="text-[var(--series-1)] hover:underline">
+                <Link href="/terms" target="_blank" rel="noopener noreferrer" className="text-[var(--accent)] hover:underline">
                   {t("termsOfService")}
                 </Link>{" "}
                 {t("and")}{" "}
-                <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="text-[var(--series-1)] hover:underline">
+                <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="text-[var(--accent)] hover:underline">
                   {t("privacyPolicy")}
                 </Link>
                 .
@@ -180,7 +180,7 @@ function RegisterForm() {
             <button
               type="submit"
               disabled={submitting || !agreed}
-              className="mt-2 rounded-md bg-[var(--series-1)] px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+              className="mt-2 rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
             >
               {submitting ? t("submitting") : t("submit")}
             </button>
@@ -188,7 +188,7 @@ function RegisterForm() {
 
           <p className="mt-6 text-center text-sm text-[var(--text-muted)]">
             {t("haveAccount")}{" "}
-            <Link href="/login" className="text-[var(--series-1)]">
+            <Link href="/login" className="text-[var(--accent)]">
               {t("login")}
             </Link>
           </p>

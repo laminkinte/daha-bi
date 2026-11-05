@@ -97,7 +97,7 @@ function AnimatedStatValue({ value }: { value: string }) {
   }, []);
 
   return (
-    <div ref={ref} className="text-2xl font-semibold text-[var(--series-1)]">
+    <div ref={ref} className="text-2xl font-semibold text-[var(--accent)]">
       {match ? display : value}
     </div>
   );
@@ -199,13 +199,13 @@ function LandingPage() {
       <section className="mx-auto max-w-4xl px-6 py-24 text-center">
         <h1 className="text-4xl font-semibold leading-tight text-[var(--text-primary)] sm:text-5xl">
           {hero.headline_prefix}{" "}
-          <span className="text-[var(--series-1)]">{hero.headline_highlight}</span> {hero.headline_suffix}
+          <span className="text-[var(--accent)]">{hero.headline_highlight}</span> {hero.headline_suffix}
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-lg text-[var(--text-secondary)]">{hero.subheadline}</p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/register"
-            className="rounded-md bg-[var(--series-1)] px-6 py-3 text-sm font-medium text-white"
+            className="rounded-md bg-[var(--accent)] px-6 py-3 text-sm font-medium text-white"
           >
             Get started free
           </Link>
@@ -242,7 +242,7 @@ function LandingPage() {
           <div className="mt-12 grid grid-cols-1 gap-10 sm:grid-cols-3">
             {settings.landing_steps.map((step, i) => (
               <Reveal key={step.title} delay={i * 120} className="text-center">
-                <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-[var(--series-1)] text-sm font-semibold text-white">
+                <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-[var(--accent)] text-sm font-semibold text-white">
                   {i + 1}
                 </div>
                 <h3 className="mt-4 font-medium text-[var(--text-primary)]">{step.title}</h3>
@@ -264,7 +264,7 @@ function LandingPage() {
             {settings.landing_features.map(({ icon, title, description }, i) => (
               <Reveal key={title} delay={(i % 3) * 90}>
                 <div className="group rounded-xl p-3 -m-3 transition-all duration-300 hover:-translate-y-1 hover:bg-[var(--page-plane)] hover:shadow-sm">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-[var(--series-1)]/10 text-[var(--series-1)] transition-transform duration-300 group-hover:scale-110">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-[var(--accent)]/10 text-[var(--accent)] transition-transform duration-300 group-hover:scale-110">
                     <LandingIcon name={icon} />
                   </div>
                   <h3 className="mt-4 font-medium text-[var(--text-primary)]">{title}</h3>
@@ -301,7 +301,7 @@ function LandingPage() {
           </ul>
           <Link
             href="/register"
-            className="mt-8 inline-block rounded-md bg-[var(--series-1)] px-6 py-3 text-sm font-medium text-white transition-transform hover:scale-105"
+            className="mt-8 inline-block rounded-md bg-[var(--accent)] px-6 py-3 text-sm font-medium text-white transition-transform hover:scale-105"
           >
             Create your free account
           </Link>
@@ -331,7 +331,7 @@ function LandingPage() {
           </p>
           <Link
             href="/register"
-            className="mt-6 inline-block rounded-md bg-[var(--series-1)] px-6 py-3 text-sm font-medium text-white transition-transform hover:scale-105"
+            className="mt-6 inline-block rounded-md bg-[var(--accent)] px-6 py-3 text-sm font-medium text-white transition-transform hover:scale-105"
           >
             Get started free
           </Link>

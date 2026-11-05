@@ -74,7 +74,7 @@ function Referrals() {
               />
               <button
                 onClick={copyLink}
-                className="shrink-0 rounded-md bg-[var(--series-1)] px-4 py-2 text-sm font-medium text-white"
+                className="shrink-0 rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white"
               >
                 {copied ? "Copied!" : "Copy"}
               </button>

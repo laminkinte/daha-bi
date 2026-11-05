@@ -26,7 +26,7 @@ export default function GlobalError({
       <div className="mt-6 flex gap-3">
         <button
           onClick={retry}
-          className="rounded-md bg-[var(--series-1)] px-5 py-2.5 text-sm font-medium text-white"
+          className="rounded-md bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-white"
         >
           Try again
         </button>

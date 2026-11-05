@@ -58,14 +58,14 @@ export default function AboutPage() {
         <h2 className="text-xl font-semibold text-[var(--text-primary)]">Want to talk to us?</h2>
         <p className="mt-2 text-[var(--text-secondary)]">
           Reach out at{" "}
-          <a href="mailto:hello@daha.bi" className="text-[var(--series-1)]">
+          <a href="mailto:hello@daha.bi" className="text-[var(--accent)]">
             hello@daha.bi
           </a>
           .
         </p>
         <Link
           href="/register"
-          className="mt-6 inline-block rounded-md bg-[var(--series-1)] px-6 py-3 text-sm font-medium text-white"
+          className="mt-6 inline-block rounded-md bg-[var(--accent)] px-6 py-3 text-sm font-medium text-white"
         >
           Get started free
         </Link>

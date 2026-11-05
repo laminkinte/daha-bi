@@ -16,7 +16,7 @@ import {
 } from "@/lib/api";
 
 const inputClass =
-  "w-full rounded-md border border-[var(--border)] bg-[var(--page-plane)] px-3 py-2 text-sm outline-none focus:border-[var(--series-1)]";
+  "w-full rounded-md border border-[var(--border)] bg-[var(--page-plane)] px-3 py-2 text-sm outline-none focus:border-[var(--accent)]";
 const labelClass = "mb-1 block text-xs font-medium text-[var(--text-secondary)]";
 
 function SectionCard({
@@ -46,7 +46,7 @@ function SectionCard({
         <button
           onClick={onSave}
           disabled={saving}
-          className="rounded-md bg-[var(--series-1)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+          className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
         >
           {saving ? "Saving..." : "Save changes"}
         </button>
@@ -160,7 +160,7 @@ function StatsSection({ initial }: { initial: LandingStat[] }) {
       ))}
       <button
         onClick={() => setStats([...stats, { value: "", label: "" }])}
-        className="self-start rounded-md border border-dashed border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--series-1)] hover:text-[var(--series-1)]"
+        className="self-start rounded-md border border-dashed border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
       >
         + Add stat
       </button>
@@ -210,7 +210,7 @@ function StepsSection({ initial }: { initial: LandingStep[] }) {
       ))}
       <button
         onClick={() => setSteps([...steps, { title: "", description: "" }])}
-        className="self-start rounded-md border border-dashed border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--series-1)] hover:text-[var(--series-1)]"
+        className="self-start rounded-md border border-dashed border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
       >
         + Add step
       </button>
@@ -239,7 +239,7 @@ function FeaturesSection({ initial }: { initial: LandingFeature[] }) {
         <div key={i} className="rounded-md border border-[var(--border)] p-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded bg-[var(--series-1)]/10 text-[var(--series-1)]">
+              <span className="flex h-7 w-7 items-center justify-center rounded bg-[var(--accent)]/10 text-[var(--accent)]">
                 <LandingIcon name={f.icon} />
               </span>
               <select
@@ -275,7 +275,7 @@ function FeaturesSection({ initial }: { initial: LandingFeature[] }) {
       ))}
       <button
         onClick={() => setFeatures([...features, { icon: ICON_KEYS[0], title: "", description: "" }])}
-        className="self-start rounded-md border border-dashed border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--series-1)] hover:text-[var(--series-1)]"
+        className="self-start rounded-md border border-dashed border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
       >
         + Add feature
       </button>
@@ -325,7 +325,7 @@ function FaqsSection({ initial }: { initial: LandingFaq[] }) {
       ))}
       <button
         onClick={() => setFaqs([...faqs, { question: "", answer: "" }])}
-        className="self-start rounded-md border border-dashed border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--series-1)] hover:text-[var(--series-1)]"
+        className="self-start rounded-md border border-dashed border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
       >
         + Add question
       </button>

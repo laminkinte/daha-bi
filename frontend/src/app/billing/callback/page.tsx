@@ -65,7 +65,7 @@ function CallbackContent() {
           <p className="mt-2 text-sm text-[var(--text-muted)]">Your new plan is active right away.</p>
           <Link
             href="/dashboards"
-            className="mt-6 rounded-md bg-[var(--series-1)] px-5 py-2.5 text-sm font-medium text-white"
+            className="mt-6 rounded-md bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-white"
           >
             Go to dashboards
           </Link>
@@ -75,7 +75,7 @@ function CallbackContent() {
         <>
           <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Payment not confirmed</h1>
           <p className="mt-2 max-w-sm text-sm text-[var(--status-critical)]">{error}</p>
-          <Link href="/pricing" className="mt-6 text-sm text-[var(--series-1)]">
+          <Link href="/pricing" className="mt-6 text-sm text-[var(--accent)]">
             Back to pricing
           </Link>
         </>

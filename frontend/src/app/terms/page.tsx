@@ -56,7 +56,7 @@ export default function TermsPage() {
 
         <p className="mt-10 text-sm text-[var(--text-muted)]">
           Questions about these terms? Reach us at{" "}
-          <a href="mailto:hello@daha.bi" className="text-[var(--series-1)]">
+          <a href="mailto:hello@daha.bi" className="text-[var(--accent)]">
             hello@daha.bi
           </a>
           .

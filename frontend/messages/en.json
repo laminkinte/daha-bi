@@ -11,7 +11,10 @@
     "settings": "Settings",
     "admin": "Admin",
     "logOut": "Log out",
-    "language": "Language"
+    "language": "Language",
+    "sectionAnalyze": "Analyze",
+    "sectionData": "Data",
+    "sectionMonitor": "Monitor"
   },
   "common": {
     "save": "Save",
@@ -56,7 +59,7 @@
   "dashboards": {
     "title": "Dashboards",
     "subtitle": "Build and browse your BI dashboards.",
-    "newDashboard": "+ New dashboard",
+    "newDashboard": "New dashboard",
     "fromTemplate": "From template",
     "emptyTitle": "No dashboards yet",
     "emptyDescription": "Create your first dashboard to start building charts from your data."
