@@ -66,6 +66,13 @@ class NotebookController extends Controller
     {
         abort_unless($request->user()->canEditOrg($dataset->dataSource->organization_id), Response::HTTP_FORBIDDEN);
 
+        $access = config('services.python.access', 'admins');
+        if ($access === 'disabled' || ($access !== 'all' && ! $request->user()->is_admin)) {
+            return response()->json([
+                'message' => 'Python execution is restricted on this server. It runs unsandboxed, so it is limited to platform administrators until isolated execution is available.',
+            ], Response::HTTP_FORBIDDEN);
+        }
+
         $validated = $request->validate([
             'code' => ['required', 'string', 'max:10000'],
         ]);

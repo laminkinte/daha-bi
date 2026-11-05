@@ -42,6 +42,19 @@ return [
 
     'python' => [
         'bin' => env('PYTHON_BIN', 'python'),
+        // Who may run notebook Python. It executes unsandboxed as the web server's OS
+        // user, so in a multi-tenant deployment it is remote code execution for anyone
+        // allowed to use it. 'admins' = platform super-admins only; 'all' = any org
+        // editor (single-user local machines only); 'disabled' = nobody.
+        'access' => env('PYTHON_NOTEBOOK_ACCESS', 'admins'),
+    ],
+
+    'data_sources' => [
+        // External DB connections to loopback/private/reserved addresses let a tenant
+        // reach this server's own database (and anything else on the internal network).
+        // Allowed by default only in the local environment, where connecting to a
+        // localhost MySQL is the normal case.
+        'allow_private_hosts' => (bool) env('DATA_SOURCES_ALLOW_PRIVATE_HOSTS', env('APP_ENV') === 'local'),
     ],
 
     'frontend_url' => env('FRONTEND_URL', 'http://localhost:3000'),

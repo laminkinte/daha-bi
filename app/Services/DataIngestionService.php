@@ -335,7 +335,18 @@ class DataIngestionService
             }
         }
 
+        $url = (string) ($config['url'] ?? '');
+        $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+        if (! in_array($scheme, ['http', 'https'], true)) {
+            throw new RuntimeException('API URL must start with http:// or https://.');
+        }
+        $this->assertAllowedHost((string) parse_url($url, PHP_URL_HOST));
+
         $request = Http::withHeaders($headers)->timeout(30);
+        if (! config('services.data_sources.allow_private_hosts')) {
+            // A redirect to an internal address would bypass the host check above.
+            $request = $request->withoutRedirecting();
+        }
 
         $authType = $config['auth_type'] ?? 'none';
         if ($authType === 'bearer' && ! empty($config['auth_token'])) {
@@ -416,6 +427,9 @@ class DataIngestionService
         $driver = $this->driver($config);
         $port = $config['port'] ?? self::DEFAULT_PORTS[$driver] ?? 3306;
 
+        $this->assertAllowedHost((string) $config['host']);
+        $this->assertNotAppDatabase($config, (int) $port);
+
         $dsn = match ($driver) {
             'postgres' => "pgsql:host={$config['host']};port={$port};dbname={$config['database']}",
             'sqlserver' => "sqlsrv:Server={$config['host']},{$port};Database={$config['database']}",
@@ -426,6 +440,59 @@ class DataIngestionService
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_TIMEOUT => 10,
         ]);
+    }
+
+    /**
+     * Tenants supply their own connection hosts and URLs, so without this a tenant could reach
+     * this server's loopback/internal network (its own database, cloud metadata endpoints, etc.).
+     * Skipped when private hosts are explicitly allowed (the local-dev default). Resolution here
+     * and the later connect are separate lookups, so this doesn't stop DNS rebinding. Real network
+     * isolation for connector workers is a production-hardening item.
+     */
+    public function assertAllowedHost(string $host): void
+    {
+        if (config('services.data_sources.allow_private_hosts')) {
+            return;
+        }
+
+        $host = trim($host, "[] \t");
+        if ($host === '') {
+            throw new RuntimeException('A host is required.');
+        }
+
+        $ips = filter_var($host, FILTER_VALIDATE_IP) ? [$host] : (gethostbynamel($host) ?: []);
+        if ($ips === []) {
+            throw new RuntimeException("Could not resolve host \"{$host}\".");
+        }
+
+        foreach ($ips as $ip) {
+            if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                throw new RuntimeException("Connections to private or internal addresses ({$host}) are not allowed.");
+            }
+        }
+    }
+
+    /**
+     * Even where private hosts are allowed (local dev), a data source must never point back
+     * at Daha BI's own database, or a tenant could read every other tenant's data, users,
+     * and tokens.
+     */
+    protected function assertNotAppDatabase(array $config, int $port): void
+    {
+        $app = config('database.connections.'.config('database.default'));
+        if (! is_array($app) || empty($app['database'])) {
+            return;
+        }
+
+        $sameDatabase = strcasecmp((string) ($config['database'] ?? ''), (string) $app['database']) === 0;
+        $host = strtolower(trim((string) $config['host'], '[] '));
+        $loopback = in_array($host, ['localhost', '::1', '0.0.0.0'], true) || str_starts_with($host, '127.');
+        $sameServer = $loopback || $host === strtolower((string) ($app['host'] ?? ''));
+        $samePort = $port === (int) ($app['port'] ?? $port);
+
+        if ($sameDatabase && $sameServer && $samePort) {
+            throw new RuntimeException('This connection points at Daha BI\'s own application database, which is not allowed.');
+        }
     }
 
     /**
