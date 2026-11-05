@@ -52,14 +52,14 @@ class DashboardController extends Controller
 
     public function show(Request $request, Dashboard $dashboard)
     {
-        $role = $this->authorizeAccess($request, $dashboard);
+        $this->authorize('view', $dashboard);
 
-        return $dashboard->load('charts.dataset:id,name,columns')->setAttribute('role', $role);
+        return $dashboard->load('charts.dataset:id,name,columns')->setAttribute('role', $dashboard->roleFor($request->user()));
     }
 
     public function update(Request $request, Dashboard $dashboard)
     {
-        $this->authorizeEdit($request, $dashboard);
+        $this->authorize('update', $dashboard);
 
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
@@ -73,7 +73,7 @@ class DashboardController extends Controller
 
     public function destroy(Request $request, Dashboard $dashboard)
     {
-        $this->authorizeOwner($request, $dashboard);
+        $this->authorize('manage', $dashboard);
 
         $this->auditLog->log(
             $dashboard->organization_id,
@@ -97,7 +97,7 @@ class DashboardController extends Controller
      */
     public function aiRecommendations(Request $request, Dashboard $dashboard)
     {
-        $this->authorizeAccess($request, $dashboard);
+        $this->authorize('view', $dashboard);
 
         if (! $this->ai->isConfigured()) {
             return response()->json([
@@ -173,7 +173,7 @@ class DashboardController extends Controller
 
     public function duplicate(Request $request, Dashboard $dashboard)
     {
-        $this->authorizeOwner($request, $dashboard);
+        $this->authorize('manage', $dashboard);
 
         $copy = $request->user()->dashboards()->create([
             'organization_id' => $dashboard->organization_id,
@@ -197,7 +197,7 @@ class DashboardController extends Controller
 
     public function share(Request $request, Dashboard $dashboard)
     {
-        $this->authorizeOwner($request, $dashboard);
+        $this->authorize('manage', $dashboard);
 
         $dashboard->update([
             'share_token' => $dashboard->share_token ?? Str::random(32),
@@ -217,7 +217,7 @@ class DashboardController extends Controller
 
     public function unshare(Request $request, Dashboard $dashboard)
     {
-        $this->authorizeOwner($request, $dashboard);
+        $this->authorize('manage', $dashboard);
 
         $dashboard->update(['is_shared' => false]);
 
@@ -230,42 +230,5 @@ class DashboardController extends Controller
         );
 
         return $dashboard->fresh();
-    }
-
-    /**
-     * The dashboard's creator can always manage it; so can an org owner/admin, even for a
-     * dashboard someone else on their team created.
-     */
-    protected function authorizeOwner(Request $request, Dashboard $dashboard): void
-    {
-        $user = $request->user();
-
-        abort_unless(
-            $dashboard->user_id === $user->id
-                || in_array($user->roleInOrganization($dashboard->organization_id), ['owner', 'admin'], true),
-            Response::HTTP_FORBIDDEN
-        );
-    }
-
-    /**
-     * Any role (owner/editor/viewer) may view. Returns the resolved role.
-     */
-    protected function authorizeAccess(Request $request, Dashboard $dashboard): string
-    {
-        $role = $dashboard->roleFor($request->user());
-        abort_unless($role !== null, Response::HTTP_FORBIDDEN);
-
-        return $role;
-    }
-
-    /**
-     * Owner or editor may modify dashboard content.
-     */
-    protected function authorizeEdit(Request $request, Dashboard $dashboard): string
-    {
-        $role = $dashboard->roleFor($request->user());
-        abort_unless(in_array($role, ['owner', 'editor'], true), Response::HTTP_FORBIDDEN);
-
-        return $role;
     }
 }

@@ -29,14 +29,14 @@ class DataModelController extends Controller
 
     public function show(Request $request, DataModel $dataModel)
     {
-        $this->authorizeAccess($request, $dataModel);
+        $this->authorize('view', $dataModel);
 
         return $dataModel->load('outputDataset:id,name,row_count,columns');
     }
 
     public function store(Request $request)
     {
-        abort_unless($request->user()->canEditOrg($request->user()->current_organization_id), Response::HTTP_FORBIDDEN);
+        $this->authorize('create', DataModel::class);
 
         $validated = $this->validatePipeline($request);
 
@@ -67,7 +67,7 @@ class DataModelController extends Controller
 
     public function update(Request $request, DataModel $dataModel)
     {
-        $this->authorizeEdit($request, $dataModel);
+        $this->authorize('update', $dataModel);
 
         $validated = $this->validatePipeline($request);
 
@@ -82,14 +82,14 @@ class DataModelController extends Controller
 
     public function run(Request $request, DataModel $dataModel)
     {
-        $this->authorizeEdit($request, $dataModel);
+        $this->authorize('update', $dataModel);
 
         return $this->runAndRespond($request, $dataModel, created: false);
     }
 
     public function destroy(Request $request, DataModel $dataModel)
     {
-        $this->authorizeEdit($request, $dataModel);
+        $this->authorize('update', $dataModel);
 
         // Deleting the synthetic DataSource cascades to the output Dataset and its rows, and to
         // this DataModel row itself — no separate cleanup needed.
@@ -171,16 +171,5 @@ class DataModelController extends Controller
         }
 
         return $validated;
-    }
-
-    protected function authorizeAccess(Request $request, DataModel $dataModel): void
-    {
-        abort_unless($dataModel->organization_id === $request->user()->current_organization_id, Response::HTTP_FORBIDDEN);
-    }
-
-    protected function authorizeEdit(Request $request, DataModel $dataModel): void
-    {
-        $this->authorizeAccess($request, $dataModel);
-        abort_unless($request->user()->canEditOrg($dataModel->organization_id), Response::HTTP_FORBIDDEN);
     }
 }

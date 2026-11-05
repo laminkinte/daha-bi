@@ -12,14 +12,14 @@ class DashboardCollaboratorController extends Controller
 {
     public function index(Request $request, Dashboard $dashboard)
     {
-        $this->authorizeOwner($request, $dashboard);
+        $this->authorize('manage', $dashboard);
 
         return $dashboard->collaborators()->with('user:id,name,email')->latest()->get();
     }
 
     public function store(Request $request, Dashboard $dashboard)
     {
-        $this->authorizeOwner($request, $dashboard);
+        $this->authorize('manage', $dashboard);
 
         $validated = $request->validate([
             'email' => ['required', 'email'],
@@ -46,23 +46,12 @@ class DashboardCollaboratorController extends Controller
 
     public function destroy(Request $request, Dashboard $dashboard, \App\Models\DashboardCollaborator $collaborator)
     {
-        $this->authorizeOwner($request, $dashboard);
+        $this->authorize('manage', $dashboard);
 
         abort_unless($collaborator->dashboard_id === $dashboard->id, Response::HTTP_NOT_FOUND);
 
         $collaborator->delete();
 
         return response()->json(status: Response::HTTP_NO_CONTENT);
-    }
-
-    protected function authorizeOwner(Request $request, Dashboard $dashboard): void
-    {
-        $user = $request->user();
-
-        abort_unless(
-            $dashboard->user_id === $user->id
-                || in_array($user->roleInOrganization($dashboard->organization_id), ['owner', 'admin'], true),
-            Response::HTTP_FORBIDDEN
-        );
     }
 }

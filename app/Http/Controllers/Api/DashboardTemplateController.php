@@ -29,10 +29,7 @@ class DashboardTemplateController extends Controller
         ]);
 
         $dataset = Dataset::findOrFail($validated['dataset_id']);
-        abort_unless(
-            $dataset->dataSource->organization_id === $request->user()->current_organization_id,
-            Response::HTTP_FORBIDDEN
-        );
+        $this->authorize('view', $dataset);
 
         try {
             $dashboard = $this->templates->instantiate($validated['template'], $dataset, $request->user(), $validated['name']);

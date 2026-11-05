@@ -30,7 +30,7 @@ class AlertController extends Controller
 
     public function forChart(Request $request, Chart $chart)
     {
-        $this->authorizeAccess($request, $chart);
+        $this->authorize('view', $chart);
 
         $alerts = $chart->alerts()->where('user_id', $request->user()->id)->get();
         $alerts->each(fn (Alert $alert) => $this->alertCheck->check($alert));
@@ -40,7 +40,7 @@ class AlertController extends Controller
 
     public function store(Request $request, Chart $chart)
     {
-        $this->authorizeAccess($request, $chart);
+        $this->authorize('view', $chart);
 
         abort_unless($chart->type === 'kpi', Response::HTTP_UNPROCESSABLE_ENTITY, 'Alerts can only be set on KPI charts.');
 
@@ -68,15 +68,10 @@ class AlertController extends Controller
 
     public function destroy(Request $request, Alert $alert)
     {
-        abort_unless($alert->user_id === $request->user()->id, Response::HTTP_FORBIDDEN);
+        $this->authorize('delete', $alert);
 
         $alert->delete();
 
         return response()->json(status: Response::HTTP_NO_CONTENT);
-    }
-
-    protected function authorizeAccess(Request $request, Chart $chart): void
-    {
-        abort_unless($chart->dashboard->roleFor($request->user()) !== null, Response::HTTP_FORBIDDEN);
     }
 }

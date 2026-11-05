@@ -42,7 +42,7 @@ class OrganizationController extends Controller
 
     public function members(Request $request, Organization $organization)
     {
-        $this->authorizeMember($request, $organization);
+        $this->authorize('view', $organization);
 
         return $organization->members()->get(['users.id', 'users.name', 'users.email'])
             ->map(fn (User $u) => [
@@ -55,7 +55,7 @@ class OrganizationController extends Controller
 
     public function invite(Request $request, Organization $organization)
     {
-        $this->authorizeAdmin($request, $organization);
+        $this->authorize('manage', $organization);
 
         $validated = $request->validate([
             'email' => ['required', 'email'],
@@ -89,7 +89,7 @@ class OrganizationController extends Controller
 
     public function updateMember(Request $request, Organization $organization, User $member)
     {
-        $this->authorizeAdmin($request, $organization);
+        $this->authorize('manage', $organization);
 
         $validated = $request->validate(['role' => ['required', 'in:owner,admin,analyst,viewer']]);
 
@@ -111,7 +111,7 @@ class OrganizationController extends Controller
 
     public function removeMember(Request $request, Organization $organization, User $member)
     {
-        $this->authorizeAdmin($request, $organization);
+        $this->authorize('manage', $organization);
 
         $this->guardLastOwner($organization, $member, null);
 
@@ -130,7 +130,7 @@ class OrganizationController extends Controller
 
     public function update(Request $request, Organization $organization)
     {
-        $this->authorizeAdmin($request, $organization);
+        $this->authorize('manage', $organization);
 
         $validated = $request->validate(['name' => ['required', 'string', 'max:255']]);
 
@@ -162,18 +162,5 @@ class OrganizationController extends Controller
         $ownerCount = $organization->members()->wherePivot('role', 'owner')->count();
 
         abort_if($ownerCount <= 1, Response::HTTP_UNPROCESSABLE_ENTITY, 'An organization must have at least one owner.');
-    }
-
-    protected function authorizeMember(Request $request, Organization $organization): void
-    {
-        abort_unless($request->user()->roleInOrganization($organization->id) !== null, Response::HTTP_FORBIDDEN);
-    }
-
-    protected function authorizeAdmin(Request $request, Organization $organization): void
-    {
-        abort_unless(
-            in_array($request->user()->roleInOrganization($organization->id), ['owner', 'admin'], true),
-            Response::HTTP_FORBIDDEN
-        );
     }
 }

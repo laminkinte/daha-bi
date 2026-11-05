@@ -19,7 +19,7 @@ class ChartController extends Controller
 
     public function store(Request $request, Dashboard $dashboard)
     {
-        abort_unless(in_array($dashboard->roleFor($request->user()), ['owner', 'editor'], true), Response::HTTP_FORBIDDEN);
+        $this->authorize('update', $dashboard);
 
         $validated = $request->validate([
             'dataset_id' => ['required', 'exists:datasets,id'],
@@ -32,8 +32,7 @@ class ChartController extends Controller
 
         $validated['config'] ??= [];
 
-        $dataset = \App\Models\Dataset::findOrFail($validated['dataset_id']);
-        abort_unless($dataset->dataSource->organization_id === $dashboard->organization_id, Response::HTTP_FORBIDDEN);
+        $this->authorize('useDataset', [$dashboard, \App\Models\Dataset::findOrFail($validated['dataset_id'])]);
 
         $chart = $dashboard->charts()->create($validated);
 
@@ -42,14 +41,14 @@ class ChartController extends Controller
 
     public function show(Request $request, Chart $chart)
     {
-        $this->authorizeAccess($request, $chart);
+        $this->authorize('view', $chart);
 
         return $chart->load('dataset:id,name,columns');
     }
 
     public function update(Request $request, Chart $chart)
     {
-        $this->authorizeEdit($request, $chart);
+        $this->authorize('update', $chart);
 
         $validated = $request->validate([
             'title' => ['sometimes', 'string', 'max:255'],
@@ -66,7 +65,7 @@ class ChartController extends Controller
 
     public function destroy(Request $request, Chart $chart)
     {
-        $this->authorizeEdit($request, $chart);
+        $this->authorize('update', $chart);
 
         $chart->delete();
 
@@ -75,7 +74,7 @@ class ChartController extends Controller
 
     public function duplicate(Request $request, Chart $chart)
     {
-        $this->authorizeEdit($request, $chart);
+        $this->authorize('update', $chart);
 
         $copy = $chart->dashboard->charts()->create([
             'dataset_id' => $chart->dataset_id,
@@ -91,7 +90,7 @@ class ChartController extends Controller
 
     public function data(Request $request, Chart $chart)
     {
-        $this->authorizeAccess($request, $chart);
+        $this->authorize('view', $chart);
 
         $extraFilters = $request->input('filters', []);
         $filters = array_merge($chart->filters ?? [], is_array($extraFilters) ? $extraFilters : []);
@@ -103,21 +102,5 @@ class ChartController extends Controller
         }
 
         return response()->json($data);
-    }
-
-    protected function authorizeAccess(Request $request, Chart $chart): string
-    {
-        $role = $chart->dashboard->roleFor($request->user());
-        abort_unless($role !== null, Response::HTTP_FORBIDDEN);
-
-        return $role;
-    }
-
-    protected function authorizeEdit(Request $request, Chart $chart): string
-    {
-        $role = $chart->dashboard->roleFor($request->user());
-        abort_unless(in_array($role, ['owner', 'editor'], true), Response::HTTP_FORBIDDEN);
-
-        return $role;
     }
 }

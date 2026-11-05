@@ -211,14 +211,14 @@ class DataSourceController extends Controller
 
     public function show(Request $request, DataSource $dataSource)
     {
-        $this->authorizeAccess($request, $dataSource);
+        $this->authorize('view', $dataSource);
 
         return $dataSource->load('datasets');
     }
 
     public function resync(Request $request, DataSource $dataSource)
     {
-        $this->authorizeEdit($request, $dataSource);
+        $this->authorize('update', $dataSource);
 
         if ($dataSource->type === 'csv') {
             return response()->json([
@@ -263,7 +263,7 @@ class DataSourceController extends Controller
 
     public function update(Request $request, DataSource $dataSource)
     {
-        $this->authorizeEdit($request, $dataSource);
+        $this->authorize('update', $dataSource);
 
         if ($dataSource->type === 'csv') {
             $validated = $request->validate(['name' => ['required', 'string', 'max:255']]);
@@ -376,7 +376,7 @@ class DataSourceController extends Controller
 
     public function tables(Request $request, DataSource $dataSource)
     {
-        $this->authorizeAccess($request, $dataSource);
+        $this->authorize('view', $dataSource);
 
         abort_unless(in_array($dataSource->type, self::DATABASE_DRIVERS, true), Response::HTTP_UNPROCESSABLE_ENTITY, 'Only database connections have tables to browse.');
 
@@ -392,7 +392,7 @@ class DataSourceController extends Controller
 
     public function previewTable(Request $request, DataSource $dataSource, string $table)
     {
-        $this->authorizeAccess($request, $dataSource);
+        $this->authorize('view', $dataSource);
 
         abort_unless(in_array($dataSource->type, self::DATABASE_DRIVERS, true), Response::HTTP_UNPROCESSABLE_ENTITY, 'Only database connections have tables to preview.');
 
@@ -408,7 +408,7 @@ class DataSourceController extends Controller
 
     public function destroy(Request $request, DataSource $dataSource)
     {
-        $this->authorizeEdit($request, $dataSource);
+        $this->authorize('update', $dataSource);
 
         $this->auditLog->log(
             $dataSource->organization_id,
@@ -421,16 +421,5 @@ class DataSourceController extends Controller
         $dataSource->delete();
 
         return response()->json(status: Response::HTTP_NO_CONTENT);
-    }
-
-    protected function authorizeAccess(Request $request, DataSource $dataSource): void
-    {
-        abort_unless($dataSource->organization_id === $request->user()->current_organization_id, Response::HTTP_FORBIDDEN);
-    }
-
-    protected function authorizeEdit(Request $request, DataSource $dataSource): void
-    {
-        $this->authorizeAccess($request, $dataSource);
-        abort_unless($request->user()->canEditOrg($dataSource->organization_id), Response::HTTP_FORBIDDEN);
     }
 }

@@ -28,8 +28,7 @@ class DashboardExportController extends Controller
      */
     public function excel(Request $request, Dashboard $dashboard)
     {
-        $role = $dashboard->roleFor($request->user());
-        abort_unless($role !== null, Response::HTTP_FORBIDDEN);
+        $this->authorize('view', $dashboard);
 
         $dashboard->load('charts.dataset:id,name,columns');
 

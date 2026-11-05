@@ -26,14 +26,14 @@ class DatasetController extends Controller
 
     public function show(Request $request, Dataset $dataset)
     {
-        $this->authorizeAccess($request, $dataset);
+        $this->authorize('view', $dataset);
 
         return $dataset->load('dataSource:id,name,type');
     }
 
     public function preview(Request $request, Dataset $dataset)
     {
-        $this->authorizeAccess($request, $dataset);
+        $this->authorize('view', $dataset);
 
         $rows = $dataset->rows()->limit(25)->pluck('data')->map(fn ($json) => is_string($json) ? json_decode($json, true) : $json);
 
@@ -45,7 +45,7 @@ class DatasetController extends Controller
 
     public function qualityReport(Request $request, Dataset $dataset)
     {
-        $this->authorizeAccess($request, $dataset);
+        $this->authorize('view', $dataset);
 
         $report = $this->quality->analyze($dataset);
         $summary = $this->quality->summarize($dataset, $report);
@@ -55,7 +55,7 @@ class DatasetController extends Controller
 
     public function removeDuplicates(Request $request, Dataset $dataset)
     {
-        $this->authorizeEdit($request, $dataset);
+        $this->authorize('update', $dataset);
 
         $removed = $this->quality->removeDuplicates($dataset);
 
@@ -74,21 +74,10 @@ class DatasetController extends Controller
 
     public function destroy(Request $request, Dataset $dataset)
     {
-        $this->authorizeEdit($request, $dataset);
+        $this->authorize('update', $dataset);
 
         $dataset->delete();
 
         return response()->json(status: Response::HTTP_NO_CONTENT);
-    }
-
-    protected function authorizeAccess(Request $request, Dataset $dataset): void
-    {
-        abort_unless($dataset->dataSource->organization_id === $request->user()->current_organization_id, Response::HTTP_FORBIDDEN);
-    }
-
-    protected function authorizeEdit(Request $request, Dataset $dataset): void
-    {
-        $this->authorizeAccess($request, $dataset);
-        abort_unless($request->user()->canEditOrg($dataset->dataSource->organization_id), Response::HTTP_FORBIDDEN);
     }
 }

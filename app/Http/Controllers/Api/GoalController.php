@@ -32,14 +32,14 @@ class GoalController extends Controller
 
     public function forChart(Request $request, Chart $chart)
     {
-        $this->authorizeAccess($request, $chart);
+        $this->authorize('view', $chart);
 
         return $chart->goals()->get()->each(fn (Goal $g) => $this->goalCheck->check($g));
     }
 
     public function store(Request $request, Chart $chart)
     {
-        $this->authorizeAccess($request, $chart);
+        $this->authorize('view', $chart);
 
         abort_unless($chart->type === 'kpi', Response::HTTP_UNPROCESSABLE_ENTITY, 'Goals can only be set on KPI charts.');
 
@@ -74,7 +74,7 @@ class GoalController extends Controller
 
     public function destroy(Request $request, Goal $goal)
     {
-        abort_unless($goal->organization_id === $request->user()->current_organization_id, Response::HTTP_FORBIDDEN);
+        $this->authorize('delete', $goal);
 
         $goal->delete();
 
@@ -87,7 +87,7 @@ class GoalController extends Controller
      */
     public function recommend(Request $request, Goal $goal)
     {
-        abort_unless($goal->organization_id === $request->user()->current_organization_id, Response::HTTP_FORBIDDEN);
+        $this->authorize('update', $goal);
 
         $this->goalCheck->check($goal);
 
@@ -111,10 +111,5 @@ class GoalController extends Controller
         );
 
         return response()->json(['recommendation' => $recommendation]);
-    }
-
-    protected function authorizeAccess(Request $request, Chart $chart): void
-    {
-        abort_unless($chart->dashboard->roleFor($request->user()) !== null, Response::HTTP_FORBIDDEN);
     }
 }

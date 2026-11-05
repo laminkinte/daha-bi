@@ -18,7 +18,7 @@ class AiPromptController extends Controller
 
     public function respond(Request $request, Dashboard $dashboard)
     {
-        abort_unless(in_array($dashboard->roleFor($request->user()), ['owner', 'editor'], true), Response::HTTP_FORBIDDEN);
+        $this->authorize('update', $dashboard);
 
         $validated = $request->validate([
             'dataset_id' => ['required', 'exists:datasets,id'],
@@ -26,7 +26,7 @@ class AiPromptController extends Controller
         ]);
 
         $dataset = Dataset::findOrFail($validated['dataset_id']);
-        abort_unless($dataset->dataSource->organization_id === $dashboard->organization_id, Response::HTTP_FORBIDDEN);
+        $this->authorize('useDataset', [$dashboard, $dataset]);
 
         if (! $this->ai->isConfigured()) {
             return response()->json([

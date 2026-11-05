@@ -36,7 +36,7 @@ class AiConversationController extends Controller
         ]);
 
         $dataset = Dataset::findOrFail($validated['dataset_id']);
-        abort_unless($dataset->dataSource->organization_id === $request->user()->current_organization_id, Response::HTTP_FORBIDDEN);
+        $this->authorize('view', $dataset);
 
         $conversation = $request->user()->aiConversations()->create([
             'dataset_id' => $dataset->id,
@@ -47,14 +47,14 @@ class AiConversationController extends Controller
 
     public function show(Request $request, AiConversation $conversation)
     {
-        $this->authorizeOwner($request, $conversation);
+        $this->authorize('view', $conversation);
 
         return $conversation->load(['dataset:id,name', 'messages']);
     }
 
     public function destroy(Request $request, AiConversation $conversation)
     {
-        $this->authorizeOwner($request, $conversation);
+        $this->authorize('view', $conversation);
 
         $conversation->delete();
 
@@ -63,7 +63,7 @@ class AiConversationController extends Controller
 
     public function sendMessage(Request $request, AiConversation $conversation)
     {
-        $this->authorizeOwner($request, $conversation);
+        $this->authorize('view', $conversation);
 
         $validated = $request->validate(['content' => ['required', 'string', 'max:1000']]);
 
@@ -252,7 +252,7 @@ class AiConversationController extends Controller
     public function saveChart(Request $request, AiMessage $message)
     {
         $conversation = $message->conversation;
-        $this->authorizeOwner($request, $conversation);
+        $this->authorize('view', $conversation);
 
         abort_unless($message->response_type === 'chart', Response::HTTP_UNPROCESSABLE_ENTITY);
         abort_if($message->chart_id, Response::HTTP_UNPROCESSABLE_ENTITY, 'This chart has already been saved.');
@@ -260,8 +260,7 @@ class AiConversationController extends Controller
         $validated = $request->validate(['dashboard_id' => ['required', 'exists:dashboards,id']]);
 
         $dashboard = Dashboard::findOrFail($validated['dashboard_id']);
-        abort_unless(in_array($dashboard->roleFor($request->user()), ['owner', 'editor'], true), Response::HTTP_FORBIDDEN);
-        abort_unless($conversation->dataset->dataSource->organization_id === $dashboard->organization_id, Response::HTTP_FORBIDDEN);
+        $this->authorize('useDataset', [$dashboard, $conversation->dataset]);
 
         $chart = $dashboard->charts()->create([
             'dataset_id' => $conversation->dataset_id,
@@ -283,7 +282,7 @@ class AiConversationController extends Controller
     public function saveDashboard(Request $request, AiMessage $message)
     {
         $conversation = $message->conversation;
-        $this->authorizeOwner($request, $conversation);
+        $this->authorize('view', $conversation);
 
         abort_unless($message->response_type === 'dashboard', Response::HTTP_UNPROCESSABLE_ENTITY);
         abort_if($message->dashboard_id, Response::HTTP_UNPROCESSABLE_ENTITY, 'This dashboard has already been created.');
@@ -311,10 +310,5 @@ class AiConversationController extends Controller
         $message->update(['dashboard_id' => $dashboard->id]);
 
         return response()->json($dashboard->load('charts'), 201);
-    }
-
-    protected function authorizeOwner(Request $request, AiConversation $conversation): void
-    {
-        abort_unless($conversation->user_id === $request->user()->id, Response::HTTP_FORBIDDEN);
     }
 }

@@ -18,14 +18,14 @@ class ReportScheduleController extends Controller
 
     public function index(Request $request, Dashboard $dashboard)
     {
-        $this->authorizeAccess($request, $dashboard);
+        $this->authorize('update', $dashboard);
 
         return $dashboard->reportSchedules()->latest()->get();
     }
 
     public function store(Request $request, Dashboard $dashboard)
     {
-        $this->authorizeAccess($request, $dashboard);
+        $this->authorize('update', $dashboard);
 
         $validated = $request->validate([
             'recipients' => ['required', 'array', 'min:1'],
@@ -51,10 +51,7 @@ class ReportScheduleController extends Controller
 
     public function destroy(Request $request, ReportSchedule $reportSchedule)
     {
-        abort_unless(
-            in_array($reportSchedule->dashboard->roleFor($request->user()), ['owner', 'editor'], true),
-            Response::HTTP_FORBIDDEN
-        );
+        $this->authorize('update', $reportSchedule->dashboard);
 
         $reportSchedule->delete();
 
@@ -63,10 +60,7 @@ class ReportScheduleController extends Controller
 
     public function sendNow(Request $request, ReportSchedule $reportSchedule)
     {
-        abort_unless(
-            in_array($reportSchedule->dashboard->roleFor($request->user()), ['owner', 'editor'], true),
-            Response::HTTP_FORBIDDEN
-        );
+        $this->authorize('update', $reportSchedule->dashboard);
 
         $this->reports->send($reportSchedule);
 
@@ -93,13 +87,5 @@ class ReportScheduleController extends Controller
         }
 
         return now()->next($dayOfWeek)->setTime($hour, $minute, 0);
-    }
-
-    protected function authorizeAccess(Request $request, Dashboard $dashboard): void
-    {
-        abort_unless(
-            in_array($dashboard->roleFor($request->user()), ['owner', 'editor'], true),
-            Response::HTTP_FORBIDDEN
-        );
     }
 }

@@ -12,14 +12,14 @@ class RowLevelPolicyController extends Controller
 {
     public function index(Request $request, Dataset $dataset)
     {
-        $this->authorizeAdmin($request, $dataset);
+        $this->authorize('manageSecurity', $dataset);
 
         return $dataset->rowLevelPolicies()->with('creator:id,name,email')->latest()->get();
     }
 
     public function store(Request $request, Dataset $dataset)
     {
-        $this->authorizeAdmin($request, $dataset);
+        $this->authorize('manageSecurity', $dataset);
 
         $columnNames = collect($dataset->columns ?? [])->pluck('name')->all();
 
@@ -49,24 +49,11 @@ class RowLevelPolicyController extends Controller
 
     public function destroy(Request $request, RowLevelPolicy $rowLevelPolicy)
     {
-        $this->authorizeAdmin($request, $rowLevelPolicy->dataset);
+        $this->authorize('manageSecurity', $rowLevelPolicy->dataset);
 
         $rowLevelPolicy->delete();
         $rowLevelPolicy->dataset->touch();
 
         return response()->json(status: Response::HTTP_NO_CONTENT);
-    }
-
-    /**
-     * Deliberately admin-and-above only — someone who can only edit data (analyst) shouldn't be
-     * able to grant themselves an unrestricted view by editing the very policy meant to restrict
-     * their own role.
-     */
-    protected function authorizeAdmin(Request $request, Dataset $dataset): void
-    {
-        abort_unless(
-            in_array($request->user()->roleInOrganization($dataset->dataSource->organization_id), ['owner', 'admin'], true),
-            Response::HTTP_FORBIDDEN
-        );
     }
 }

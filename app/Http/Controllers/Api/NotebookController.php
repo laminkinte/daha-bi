@@ -23,7 +23,7 @@ class NotebookController extends Controller
 
     public function run(Request $request, DataSource $dataSource)
     {
-        $this->authorizeOwner($request, $dataSource);
+        $this->authorize('query', $dataSource);
         $this->authorizeDatabaseConnection($dataSource);
 
         $validated = $request->validate([
@@ -43,7 +43,7 @@ class NotebookController extends Controller
 
     public function save(Request $request, DataSource $dataSource)
     {
-        $this->authorizeOwner($request, $dataSource);
+        $this->authorize('query', $dataSource);
         $this->authorizeDatabaseConnection($dataSource);
 
         $validated = $request->validate([
@@ -64,7 +64,7 @@ class NotebookController extends Controller
 
     public function runPython(Request $request, Dataset $dataset)
     {
-        abort_unless($request->user()->canEditOrg($dataset->dataSource->organization_id), Response::HTTP_FORBIDDEN);
+        $this->authorize('query', $dataset);
 
         $access = config('services.python.access', 'admins');
         if ($access === 'disabled' || ($access !== 'all' && ! $request->user()->is_admin)) {
@@ -90,7 +90,7 @@ class NotebookController extends Controller
 
     public function suggestSql(Request $request, DataSource $dataSource)
     {
-        $this->authorizeOwner($request, $dataSource);
+        $this->authorize('query', $dataSource);
         $this->authorizeDatabaseConnection($dataSource);
 
         $validated = $request->validate(['prompt' => ['required', 'string', 'max:500']]);
@@ -113,7 +113,7 @@ class NotebookController extends Controller
 
     public function suggestPython(Request $request, Dataset $dataset)
     {
-        abort_unless($request->user()->canEditOrg($dataset->dataSource->organization_id), Response::HTTP_FORBIDDEN);
+        $this->authorize('query', $dataset);
 
         $validated = $request->validate(['prompt' => ['required', 'string', 'max:500']]);
 
@@ -132,11 +132,6 @@ class NotebookController extends Controller
         }
 
         return response()->json(['code' => $code]);
-    }
-
-    protected function authorizeOwner(Request $request, DataSource $dataSource): void
-    {
-        abort_unless($request->user()->canEditOrg($dataSource->organization_id), Response::HTTP_FORBIDDEN);
     }
 
     protected function authorizeDatabaseConnection(DataSource $dataSource): void

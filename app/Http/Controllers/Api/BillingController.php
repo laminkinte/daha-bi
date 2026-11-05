@@ -216,14 +216,8 @@ class BillingController extends Controller
      */
     protected function authorizeBilling(Request $request): Organization
     {
-        $user = $request->user();
-        $organization = $user->currentOrganization;
-
-        abort_unless(
-            in_array($user->roleInOrganization($organization->id), ['owner', 'admin'], true),
-            Response::HTTP_FORBIDDEN,
-            'Only an organization owner or admin can manage billing.'
-        );
+        $organization = $request->user()->currentOrganization;
+        $this->authorize('manageBilling', $organization);
 
         return $organization;
     }

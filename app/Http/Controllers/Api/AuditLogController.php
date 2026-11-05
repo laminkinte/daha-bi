@@ -15,10 +15,7 @@ class AuditLogController extends Controller
      */
     public function index(Request $request, Organization $organization)
     {
-        abort_unless(
-            in_array($request->user()->roleInOrganization($organization->id), ['owner', 'admin'], true),
-            Response::HTTP_FORBIDDEN
-        );
+        $this->authorize('manage', $organization);
 
         return $organization->auditLogs()
             ->with('user:id,name,email')
