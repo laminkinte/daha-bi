@@ -14,6 +14,7 @@ import {
   type RestApiHeader,
 } from "@/lib/api";
 import TableRowsPreview from "@/components/TableRowsPreview";
+import { PageHeader, PAGE_CONTAINER } from "@/components/PageHeader";
 
 const DEFAULT_PORTS: Record<DatabaseDriver, string> = { mysql: "3306", postgres: "5432", sqlserver: "1433" };
 const DRIVER_LABELS: Record<DatabaseDriver, string> = { mysql: "MySQL", postgres: "PostgreSQL", sqlserver: "SQL Server" };
@@ -31,16 +32,51 @@ function DatabaseIcon() {
 function StatusBadge({ status }: { status: DataSource["status"] }) {
   const colors: Record<DataSource["status"], string> = {
     ready: "var(--status-good)",
-    syncing: "var(--series-4)",
+    syncing: "var(--status-warning)",
     pending: "var(--text-muted)",
     failed: "var(--status-critical)",
   };
+  const color = colors[status];
   return (
     <span
-      className="rounded-full px-2 py-0.5 text-xs font-medium text-white"
-      style={{ background: colors[status] }}
+      className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium capitalize"
+      style={{ color, background: `color-mix(in srgb, ${color} 12%, transparent)` }}
     >
+      <span
+        className={`h-1.5 w-1.5 rounded-full ${status === "syncing" ? "animate-pulse" : ""}`}
+        style={{ background: color }}
+      />
       {status}
+    </span>
+  );
+}
+
+type ConnectorKey = "csv" | DatabaseDriver | "rest_api";
+
+/** Recognisable mark per connector type (monogram tile — no third-party logos). */
+const CONNECTOR_META: Record<string, { mark: string; tint: string; blurb: string }> = {
+  csv: { mark: "CSV", tint: "#1baf7a", blurb: "File upload" },
+  mysql: { mark: "My", tint: "#2a78d6", blurb: "Live database" },
+  postgres: { mark: "Pg", tint: "#4a3aa7", blurb: "Live database" },
+  sqlserver: { mark: "SQL", tint: "#e34948", blurb: "Live database" },
+  rest_api: { mark: "API", tint: "#eb6834", blurb: "JSON endpoint" },
+  data_model: { mark: "DM", tint: "#898781", blurb: "Built from a data model" },
+};
+
+function ConnectorMark({ type, size = 36 }: { type: string; size?: number }) {
+  const meta = CONNECTOR_META[type] ?? { mark: type.slice(0, 3).toUpperCase(), tint: "#898781" };
+  return (
+    <span
+      className="flex shrink-0 items-center justify-center rounded-lg text-[11px] font-bold tracking-tight"
+      style={{
+        width: size,
+        height: size,
+        // Blend toward the theme's text color so dark tints stay legible in dark mode.
+        color: `color-mix(in srgb, ${meta.tint} 72%, var(--text-primary))`,
+        background: `color-mix(in srgb, ${meta.tint} 14%, transparent)`,
+      }}
+    >
+      {meta.mark}
     </span>
   );
 }
@@ -899,35 +935,38 @@ function DataSourcesList() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-8 py-10">
-      <h1 className="text-2xl font-semibold">Data Sources</h1>
-      <p className="mt-1 text-sm text-[var(--text-muted)]">
-        Connect a CSV/Excel upload or a live database — MySQL, PostgreSQL, or SQL Server — to power your dashboards.
-      </p>
+    <div className={`${PAGE_CONTAINER} max-w-5xl`}>
+      <PageHeader
+        icon="database"
+        title="Data Sources"
+        description="Connect a CSV/Excel upload, a live database (MySQL, PostgreSQL, SQL Server) or a REST API to power your dashboards."
+      />
 
-      <div className="mt-6 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-4">
-        <div className="mb-4 flex flex-wrap gap-4 text-sm">
-          <button
-            onClick={() => setTab("csv")}
-            className={tab === "csv" ? "font-medium text-[var(--accent)]" : "text-[var(--text-muted)]"}
-          >
-            Upload CSV / Excel
-          </button>
-          {(Object.keys(DRIVER_LABELS) as DatabaseDriver[]).map((driver) => (
-            <button
-              key={driver}
-              onClick={() => setTab(driver)}
-              className={tab === driver ? "font-medium text-[var(--accent)]" : "text-[var(--text-muted)]"}
-            >
-              Connect {DRIVER_LABELS[driver]}
-            </button>
-          ))}
-          <button
-            onClick={() => setTab("rest_api")}
-            className={tab === "rest_api" ? "font-medium text-[var(--accent)]" : "text-[var(--text-muted)]"}
-          >
-            Connect REST API
-          </button>
+      <div className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--surface-1)] p-4 sm:p-5">
+        <h2 className="text-sm font-semibold text-[var(--text-primary)]">Add a data source</h2>
+        <div className="mb-5 mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          {(["csv", ...(Object.keys(DRIVER_LABELS) as DatabaseDriver[]), "rest_api"] as ConnectorKey[]).map((key) => {
+            const selected = tab === key;
+            const label = key === "csv" ? "CSV / Excel" : key === "rest_api" ? "REST API" : DRIVER_LABELS[key as DatabaseDriver];
+            return (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                aria-pressed={selected}
+                className={`flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition-colors ${
+                  selected
+                    ? "border-[var(--accent)] bg-[var(--accent-soft)] ring-1 ring-[var(--accent)]"
+                    : "border-[var(--border)] hover:border-[var(--accent)]/50 hover:bg-[var(--surface-2)]"
+                }`}
+              >
+                <ConnectorMark type={key} size={34} />
+                <span className="min-w-0">
+                  <span className="block truncate text-[13px] font-semibold text-[var(--text-primary)]">{label}</span>
+                  <span className="hidden truncate text-[11px] text-[var(--text-muted)] sm:block">{CONNECTOR_META[key]?.blurb}</span>
+                </span>
+              </button>
+            );
+          })}
         </div>
         {tab === "csv" ? (
           <CsvUploadForm onDone={load} />
@@ -942,7 +981,12 @@ function DataSourcesList() {
         <p className="mt-4 text-sm text-[var(--status-critical)]">{actionError}</p>
       )}
 
-      <div className="mt-8 grid gap-3">
+      {sources && sources.length > 0 && (
+        <h2 className="mt-8 text-sm font-semibold text-[var(--text-primary)]">
+          Connected <span className="ml-1 font-normal text-[var(--text-muted)]">{sources.length}</span>
+        </h2>
+      )}
+      <div className="mt-3 grid gap-3">
         {sources === null && (
           <>
             <RowSkeleton />
@@ -959,51 +1003,61 @@ function DataSourcesList() {
         {sources?.map((s) => (
           <div
             key={s.id}
-            className="rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-4 py-3 transition-shadow hover:shadow-sm"
+            className="rounded-xl border border-[var(--border)] bg-[var(--surface-1)] px-4 py-3.5 transition-colors hover:border-[var(--accent)]/30"
           >
-            <div className="group flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2 font-medium">
-                  {s.name}
-                  <StatusBadge status={s.status} />
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
+                <ConnectorMark type={s.type} />
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="truncate font-semibold tracking-tight text-[var(--text-primary)]">{s.name}</span>
+                    <StatusBadge status={s.status} />
+                  </div>
+                  <div className="mt-0.5 text-xs text-[var(--text-muted)]">
+                    {(DRIVER_LABELS as Record<string, string>)[s.type] ?? (s.type === "rest_api" ? "REST API" : s.type.toUpperCase())}
+                    {" · "}
+                    {s.datasets_count ?? 0} dataset{s.datasets_count === 1 ? "" : "s"}
+                  </div>
+                  {s.error_message && (
+                    <div className="mt-1 text-xs text-[var(--status-critical)]">{s.error_message}</div>
+                  )}
                 </div>
-                <div className="text-xs text-[var(--text-muted)]">
-                  {s.type.toUpperCase()} &middot; {s.datasets_count ?? 0} dataset
-                  {s.datasets_count === 1 ? "" : "s"}
-                </div>
-                {s.error_message && (
-                  <div className="text-xs text-[var(--status-critical)]">{s.error_message}</div>
-                )}
               </div>
-              <div
-                className={`flex items-center gap-2 transition-opacity group-hover:opacity-100 ${expandedTables === s.id || editing === s.id ? "opacity-100" : "opacity-0"}`}
-              >
+              <div className="flex flex-wrap items-center gap-1.5">
                 {s.type !== "csv" && s.type !== "rest_api" && (
                   <button
                     onClick={() => setExpandedTables((e) => (e === s.id ? null : s.id))}
-                    className="rounded-md border border-[var(--border)] px-3 py-1 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                      expandedTables === s.id
+                        ? "border-[var(--accent)]/40 bg-[var(--accent-soft)] text-[var(--accent)]"
+                        : "border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
+                    }`}
                   >
-                    {expandedTables === s.id ? "Hide tables" : "View tables"}
+                    {expandedTables === s.id ? "Hide tables" : "Tables"}
                   </button>
                 )}
                 {s.type !== "csv" && (
                   <button
                     onClick={() => onResync(s.id)}
                     disabled={s.status === "syncing"}
-                    className="rounded-md border border-[var(--border)] px-3 py-1 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-60"
+                    className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)] disabled:opacity-60"
                   >
-                    {s.status === "syncing" ? "Syncing..." : "Resync"}
+                    {s.status === "syncing" ? "Syncing…" : "Resync"}
                   </button>
                 )}
                 <button
                   onClick={() => setEditing((e) => (e === s.id ? null : s.id))}
-                  className="rounded-md border border-[var(--border)] px-3 py-1 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    editing === s.id
+                      ? "border-[var(--accent)]/40 bg-[var(--accent-soft)] text-[var(--accent)]"
+                      : "border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
+                  }`}
                 >
-                  {editing === s.id ? "Cancel edit" : "Edit"}
+                  {editing === s.id ? "Cancel" : "Edit"}
                 </button>
                 <button
                   onClick={() => onDelete(s.id)}
-                  className="rounded-md border border-[var(--border)] px-3 py-1 text-sm text-[var(--status-critical)]"
+                  className="rounded-lg border border-transparent px-3 py-1.5 text-xs font-medium text-[var(--status-critical)] transition-colors hover:bg-[var(--status-critical)]/10"
                 >
                   Delete
                 </button>

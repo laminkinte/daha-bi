@@ -14,6 +14,7 @@ import {
   type JoinType,
   type PipelineStep,
 } from "@/lib/api";
+import { PageHeader, PAGE_CONTAINER } from "@/components/PageHeader";
 
 const FILTER_OPERATORS = ["=", "!=", ">", "<", ">=", "<=", "contains"];
 const DERIVE_OPERATORS: DeriveOperator[] = ["+", "-", "*", "/"];
@@ -449,12 +450,12 @@ function DataModelsList() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-8 py-10">
-      <h1 className="text-2xl font-semibold">Data Models</h1>
-      <p className="mt-1 text-sm text-[var(--text-muted)]">
-        Join datasets together, filter and reshape them, and derive new columns — the result becomes a normal,
-        chartable dataset.
-      </p>
+    <div className={`${PAGE_CONTAINER} max-w-4xl`}>
+      <PageHeader
+        icon="flow"
+        title="Data Models"
+        description="Join datasets together, filter and reshape them, and derive new columns — the result becomes a normal, chartable dataset."
+      />
 
       <div className="mt-6">
         {showBuilder || editing ? (

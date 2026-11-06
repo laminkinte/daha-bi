@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import RequireAuth from "@/components/RequireAuth";
 import { useAuth } from "@/lib/auth-context";
 import { EmptyState } from "@/components/EmptyState";
@@ -14,6 +15,7 @@ import {
   type RowFilterOperator,
   type RowLevelPolicy,
 } from "@/lib/api";
+import { PageHeader, PAGE_CONTAINER } from "@/components/PageHeader";
 
 const RLS_ROLES = ["admin", "analyst", "viewer"] as const;
 const RLS_OPERATORS: RowFilterOperator[] = ["=", "!=", ">", "<", ">=", "<=", "contains"];
@@ -312,11 +314,23 @@ function DatasetsList() {
   }, [user?.current_organization_id]);
 
   return (
-    <div className="mx-auto max-w-5xl px-8 py-10">
-      <h1 className="text-2xl font-semibold">Datasets</h1>
-      <p className="mt-1 text-sm text-[var(--text-muted)]">
-        Every dataset imported from your data sources, ready to power charts.
-      </p>
+    <div className={`${PAGE_CONTAINER} max-w-5xl`}>
+      <PageHeader
+        icon="layers"
+        title="Datasets"
+        description="Every dataset imported from your data sources, ready to power charts."
+        actions={
+          <Link
+            href="/data-sources"
+            className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-white shadow-sm"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Add data
+          </Link>
+        }
+      />
 
       <div className="mt-6 grid gap-3">
         {datasets === null && (
@@ -337,20 +351,49 @@ function DatasetsList() {
           return (
             <div
               key={d.id}
-              className="rounded-lg border border-[var(--border)] bg-[var(--surface-1)]"
+              className={`overflow-hidden rounded-xl border bg-[var(--surface-1)] transition-colors ${
+                isOpen ? "border-[var(--accent)]/40" : "border-[var(--border)] hover:border-[var(--accent)]/30"
+              }`}
             >
               <button
                 onClick={() => setExpanded(isOpen ? null : d.id)}
-                className="flex w-full items-center justify-between px-4 py-3 text-left"
+                aria-expanded={isOpen}
+                className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
               >
-                <div>
-                  <div className="font-medium text-[var(--text-primary)]">{d.name}</div>
-                  <div className="mt-0.5 text-xs text-[var(--text-muted)]">
-                    {d.data_source?.name ?? "Unknown source"} &middot;{" "}
-                    {d.row_count.toLocaleString()} rows &middot; {d.columns.length} columns
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent)]">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                    <rect x="3" y="4" width="18" height="16" rx="2" />
+                    <path d="M3 10h18M9 10v10" />
+                  </svg>
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="truncate font-semibold tracking-tight text-[var(--text-primary)]">{d.name}</span>
+                    <span className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-medium tabular-nums text-[var(--text-secondary)]">
+                      {d.row_count.toLocaleString()} rows
+                    </span>
+                    <span className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-medium tabular-nums text-[var(--text-secondary)]">
+                      {d.columns.length} columns
+                    </span>
+                  </div>
+                  <div className="mt-1 truncate text-xs text-[var(--text-muted)]">
+                    from {d.data_source?.name ?? "unknown source"}
+                    <span className="hidden sm:inline">
+                      {" · "}
+                      {d.columns.slice(0, 5).map((c) => c.label).join(", ")}
+                      {d.columns.length > 5 ? `, +${d.columns.length - 5} more` : ""}
+                    </span>
                   </div>
                 </div>
-                <span className="text-sm text-[var(--text-muted)]">{isOpen ? "Hide" : "Preview"}</span>
+                <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-[var(--accent)]">
+                  <span className="hidden sm:inline">{isOpen ? "Hide" : "Explore"}</span>
+                  <svg
+                    width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                    className={`transition-transform ${isOpen ? "rotate-180" : ""}`}
+                  >
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </span>
               </button>
               {isOpen && (
                 <div className="border-t border-[var(--border)]">

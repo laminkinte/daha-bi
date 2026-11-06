@@ -20,6 +20,7 @@ import {
 } from "@/lib/api";
 import BillingIntervalToggle, { yearlySavingsPercent } from "@/components/BillingIntervalToggle";
 import DataTable, { type Column } from "@/components/admin/DataTable";
+import { PageHeader, PAGE_CONTAINER } from "@/components/PageHeader";
 
 const PLAN_LABELS: Record<Plan, string> = { free: "Free", growth: "Growth", business: "Business" };
 
@@ -614,9 +615,8 @@ function PasswordForm() {
 function Settings() {
   const t = useTranslations("settings");
   return (
-    <div className="mx-auto max-w-2xl px-8 py-10">
-      <h1 className="text-2xl font-semibold">{t("title")}</h1>
-      <p className="mt-1 text-sm text-[var(--text-muted)]">Manage your profile and password.</p>
+    <div className={`${PAGE_CONTAINER} max-w-2xl`}>
+      <PageHeader icon="settings" title={t("title")} description="Your workspace, plan, profile and password." />
 
       <div className="mt-6 flex flex-col gap-6">
         <OrganizationSection />

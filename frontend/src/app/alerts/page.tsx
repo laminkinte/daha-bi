@@ -5,6 +5,7 @@ import Link from "next/link";
 import RequireAuth from "@/components/RequireAuth";
 import { EmptyState } from "@/components/EmptyState";
 import { api, ApiError, type Alert } from "@/lib/api";
+import { PageHeader, PAGE_CONTAINER } from "@/components/PageHeader";
 
 function BellIcon() {
   return (
@@ -40,11 +41,12 @@ function AlertsList() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-10">
-      <h1 className="text-2xl font-semibold">Alerts</h1>
-      <p className="mt-1 text-sm text-[var(--text-muted)]">
-        Thresholds and anomaly detection on your KPI charts — checked automatically in the background, and refreshed whenever this page loads.
-      </p>
+    <div className={`${PAGE_CONTAINER} max-w-3xl`}>
+      <PageHeader
+        icon="bell"
+        title="Alerts"
+        description="Thresholds and anomaly detection on your KPI charts — checked automatically in the background, and refreshed whenever this page loads."
+      />
 
       {error && <p className="mt-6 text-sm text-[var(--status-critical)]">{error}</p>}
       {!error && !alerts && <p className="mt-6 text-sm text-[var(--text-muted)]">Loading...</p>}

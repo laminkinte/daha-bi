@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { api, ApiError, type DataSource, type Dataset, type MysqlTable } from "@/lib/api";
 import DatasetPreviewToggle from "@/components/DatasetPreviewToggle";
 import TableRowsPreview from "@/components/TableRowsPreview";
+import { PageHeader, PAGE_CONTAINER } from "@/components/PageHeader";
 
 function CodeIcon() {
   return (
@@ -490,11 +491,12 @@ function Notebook() {
   const [mode, setMode] = useState<"sql" | "python">("sql");
 
   return (
-    <div className="mx-auto max-w-5xl px-8 py-10">
-      <h1 className="text-2xl font-semibold">Notebook</h1>
-      <p className="mt-1 text-sm text-[var(--text-muted)]">
-        Run SQL against a connected data source, or Python over any dataset.
-      </p>
+    <div className={`${PAGE_CONTAINER} max-w-5xl`}>
+      <PageHeader
+        icon="notebook"
+        title="Notebook"
+        description="Run SQL against a connected data source, or Python over any dataset."
+      />
 
       <div className="mt-6 inline-flex gap-1 rounded-md bg-[var(--surface-1)] border border-[var(--border)] p-1 text-sm">
         <button

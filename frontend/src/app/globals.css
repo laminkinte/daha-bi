@@ -229,6 +229,28 @@ textarea:focus-visible {
   border-color: transparent;
 }
 
+/* File inputs: replace the raw browser button with one that matches the app. */
+input[type="file"] {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+input[type="file"]::file-selector-button {
+  margin-right: 0.75rem;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 150ms ease, color 150ms ease;
+}
+input[type="file"]::file-selector-button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 ::selection {
   background: var(--accent-soft);
 }

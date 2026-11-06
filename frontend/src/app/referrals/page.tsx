@@ -5,6 +5,7 @@ import RequireAuth from "@/components/RequireAuth";
 import { StatCard } from "@/components/StatCard";
 import { EmptyState } from "@/components/EmptyState";
 import { api, ApiError, type ReferralsSummary } from "@/lib/api";
+import { PageHeader, PAGE_CONTAINER } from "@/components/PageHeader";
 
 function GiftIcon() {
   return (
@@ -43,11 +44,12 @@ function Referrals() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-10">
-      <h1 className="text-2xl font-semibold">Refer & Earn</h1>
-      <p className="mt-1 text-sm text-[var(--text-muted)]">
-        Share your link. Everyone who signs up through it is tracked here.
-      </p>
+    <div className={`${PAGE_CONTAINER} max-w-3xl`}>
+      <PageHeader
+        icon="gift"
+        title="Refer & Earn"
+        description="Share your link. Everyone who signs up through it is tracked here."
+      />
 
       {loadError && <p className="mt-6 text-sm text-[var(--status-critical)]">{loadError}</p>}
 
