@@ -68,9 +68,9 @@ function SendIcon() {
   );
 }
 
-function SparkleIcon() {
+function SparkleIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
       <path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2Z" />
     </svg>
   );
@@ -204,8 +204,13 @@ function SaveDashboardButton({
 }
 
 function ChatContent() {
-  const [conversations, setConversations] = useState<AiConversation[]>([]);
-  const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const [conversations, setConversations] = useState<AiConversation[] | null>(null);
+  // null = still loading. Starting as [] made the page claim "No datasets yet" while the
+  // request was in flight (and forever, if it failed — the error was swallowed).
+  const [datasets, setDatasets] = useState<Dataset[] | null>(null);
+  const [datasetsError, setDatasetsError] = useState(false);
+  // Phones show one pane at a time; this opens the "start a chat" pane from the list.
+  const [composing, setComposing] = useState(false);
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [activeId, setActiveId] = useState<number | null>(null);
   const [active, setActive] = useState<AiConversation | null>(null);
@@ -222,11 +227,18 @@ function ChatContent() {
     api
       .get<AiConversation[]>("/ai-conversations")
       .then(setConversations)
-      .catch(() => {});
+      .catch(() => setConversations((prev) => prev ?? []));
+  }
+
+  function loadDatasets() {
+    api
+      .get<Dataset[]>("/datasets")
+      .then(setDatasets)
+      .catch(() => setDatasetsError(true));
   }
 
   useEffect(() => {
-    api.get<Dataset[]>("/datasets").then(setDatasets).catch(() => {});
+    loadDatasets();
     api.get<Dashboard[]>("/dashboards").then(setDashboards).catch(() => {});
     loadConversations();
   }, []);
@@ -250,19 +262,28 @@ function ChatContent() {
     setActiveId(null);
     setActive(null);
     setError(null);
+    setComposing(true);
   }
 
-  async function createConversation() {
-    if (!newDatasetId) return;
+  function backToList() {
+    setActiveId(null);
+    setActive(null);
+    setComposing(false);
+  }
+
+  async function createConversation(datasetId: number) {
+    setNewDatasetId(datasetId);
     setError(null);
     try {
-      const conv = await api.post<AiConversation>("/ai-conversations", { dataset_id: newDatasetId });
-      setConversations((prev) => [conv, ...prev]);
+      const conv = await api.post<AiConversation>("/ai-conversations", { dataset_id: datasetId });
+      setConversations((prev) => [conv, ...(prev ?? [])]);
       setActive({ ...conv, messages: [] });
       setActiveId(conv.id);
-      setNewDatasetId("");
+      setComposing(false);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to start conversation.");
+    } finally {
+      setNewDatasetId("");
     }
   }
 
@@ -271,13 +292,13 @@ function ChatContent() {
     if (!confirm("Delete this conversation?")) return;
     try {
       await api.del(`/ai-conversations/${id}`);
-      setConversations((prev) => prev.filter((c) => c.id !== id));
+      setConversations((prev) => (prev ?? []).filter((c) => c.id !== id));
       if (activeId === id) {
         setActiveId(null);
         setActive(null);
       }
-    } catch {
-      // best-effort; row stays visible if delete failed
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to delete conversation.");
     }
   }
 
@@ -351,103 +372,170 @@ function ChatContent() {
     setSavedDashboardNames((prev) => ({ ...prev, [messageId]: name }));
   }
 
-  const inputClass =
-    "w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--accent)]";
 
   const conversationList = (
-    <div className="flex h-full flex-col border-[var(--border)] md:w-72 md:shrink-0 md:border-r">
-      <div className="p-3">
+    <div className="flex h-full w-full flex-col border-[var(--border)] bg-[var(--surface-1)] md:w-72 md:shrink-0 md:border-r">
+      <div className="flex items-center justify-between gap-2 px-4 pb-3 pt-4">
+        <div className="flex items-center gap-2">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent)]">
+            <SparkleIcon />
+          </span>
+          <h1 className="text-[15px] font-semibold tracking-tight text-[var(--text-primary)]">AI Chat</h1>
+        </div>
         <button
           onClick={startNewChat}
-          className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-[var(--border)] px-3 py-2 text-sm text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-white shadow-sm"
         >
           <PlusIcon />
           New chat
         </button>
       </div>
+      <div className="px-4 pb-2 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">Recent</div>
       <div className="flex-1 overflow-y-auto px-2 pb-3">
-        {conversations.map((c) => (
-          <button
+        {conversations === null && (
+          <div className="flex flex-col gap-2 px-2">
+            <div className="h-10 animate-pulse rounded-lg bg-[var(--surface-2)]" />
+            <div className="h-10 animate-pulse rounded-lg bg-[var(--surface-2)]" />
+          </div>
+        )}
+        {conversations?.map((c) => (
+          <div
             key={c.id}
-            onClick={() => openConversation(c.id)}
-            className={`group mb-1 flex w-full items-start justify-between gap-1.5 rounded-md px-2.5 py-2 text-left text-sm ${
-              activeId === c.id
-                ? "bg-[var(--accent)]/10 text-[var(--accent)]"
-                : "text-[var(--text-secondary)] hover:bg-[var(--page-plane)] hover:text-[var(--text-primary)]"
+            className={`mb-0.5 flex items-center gap-1 rounded-lg pr-1 transition-colors ${
+              activeId === c.id ? "bg-[var(--accent-soft)]" : "hover:bg-[var(--surface-2)]"
             }`}
           >
-            <span className="min-w-0 flex-1">
-              <span className="block truncate font-medium">{c.title ?? "New chat"}</span>
+            <button onClick={() => openConversation(c.id)} className="min-w-0 flex-1 px-2.5 py-2 text-left text-sm">
+              <span
+                className={`block truncate font-medium ${activeId === c.id ? "text-[var(--accent)]" : "text-[var(--text-primary)]"}`}
+              >
+                {c.title ?? "New chat"}
+              </span>
               <span className="block truncate text-xs text-[var(--text-muted)]">
                 {c.dataset?.name} · {relativeTime(c.updated_at)}
               </span>
-            </span>
-            <span
+            </button>
+            <button
               onClick={(e) => onDeleteConversation(c.id, e)}
-              className="shrink-0 text-[var(--text-muted)] opacity-0 hover:text-[var(--status-critical)] group-hover:opacity-100"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--status-critical)]/10 hover:text-[var(--status-critical)]"
+              title="Delete conversation"
+              aria-label="Delete conversation"
             >
               <TrashIcon />
-            </span>
-          </button>
+            </button>
+          </div>
         ))}
-        {conversations.length === 0 && (
-          <p className="px-2.5 py-2 text-xs text-[var(--text-muted)]">No conversations yet.</p>
+        {conversations?.length === 0 && (
+          <p className="px-2.5 py-2 text-xs text-[var(--text-muted)]">
+            No conversations yet. Start one to ask questions about your data in plain language.
+          </p>
         )}
       </div>
     </div>
   );
 
-  return (
-    <div className="flex h-[calc(100dvh-3.5rem)] md:h-screen">
-      <div className={activeId !== null ? "hidden md:flex md:h-full" : "flex h-full w-full md:w-auto"}>
-        {conversationList}
-      </div>
+  const startPanel = (
+    <div className="flex flex-1 flex-col items-center overflow-y-auto px-4 py-8 sm:justify-center sm:p-8">
+      <div className="w-full max-w-2xl">
+        <div className="text-center">
+          <div
+            className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-sm"
+            style={{ background: "var(--accent-glow)" }}
+          >
+            <SparkleIcon size={26} />
+          </div>
+          <h2 className="mt-4 text-[22px] font-semibold tracking-tight text-[var(--text-primary)]">Ask your data anything</h2>
+          <p className="mx-auto mt-1.5 max-w-md text-sm text-[var(--text-secondary)]">
+            Pick a dataset, then ask in plain language — &ldquo;Which region grew fastest?&rdquo; or &ldquo;Chart revenue by
+            month&rdquo;. Daha AI answers and builds charts you can save to a dashboard.
+          </p>
+        </div>
 
-      <div className={activeId === null && !active ? "hidden md:flex md:flex-1" : "flex h-full flex-1 flex-col"}>
-        {!activeId && !active ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--accent)]/10 text-[var(--accent)]">
-              <SparkleIcon />
+        <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {datasets === null && !datasetsError &&
+            [0, 1, 2, 3].map((i) => <div key={i} className="h-[62px] animate-pulse rounded-xl bg-[var(--surface-2)]" />)}
+          {datasetsError && (
+            <div className="rounded-xl border border-[var(--status-critical)]/30 bg-[var(--status-critical)]/5 p-4 text-sm sm:col-span-2">
+              <span className="text-[var(--status-critical)]">Couldn&apos;t load your datasets.</span>{" "}
+              <button
+                onClick={() => {
+                  setDatasetsError(false);
+                  loadDatasets();
+                }}
+                className="font-medium text-[var(--accent)] hover:underline"
+              >
+                Try again
+              </button>
             </div>
-            <div className="text-center">
-              <h2 className="font-medium text-[var(--text-primary)]">Start a new chat</h2>
-              <p className="mt-1 text-sm text-[var(--text-muted)]">Pick a dataset to chat about — ask questions or ask for charts.</p>
-            </div>
-            {datasets.length === 0 ? (
+          )}
+          {datasets?.length === 0 && (
+            <div className="sm:col-span-2">
               <EmptyState
                 icon={<SparkleIcon />}
                 title="No datasets yet"
-                description="Connect a data source and create a dataset first."
+                description="Connect a data source first — then you can chat with it here."
+                action={
+                  <Link href="/data-sources" className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white">
+                    Add a data source
+                  </Link>
+                }
               />
-            ) : (
-              <div className="flex items-center gap-2">
-                <select
-                  value={newDatasetId}
-                  onChange={(e) => setNewDatasetId(Number(e.target.value))}
-                  className={`${inputClass} w-56`}
-                >
-                  <option value="">Select a dataset...</option>
-                  {datasets.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={createConversation}
-                  disabled={!newDatasetId}
-                  className="rounded-md bg-[var(--accent)] px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
-                >
-                  Start
-                </button>
-              </div>
-            )}
-            {error && <p className="text-sm text-[var(--status-critical)]">{error}</p>}
-          </div>
+            </div>
+          )}
+          {datasets?.map((d) => (
+            <button
+              key={d.id}
+              onClick={() => createConversation(d.id)}
+              disabled={newDatasetId !== ""}
+              className="group flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-3 text-left transition-colors hover:border-[var(--accent)]/50 hover:bg-[var(--accent-soft)] disabled:opacity-60"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-2)] text-[var(--text-secondary)] group-hover:bg-[var(--surface-1)] group-hover:text-[var(--accent)]">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <rect x="3" y="4" width="18" height="16" rx="2" />
+                  <path d="M3 10h18M9 10v10" />
+                </svg>
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-[var(--text-primary)]">{d.name}</span>
+                <span className="block truncate text-xs text-[var(--text-muted)]">
+                  {d.row_count.toLocaleString()} rows · {d.columns.length} columns
+                </span>
+              </span>
+              <span className="shrink-0 text-xs font-medium text-[var(--accent)]">
+                {newDatasetId === d.id ? "Starting…" : "Chat →"}
+              </span>
+            </button>
+          ))}
+        </div>
+        {error && <p className="mt-3 text-center text-sm text-[var(--status-critical)]">{error}</p>}
+      </div>
+    </div>
+  );
+
+  const showConversation = activeId !== null || active !== null;
+
+  return (
+    <div className="flex h-[calc(100dvh-3.5rem)] md:h-screen">
+      {/* Phones show one pane at a time: list → (start | conversation). Desktop shows both. */}
+      <div className={showConversation || composing ? "hidden md:flex md:h-full" : "flex h-full w-full md:w-auto"}>
+        {conversationList}
+      </div>
+
+      <div className={showConversation || composing ? "flex h-full flex-1 flex-col" : "hidden md:flex md:flex-1 md:flex-col"}>
+        {!showConversation ? (
+          <>
+            <div className="flex items-center gap-2 border-b border-[var(--border)] px-4 py-3 md:hidden">
+              <button onClick={backToList} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]" aria-label="Back to chats">
+                <BackIcon />
+              </button>
+              <span className="font-medium text-[var(--text-primary)]">New chat</span>
+            </div>
+            {startPanel}
+          </>
         ) : (
           <>
-            <div className="flex items-center gap-2 border-b border-[var(--border)] px-4 py-3 md:px-6">
-              <button onClick={startNewChat} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] md:hidden">
+            <div className="flex items-center gap-2 border-b border-[var(--border)] bg-[var(--surface-1)] px-4 py-3 md:px-6">
+              <button onClick={backToList} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] md:hidden" aria-label="Back to chats">
                 <BackIcon />
               </button>
               <div className="min-w-0">
@@ -457,7 +545,13 @@ function ChatContent() {
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6">
-              {loadingActive && <p className="text-sm text-[var(--text-muted)]">Loading...</p>}
+              <div className="mx-auto max-w-3xl">
+              {loadingActive && (
+                <div className="flex flex-col gap-3" aria-label="Loading conversation">
+                  <div className="ml-auto h-10 w-1/3 animate-pulse rounded-2xl bg-[var(--surface-2)]" />
+                  <div className="h-20 w-2/3 animate-pulse rounded-2xl bg-[var(--surface-2)]" />
+                </div>
+              )}
               {!loadingActive && active?.messages?.length === 0 && (
                 <div className="mb-4">
                   <p className="mb-2 text-xs font-medium text-[var(--text-secondary)]">Try one of these to get started:</p>
@@ -579,12 +673,21 @@ function ChatContent() {
                   }
 
                   return (
-                    <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                    <div key={m.id} className={`flex items-end gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                      {m.role !== "user" && (
+                        <span
+                          className="mb-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white"
+                          style={{ background: "var(--accent-glow)" }}
+                          aria-hidden
+                        >
+                          <SparkleIcon size={13} />
+                        </span>
+                      )}
                       <div
-                        className={`max-w-[85%] rounded-lg px-3.5 py-2.5 text-sm ${
+                        className={`max-w-[85%] px-4 py-2.5 text-sm leading-relaxed ${
                           m.role === "user"
-                            ? "bg-[var(--accent)] text-white"
-                            : "border border-[var(--border)] bg-[var(--surface-1)] text-[var(--text-primary)]"
+                            ? "rounded-2xl rounded-br-md bg-[var(--accent)] text-white"
+                            : "rounded-2xl rounded-bl-md border border-[var(--border)] bg-[var(--surface-1)] text-[var(--text-primary)] shadow-sm"
                         }`}
                       >
                         <p className="whitespace-pre-wrap">{m.content}</p>
@@ -593,34 +696,54 @@ function ChatContent() {
                   );
                 })}
                 {sending && (
-                  <div className="flex justify-start">
-                    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3.5 py-2.5 text-sm text-[var(--text-muted)]">
-                      Thinking...
+                  <div className="flex items-end gap-2">
+                    <span
+                      className="mb-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white"
+                      style={{ background: "var(--accent-glow)" }}
+                      aria-hidden
+                    >
+                      <SparkleIcon size={13} />
+                    </span>
+                    <div
+                      className="flex items-center gap-1 rounded-2xl rounded-bl-md border border-[var(--border)] bg-[var(--surface-1)] px-4 py-3"
+                      role="status"
+                      aria-label="Daha AI is thinking"
+                    >
+                      {[0, 150, 300].map((delay) => (
+                        <span
+                          key={delay}
+                          className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--text-muted)]"
+                          style={{ animationDelay: `${delay}ms` }}
+                        />
+                      ))}
                     </div>
                   </div>
                 )}
               </div>
               <div ref={bottomRef} />
+              </div>
             </div>
 
             {error && <p className="px-4 pb-2 text-sm text-[var(--status-critical)] md:px-6">{error}</p>}
 
-            <form onSubmit={onSend} className="flex items-center gap-2 border-t border-[var(--border)] p-3 md:px-6">
-              <input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask a question or ask for a chart..."
-                className={inputClass}
-                disabled={sending}
-              />
-              <button
-                type="submit"
-                disabled={!input.trim() || sending}
-                className="flex shrink-0 items-center justify-center rounded-md bg-[var(--accent)] p-2 text-white disabled:opacity-60"
-                aria-label="Send"
-              >
-                <SendIcon />
-              </button>
+            <form onSubmit={onSend} className="border-t border-[var(--border)] bg-[var(--surface-1)] p-3 md:px-6 md:py-4">
+              <div className="mx-auto flex max-w-3xl items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--page-plane)] p-1.5 pl-4 shadow-sm focus-within:border-[var(--accent)]">
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Ask a question or ask for a chart…"
+                  className="min-w-0 flex-1 bg-transparent py-1.5 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus-visible:outline-none"
+                  disabled={sending}
+                />
+                <button
+                  type="submit"
+                  disabled={!input.trim() || sending}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)] text-white disabled:opacity-40"
+                  aria-label="Send"
+                >
+                  <SendIcon />
+                </button>
+              </div>
             </form>
           </>
         )}
