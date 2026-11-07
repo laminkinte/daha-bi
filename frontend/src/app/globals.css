@@ -176,8 +176,13 @@ select option {
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
   --color-accent: var(--accent);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* The Turbopack dev server registers next/font faces as "__nextjs-Geist" while the CSS variable
+     asks for "Geist", so nothing matched and every page rendered in the Arial-based
+     "Geist Fallback" (code included). Listing the dev name first fixes dev; a family name that
+     doesn't exist is simply skipped, so production (where the variable's name is correct) is
+     unaffected. Real monospace system fonts sit ahead of generic fallbacks for code. */
+  --font-sans: "__nextjs-Geist", var(--font-geist-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "__nextjs-Geist Mono", var(--font-geist-mono), ui-monospace, "Cascadia Code", Consolas, "Courier New", monospace;
 
   /* Softer, more modern corners app-wide (every rounded-* class picks these up). */
   --radius-sm: 0.375rem;
@@ -192,7 +197,7 @@ select option {
 body {
   background: var(--page-plane);
   color: var(--text-primary);
-  font-family: var(--font-geist-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: var(--font-sans);
   font-feature-settings: "cv11", "ss01";
   letter-spacing: -0.006em;
 }

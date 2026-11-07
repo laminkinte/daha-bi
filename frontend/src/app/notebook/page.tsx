@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import RequireAuth from "@/components/RequireAuth";
+import { useAuth } from "@/lib/auth-context";
 import { EmptyState } from "@/components/EmptyState";
 import { api, ApiError, type DataSource, type Dataset, type MysqlTable } from "@/lib/api";
 import DatasetPreviewToggle from "@/components/DatasetPreviewToggle";
@@ -13,6 +14,73 @@ function CodeIcon() {
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
       <path d="m8 4-6 8 6 8M16 4l6 8-6 8" />
     </svg>
+  );
+}
+
+/**
+ * Editor-style code cell shared by the SQL and Python workbenches: language label, line count,
+ * Run button in the header, monospace body, and Ctrl/Cmd+Enter to run.
+ */
+function CodeCell({
+  language,
+  value,
+  onChange,
+  onRun,
+  running,
+  runLabel,
+  placeholder,
+}: {
+  language: string;
+  value: string;
+  onChange: (v: string) => void;
+  onRun: () => void;
+  running: boolean;
+  runLabel: string;
+  placeholder: string;
+}) {
+  const lines = Math.max(1, value.split("\n").length);
+  return (
+    <div className="mt-3 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-1)] shadow-sm focus-within:border-[var(--accent)]">
+      <div className="flex items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--surface-2)] px-3 py-2">
+        <div className="flex items-center gap-2">
+          <span className="rounded-md bg-[var(--accent-soft)] px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide text-[var(--accent)]">
+            {language}
+          </span>
+          <span className="text-[11px] text-[var(--text-muted)]">
+            {lines} line{lines === 1 ? "" : "s"}
+            <span className="hidden sm:inline"> · Ctrl+Enter to run</span>
+          </span>
+        </div>
+        <button
+          onClick={onRun}
+          disabled={running}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-white shadow-sm disabled:opacity-60"
+        >
+          {running ? (
+            <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden />
+          ) : (
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <path d="M6 4l14 8-14 8V4Z" />
+            </svg>
+          )}
+          {running ? "Running…" : runLabel}
+        </button>
+      </div>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && !running) {
+            e.preventDefault();
+            onRun();
+          }
+        }}
+        placeholder={placeholder}
+        rows={Math.min(18, Math.max(8, lines + 1))}
+        spellCheck={false}
+        className="block w-full resize-y bg-transparent px-4 py-3 font-mono text-[13px] leading-6 text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus-visible:outline-none"
+      />
+    </div>
   );
 }
 
@@ -254,7 +322,7 @@ function SqlWorkbench() {
           <select
             value={dataSourceId}
             onChange={(e) => setDataSourceId(Number(e.target.value))}
-            className="w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1.5 outline-none focus:border-[var(--accent)]"
+            className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-sm outline-none"
           >
             {sources.map((s) => (
               <option key={s.id} value={s.id}>
@@ -272,7 +340,7 @@ function SqlWorkbench() {
             <select
               value={previewDatasetId}
               onChange={(e) => setPreviewDatasetId(Number(e.target.value))}
-              className="w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1.5 outline-none focus:border-[var(--accent)]"
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-sm outline-none"
             >
               {datasetsForSource.map((d) => (
                 <option key={d.id} value={d.id}>
@@ -298,24 +366,17 @@ function SqlWorkbench() {
         />
       )}
 
-      <textarea
+      <CodeCell
+        language="SQL"
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Write a SELECT query..."
-        rows={8}
-        spellCheck={false}
-        className="mt-3 w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 font-mono text-sm outline-none focus:border-[var(--accent)]"
+        onChange={setQuery}
+        onRun={run}
+        running={running}
+        runLabel="Run query"
+        placeholder="Write a SELECT query…"
       />
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <button
-          onClick={run}
-          disabled={running}
-          className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-        >
-          {running ? "Running..." : "Run query"}
-        </button>
-
         {result && (
           <div className="flex items-center gap-2">
             <input
@@ -380,6 +441,7 @@ function PythonWorkbench() {
   const [output, setOutput] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     api
@@ -427,17 +489,24 @@ function PythonWorkbench() {
 
   return (
     <div>
-      <div className="rounded-md border border-[var(--border)] bg-[var(--page-plane)] px-3 py-2 text-xs text-[var(--text-muted)]">
-        Runs on your local machine with no sandbox — the same privileges as your own user account. Fine for
-        personal local use; do not expose this to other people without adding real isolation first.
-      </div>
+      {user?.is_admin ? (
+        <div className="rounded-xl border border-[var(--status-warning)]/30 bg-[var(--status-warning)]/10 px-3.5 py-2.5 text-xs text-[var(--text-secondary)]">
+          <strong className="font-semibold text-[var(--text-primary)]">Admin only.</strong> Python runs on the server with
+          no sandbox, so it&apos;s restricted to platform administrators until isolated execution is added.
+        </div>
+      ) : (
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3.5 py-2.5 text-xs text-[var(--text-secondary)]">
+          <strong className="font-semibold text-[var(--text-primary)]">Python is limited to administrators</strong> on this
+          server for security. You can still explore datasets here, and use the SQL tab or AI Chat to analyze your data.
+        </div>
+      )}
 
       <div className="mt-3 w-64">
         <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">Dataset</label>
         <select
           value={datasetId}
           onChange={(e) => setDatasetId(Number(e.target.value))}
-          className="w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1.5 outline-none focus:border-[var(--accent)]"
+          className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-sm outline-none"
         >
           {datasets.map((d) => (
             <option key={d.id} value={d.id}>
@@ -459,29 +528,31 @@ function PythonWorkbench() {
         />
       )}
 
-      <textarea
+      <CodeCell
+        language="Python"
         value={code}
-        onChange={(e) => setCode(e.target.value)}
-        placeholder="Write Python..."
-        rows={8}
-        spellCheck={false}
-        className="mt-3 w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 font-mono text-sm outline-none focus:border-[var(--accent)]"
+        onChange={setCode}
+        onRun={run}
+        running={running}
+        runLabel="Run Python"
+        placeholder="Write Python… your data is available as the pandas DataFrame `df`"
       />
 
-      <button
-        onClick={run}
-        disabled={running}
-        className="mt-3 rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-      >
-        {running ? "Running..." : "Run Python"}
-      </button>
-
-      {error && <p className="mt-3 text-sm text-[var(--status-critical)]">{error}</p>}
+      {error && (
+        <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded-xl border border-[var(--status-critical)]/30 bg-[var(--status-critical)]/5 p-3 font-mono text-xs text-[var(--status-critical)]">
+          {error}
+        </pre>
+      )}
 
       {output !== null && (
-        <pre className="mt-4 overflow-x-auto rounded-md border border-[var(--border)] bg-[var(--page-plane)] p-3 text-xs text-[var(--text-primary)]">
-          {output || "(no output — assign to `result` or use print())"}
-        </pre>
+        <div className="mt-4 overflow-hidden rounded-xl border border-[var(--border)]">
+          <div className="border-b border-[var(--border)] bg-[var(--surface-2)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+            Output
+          </div>
+          <pre className="overflow-x-auto bg-[var(--surface-1)] p-3 font-mono text-xs leading-5 text-[var(--text-primary)]">
+            {output || "(no output — assign to `result` or use print())"}
+          </pre>
+        </div>
       )}
     </div>
   );
