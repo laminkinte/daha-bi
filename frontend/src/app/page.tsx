@@ -128,7 +128,7 @@ function ProductPreview() {
             }}
           />
         </div>
-        <div className="col-span-2 flex items-end gap-1.5 rounded-lg border border-[var(--border)] p-3">
+        <div className="col-span-2 flex h-24 items-end gap-1.5 rounded-lg border border-[var(--border)] p-3 sm:h-auto">
           {bars.map((h, i) => (
             <div
               key={i}
@@ -138,7 +138,7 @@ function ProductPreview() {
           ))}
         </div>
         <div className="col-span-2 rounded-lg border border-[var(--border)] p-3">
-          <svg viewBox="0 0 100 40" className="h-full w-full" preserveAspectRatio="none">
+          <svg viewBox="0 0 100 40" className="h-full min-h-16 w-full" preserveAspectRatio="none">
             <polyline
               points="0,30 20,18 40,24 60,10 80,15 100,4"
               fill="none"
@@ -148,6 +148,21 @@ function ProductPreview() {
               strokeLinejoin="round"
             />
           </svg>
+        </div>
+        <div className="col-span-2 rounded-lg border border-[var(--border)] p-3 text-left">
+          <div className="text-[10px] uppercase tracking-wide text-[var(--text-muted)]">Top regions</div>
+          {[
+            ["Lagos", 92],
+            ["Nairobi", 78],
+            ["Accra", 64],
+          ].map(([city, pct]) => (
+            <div key={city} className="mt-2 flex items-center gap-2 text-[11px]">
+              <span className="w-12 shrink-0 text-[var(--text-secondary)]">{city}</span>
+              <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--surface-2)]">
+                <span className="block h-full rounded-full bg-[var(--series-1)]" style={{ width: `${pct}%` }} />
+              </span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -174,17 +189,41 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
 
 function LandingPage() {
   const [settings, setSettings] = useState<SiteSettings | null>(null);
+  // Was swallowed before, leaving visitors on "Loading..." forever whenever the API was down.
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  function loadSettings() {
+    api
+      .get<SiteSettings>("/site-settings")
+      .then(setSettings)
+      .catch(() => setLoadFailed(true));
+  }
 
   useEffect(() => {
-    api.get<SiteSettings>("/site-settings").then(setSettings).catch(() => {});
+    loadSettings();
   }, []);
 
   if (!settings) {
     return (
       <div className="min-h-screen bg-[var(--page-plane)]">
         <PublicHeader />
-        <div className="flex min-h-[60vh] items-center justify-center text-sm text-[var(--text-muted)]">
-          Loading...
+        <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 px-6 text-center text-sm text-[var(--text-muted)]">
+          {loadFailed ? (
+            <>
+              <p>We couldn&apos;t load this page right now.</p>
+              <button
+                onClick={() => {
+                  setLoadFailed(false);
+                  loadSettings();
+                }}
+                className="rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-4 py-2 font-medium text-[var(--text-primary)] hover:border-[var(--accent)]"
+              >
+                Try again
+              </button>
+            </>
+          ) : (
+            "Loading..."
+          )}
         </div>
       </div>
     );
@@ -196,22 +235,35 @@ function LandingPage() {
     <div className="min-h-screen bg-[var(--page-plane)]">
       <PublicHeader />
 
-      <section className="mx-auto max-w-4xl px-6 py-24 text-center">
-        <h1 className="text-4xl font-semibold leading-tight text-[var(--text-primary)] sm:text-5xl">
+      <section className="relative overflow-hidden">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-[-12rem] h-[34rem] w-[54rem] -translate-x-1/2 rounded-full opacity-[0.14] blur-3xl"
+        style={{ background: "var(--accent-glow)" }}
+      />
+      <div className="relative mx-auto max-w-4xl px-6 py-20 text-center sm:py-24">
+        <span className="inline-flex items-center gap-2 rounded-full border border-[var(--accent)]/25 bg-[var(--accent-soft)] px-3 py-1 text-xs font-medium text-[var(--accent)]">
+          <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+          AI-powered BI for growing businesses
+        </span>
+        <h1 className="mt-5 text-4xl font-semibold leading-[1.1] tracking-tight text-[var(--text-primary)] sm:text-6xl">
           {hero.headline_prefix}{" "}
-          <span className="text-[var(--accent)]">{hero.headline_highlight}</span> {hero.headline_suffix}
+          <span className="bg-clip-text text-transparent" style={{ backgroundImage: "var(--accent-glow)" }}>
+            {hero.headline_highlight}
+          </span>{" "}
+          {hero.headline_suffix}
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-lg text-[var(--text-secondary)]">{hero.subheadline}</p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/register"
-            className="rounded-md bg-[var(--accent)] px-6 py-3 text-sm font-medium text-white"
+            className="rounded-xl bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[var(--accent)]/20 transition-transform hover:-translate-y-0.5"
           >
             Get started free
           </Link>
           <Link
             href="/pricing"
-            className="rounded-md border border-[var(--border)] px-6 py-3 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            className="rounded-xl border border-[var(--border)] bg-[var(--surface-1)] px-6 py-3 text-sm font-semibold text-[var(--text-primary)] shadow-sm hover:border-[var(--accent)]/50"
           >
             See pricing
           </Link>
@@ -221,6 +273,7 @@ function LandingPage() {
         <Reveal className="mt-16 px-4" delay={150}>
           <ProductPreview />
         </Reveal>
+      </div>
       </section>
 
       <section className="border-y border-[var(--border)] bg-[var(--surface-1)] py-10">
@@ -321,20 +374,33 @@ function LandingPage() {
         </Reveal>
       </section>
 
-      <section className="border-t border-[var(--border)] py-20">
-        <Reveal className="mx-auto max-w-2xl px-6 text-center">
-          <h2 className="text-2xl font-semibold text-[var(--text-primary)]">
-            Ready to see your numbers clearly?
-          </h2>
-          <p className="mt-3 text-[var(--text-secondary)]">
-            Create a free account and have your first dashboard up in minutes.
-          </p>
-          <Link
-            href="/register"
-            className="mt-6 inline-block rounded-md bg-[var(--accent)] px-6 py-3 text-sm font-medium text-white transition-transform hover:scale-105"
+      <section className="px-4 py-16 sm:py-20">
+        <Reveal className="mx-auto max-w-5xl">
+          <div
+            className="relative overflow-hidden rounded-3xl px-6 py-14 text-center text-white sm:px-12"
+            style={{ background: "linear-gradient(135deg, #0a5c47 0%, #0b7a5e 45%, #12a37c 100%)" }}
           >
-            Get started free
-          </Link>
+            <div aria-hidden className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-[#f0b429] opacity-25 blur-3xl" />
+            <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-16 h-64 w-64 rounded-full bg-white opacity-10 blur-3xl" />
+            <h2 className="relative text-3xl font-semibold tracking-tight sm:text-4xl">Ready to see your numbers clearly?</h2>
+            <p className="relative mx-auto mt-3 max-w-lg text-white/80">
+              Create a free account and have your first dashboard up in minutes.
+            </p>
+            <div className="relative mt-8 flex flex-wrap items-center justify-center gap-3">
+              <Link
+                href="/register"
+                className="rounded-xl bg-white px-6 py-3 text-sm font-semibold text-[#0a5c47] shadow-lg transition-transform hover:-translate-y-0.5"
+              >
+                Get started free
+              </Link>
+              <Link
+                href="/pricing"
+                className="rounded-xl px-6 py-3 text-sm font-semibold text-white ring-1 ring-white/40 hover:bg-white/10"
+              >
+                See pricing
+              </Link>
+            </div>
+          </div>
         </Reveal>
       </section>
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandMark } from "./BrandMark";
 
 const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
   {
@@ -29,9 +30,7 @@ export default function Footer() {
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-5">
           <div className="col-span-2">
             <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent)] text-sm font-bold text-white">
-                D
-              </div>
+              <BrandMark />
               <span className="font-semibold text-[var(--text-primary)]">Daha BI</span>
             </Link>
             <p className="mt-3 max-w-xs text-sm text-[var(--text-muted)]">
