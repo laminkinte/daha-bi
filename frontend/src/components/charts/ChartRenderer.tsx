@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/Skeleton";
 import {
@@ -24,7 +24,7 @@ import {
   YAxis,
 } from "recharts";
 import { useChartTheme, foldToOther } from "@/lib/chart-theme";
-import { formatCompact, formatValue } from "@/lib/format-value";
+import { formatCompact, formatPeriod, formatValue } from "@/lib/format-value";
 import type {
   BarVariant,
   Chart,
@@ -173,7 +173,8 @@ function TooltipCard({
   if (!active || !payload?.length) return null;
   const rows = payload.filter((p) => p.dataKey !== "trend" && typeof p.value === "number" && Number.isFinite(p.value));
   if (!rows.length) return null;
-  const heading = label ?? (total !== undefined ? rows[0].name : undefined);
+  const rawHeading = label ?? (total !== undefined ? rows[0].name : undefined);
+  const heading = rawHeading !== undefined ? formatPeriod(String(rawHeading)) : undefined;
   return (
     <div
       style={{
@@ -237,14 +238,247 @@ function ScatterTooltipCard({
   );
 }
 
+/** Width of an element, tracked with a ResizeObserver (0 until first measured). */
+function useWidth<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // Whole pixels only, so sub-pixel jitter from a layout switch can't keep re-triggering it.
+    const ro = new ResizeObserver(([entry]) => setWidth(Math.round(entry.contentRect.width)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, width] as const;
+}
+
+/** "2025-03" → month, "2025-03-14" → day; used to word the KPI comparison. */
+function periodWord(label: string | undefined): string {
+  if (!label) return "period";
+  if (/^\d{4}-\d{2}-\d{2}/.test(label)) return "day";
+  if (/^\d{4}-\d{2}$/.test(label)) return "month";
+  if (/^\d{4}$/.test(label)) return "year";
+  if (/^\d{4}-Q\d$/.test(label)) return "quarter";
+  return "period";
+}
+
+/**
+ * KPI: headline number, the change between the last two periods of its trend, and a sparkline.
+ * Up/down is shown with an arrow and words as well as colour, never colour alone.
+ */
+function KpiView({ chart, data, theme }: { chart: Chart; data: Extract<ChartData, { value: number }>; theme: ReturnType<typeof useChartTheme> }) {
+  const style: ChartStyle = chart.config.style ?? {};
+  const variant = kpiVariant(style);
+  const kpiColor = matchColorRule(data.value, style.color_rules, style.colors?.[0] || theme.primaryInk);
+  const lineColor = style.colors?.[0] || theme.categorical[0];
+  const target = chart.config.target;
+  const trend = data.trend && data.trend.values.length > 1 ? data.trend : null;
+  const fmt = (v: number) => formatValue(v, chart.config.format, chart.config.currency);
+
+  let delta: { pct: number; word: string } | null = null;
+  if (trend) {
+    const last = trend.values[trend.values.length - 1];
+    const prev = trend.values[trend.values.length - 2];
+    if (prev !== 0 && Number.isFinite(prev)) delta = { pct: ((last - prev) / Math.abs(prev)) * 100, word: periodWord(trend.labels[trend.labels.length - 1]) };
+  }
+  const showSpark = trend && variant !== "progress" && style.variant !== "number";
+  const full = fmt(data.value);
+  // Long numbers switch to the compact form ("$62.1K") so the headline never truncates.
+  const headline = full.length > 9 ? formatCompact(data.value, chart.config.format, chart.config.currency) : full;
+
+  return (
+    <div className="flex h-full flex-col justify-end gap-2 px-1">
+      <div className="truncate text-[30px] font-semibold leading-none tracking-tight tabular-nums" style={{ color: kpiColor }} title={full}>
+        {headline}
+      </div>
+      <div className="flex min-h-0 items-end justify-between gap-3">
+      <div className="min-w-0 pb-0.5">
+        {delta ? (
+          <div className="flex items-center gap-1.5 whitespace-nowrap text-xs">
+            <span
+              className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 font-semibold tabular-nums"
+              style={{
+                color: delta.pct >= 0 ? "var(--status-good)" : "var(--status-critical)",
+                background: delta.pct >= 0 ? "color-mix(in srgb, var(--status-good) 12%, transparent)" : "color-mix(in srgb, var(--status-critical) 12%, transparent)",
+              }}
+            >
+              {delta.pct >= 0 ? "▲" : "▼"} {Math.abs(delta.pct).toFixed(1)}%
+            </span>
+            <span className="truncate" style={{ color: theme.mutedInk }}>vs prev. {delta.word}</span>
+          </div>
+        ) : (
+          <div className="text-xs" style={{ color: theme.mutedInk }}>
+            {(chart.config.agg ?? "count").replace("_", " ")} of {chart.config.y_field ?? "records"}
+          </div>
+        )}
+        {variant === "progress" && typeof target === "number" && target > 0 && (
+          <div className="mt-1 w-44 max-w-full">
+            <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ background: theme.gridline }}>
+              <div className="h-full rounded-full" style={{ width: `${Math.max(0, Math.min(100, (data.value / target) * 100))}%`, background: lineColor }} />
+            </div>
+            <div className="mt-1 text-[11px]" style={{ color: theme.mutedInk }}>
+              {Math.round((data.value / target) * 100)}% of {fmt(target)} target
+            </div>
+          </div>
+        )}
+      </div>
+      {showSpark && trend && (
+        <div className="h-[40px] w-[45%] min-w-[72px] max-w-[200px] shrink-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={trend.labels.map((label, i) => ({ name: label, value: trend.values[i] }))} margin={{ top: 4, right: 2, bottom: 2, left: 2 }}>
+              <defs>
+                <linearGradient id={`kpi-${chart.id}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={lineColor} stopOpacity={0.3} />
+                  <stop offset="100%" stopColor={lineColor} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <Area type="monotone" dataKey="value" stroke={lineColor} strokeWidth={2} fill={`url(#kpi-${chart.id})`} dot={false} activeDot={{ r: 3 }} isAnimationActive={false} />
+              <Tooltip content={<TooltipCard theme={theme} chart={chart} />} cursor={false} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Donut (or pie) with its own legend: a value/% table beside it on wide cards, a compact list
+ * under it on narrow ones. Rows and slices both drill down; the selected one stays bright.
+ */
+function PieView({
+  chart,
+  rows,
+  isDonut,
+  colorAt,
+  theme,
+  showLegend,
+  showDataLabels,
+  selected,
+  onPick,
+}: {
+  chart: Chart;
+  rows: { name: string; value: number }[];
+  isDonut: boolean;
+  colorAt: (i: number) => string;
+  theme: ReturnType<typeof useChartTheme>;
+  showLegend: boolean;
+  showDataLabels: boolean;
+  selected?: string;
+  onPick?: (name: string) => void;
+}) {
+  const [ref, width] = useWidth<HTMLDivElement>();
+  const wide = width >= 440;
+  const total = rows.reduce((a, r) => a + r.value, 0);
+  const fmt = (v: number) => formatValue(v, chart.config.format, chart.config.currency);
+  const dim = (name: string) => (selected && selected !== name ? 0.3 : 1);
+
+  const donut = (
+    <div className="relative h-full min-h-0 w-full min-w-0 flex-1">
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={rows}
+            dataKey="value"
+            nameKey="name"
+            innerRadius={isDonut ? "62%" : 0}
+            outerRadius="88%"
+            stroke={theme.surface}
+            strokeWidth={2}
+            onClick={onPick ? (_, i) => onPick(rows[i].name) : undefined}
+            cursor={onPick ? "pointer" : undefined}
+            label={showDataLabels ? ({ value }) => fmt(Number(value)) : undefined}
+            labelLine={showDataLabels}
+            isAnimationActive={false}
+          >
+            {rows.map((r, i) => (
+              <Cell key={r.name} fill={colorAt(i)} fillOpacity={dim(r.name)} />
+            ))}
+          </Pie>
+          <Tooltip content={<TooltipCard theme={theme} chart={chart} total={total} />} />
+        </PieChart>
+      </ResponsiveContainer>
+      {isDonut && (
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+          <span className="text-[11px] uppercase tracking-wide" style={{ color: theme.mutedInk }}>
+            {selected ? selected : "Total"}
+          </span>
+          <span className="text-lg font-semibold tabular-nums" style={{ color: theme.primaryInk }}>
+            {formatCompact(selected ? rows.find((r) => r.name === selected)?.value ?? 0 : total, chart.config.format, chart.config.currency)}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+
+  if (!showLegend) return <div ref={ref} className="flex h-full">{donut}</div>;
+
+  return (
+    <div ref={ref} className={`flex h-full min-h-0 gap-4 ${wide ? "flex-row items-center" : "flex-col"}`}>
+      {donut}
+      <div className={wide ? "max-h-full w-[52%] shrink-0 overflow-y-auto" : "max-h-[40%] shrink-0 overflow-y-auto"}>
+        {wide ? (
+          <table className="w-full text-[12.5px] tabular-nums">
+            <tbody>
+              {rows.map((r, i) => (
+                <tr
+                  key={r.name}
+                  onClick={onPick ? () => onPick(r.name) : undefined}
+                  className={`${onPick ? "cursor-pointer" : ""} border-b last:border-0`}
+                  style={{ borderColor: theme.gridline, opacity: dim(r.name) }}
+                >
+                  <td className="py-1.5 pr-2">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: colorAt(i) }} />
+                      <span className="truncate" style={{ color: theme.secondaryInk }} title={r.name}>
+                        {r.name}
+                      </span>
+                    </span>
+                  </td>
+                  <td className="py-1.5 pr-2 text-right font-medium" style={{ color: theme.primaryInk }}>
+                    {fmt(r.value)}
+                  </td>
+                  <td className="w-12 py-1.5 text-right" style={{ color: theme.mutedInk }}>
+                    {total ? `${((r.value / total) * 100).toFixed(1)}%` : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs">
+            {rows.map((r, i) => (
+              <button
+                key={r.name}
+                onClick={onPick ? () => onPick(r.name) : undefined}
+                className="flex items-center gap-1.5"
+                style={{ color: theme.secondaryInk, opacity: dim(r.name), cursor: onPick ? "pointer" : "default" }}
+              >
+                <span className="h-2 w-2 rounded-full" style={{ background: colorAt(i) }} />
+                {r.name}
+                <span style={{ color: theme.mutedInk }}>{total ? `${Math.round((r.value / total) * 100)}%` : ""}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function ChartRenderer({
   chart,
   data,
   onDrillDown,
+  selected,
 }: {
   chart: Chart;
   data: ChartData;
   onDrillDown?: (value: string) => void;
+  /** Category picked by a cross-filter click: it stays bright and the rest dim. */
+  selected?: string;
 }) {
   const theme = useChartTheme();
   const style: ChartStyle = chart.config.style ?? {};
@@ -273,48 +507,7 @@ export default function ChartRenderer({
     (chart.config.agg === "count" || !chart.config.y_field ? "Records" : chart.config.y_field.replace(/_/g, " "));
 
   if (chart.type === "kpi" && "value" in data) {
-    const variant = kpiVariant(style);
-    const kpiColor = matchColorRule(data.value, style.color_rules, style.colors?.[0] || theme.primaryInk);
-    const target = chart.config.target;
-
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-2">
-        <div className="flex flex-col items-center">
-          <div className="text-4xl font-semibold tabular-nums" style={{ color: kpiColor }}>
-            {formatValue(data.value, chart.config.format, chart.config.currency)}
-          </div>
-          <div className="mt-1 text-sm" style={{ color: theme.mutedInk }}>
-            {(chart.config.agg ?? "count").replace("_", " ")} of {chart.config.y_field ?? "records"}
-          </div>
-        </div>
-
-        {variant === "sparkline" && data.trend && data.trend.values.length > 1 && (
-          <ResponsiveContainer width="90%" height={48}>
-            <LineChart data={data.trend.labels.map((label, i) => ({ name: label, value: data.trend!.values[i] }))}>
-              <Line type="monotone" dataKey="value" stroke={kpiColor} strokeWidth={2} dot={false} />
-              <Tooltip content={<TooltipCard theme={theme} chart={chart} />} />
-            </LineChart>
-          </ResponsiveContainer>
-        )}
-
-        {variant === "progress" && typeof target === "number" && target > 0 && (
-          <div className="w-full max-w-[200px]">
-            <div className="h-2 w-full overflow-hidden rounded-full" style={{ background: theme.gridline }}>
-              <div
-                className="h-full rounded-full"
-                style={{
-                  width: `${Math.max(0, Math.min(100, (data.value / target) * 100))}%`,
-                  background: kpiColor,
-                }}
-              />
-            </div>
-            <div className="mt-1 text-center text-xs" style={{ color: theme.mutedInk }}>
-              {Math.round((data.value / target) * 100)}% of {formatValue(target, chart.config.format, chart.config.currency)}
-            </div>
-          </div>
-        )}
-      </div>
-    );
+    return <KpiView chart={chart} data={data} theme={theme} />;
   }
 
   if (chart.type === "table" && "columns" in data) {
@@ -387,40 +580,18 @@ export default function ChartRenderer({
       values = paired.map((p) => p.value);
     }
     const rows = labels.map((label, i) => ({ name: label, value: values[i] }));
-    const isDonut = pieVariant(style) === "donut";
-    const total = values.reduce((a, b) => a + b, 0);
-
     return (
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={rows}
-            dataKey="value"
-            nameKey="name"
-            innerRadius={isDonut ? "58%" : 0}
-            outerRadius="82%"
-            stroke={theme.surface}
-            strokeWidth={2}
-            onClick={onDrillDown ? (_, i) => handlePointClick(rows[i].name) : undefined}
-            cursor={onDrillDown ? "pointer" : undefined}
-            label={showDataLabels ? ({ value }) => labelFormatter(value) : undefined}
-            labelLine={showDataLabels}
-          >
-            {rows.map((_, i) => (
-              <Cell key={i} fill={color(i)} />
-            ))}
-          </Pie>
-          {showLegend && (
-            <Legend
-              wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
-              iconType="circle"
-              iconSize={8}
-              formatter={(value) => <span style={{ color: theme.secondaryInk }}>{value}</span>}
-            />
-          )}
-          <Tooltip content={<TooltipCard theme={theme} chart={chart} total={total} />} />
-        </PieChart>
-      </ResponsiveContainer>
+      <PieView
+        chart={chart}
+        rows={rows}
+        isDonut={pieVariant(style) === "donut"}
+        colorAt={color}
+        theme={theme}
+        showLegend={showLegend}
+        showDataLabels={showDataLabels}
+        selected={selected}
+        onPick={onDrillDown ? handlePointClick : undefined}
+      />
     );
   }
 
@@ -451,7 +622,7 @@ export default function ChartRenderer({
     const axes = (
       <>
         {showGridlines && <CartesianGrid vertical={false} stroke={theme.gridline} />}
-        <XAxis dataKey="name" tick={tick} axisLine={{ stroke: theme.baseline }} tickLine={false} minTickGap={24} interval="preserveStartEnd">
+        <XAxis dataKey="name" tick={tick} tickFormatter={formatPeriod} axisLine={{ stroke: theme.baseline }} tickLine={false} minTickGap={24} interval="preserveStartEnd">
           {style.x_axis_label && (
             <Label value={style.x_axis_label} position="insideBottom" offset={-15} fill={theme.mutedInk} fontSize={11} />
           )}
@@ -653,6 +824,7 @@ export default function ChartRenderer({
                 type="category"
                 dataKey="name"
                 tick={tick}
+                tickFormatter={formatPeriod}
                 axisLine={{ stroke: theme.baseline }}
                 tickLine={false}
                 width={96}
@@ -660,7 +832,7 @@ export default function ChartRenderer({
             </>
           ) : (
             <>
-              <XAxis dataKey="name" tick={tick} axisLine={{ stroke: theme.baseline }} tickLine={false} minTickGap={8} interval="preserveStartEnd">
+              <XAxis dataKey="name" tick={tick} tickFormatter={formatPeriod} axisLine={{ stroke: theme.baseline }} tickLine={false} minTickGap={8} interval="preserveStartEnd">
                 {style.x_axis_label && (
                   <Label value={style.x_axis_label} position="insideBottom" offset={-15} fill={theme.mutedInk} fontSize={11} />
                 )}
@@ -691,8 +863,12 @@ export default function ChartRenderer({
             >
               {!isMultiSeries &&
                 displayValues &&
-                rows.map((_, i) => (
-                  <Cell key={i} fill={matchColorRule(displayValues![i], style.color_rules, color(style.colors?.length ? i : 0))} />
+                rows.map((row, i) => (
+                  <Cell
+                    key={i}
+                    fill={matchColorRule(displayValues![i], style.color_rules, color(style.colors?.length ? i : 0))}
+                    fillOpacity={selected && selected !== row.name ? 0.3 : 1}
+                  />
                 ))}
               {showDataLabels && (
                 <LabelList

@@ -99,6 +99,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/dashboards/{dashboard}/share', [DashboardController::class, 'unshare']);
     Route::post('/dashboards/{dashboard}/ai-recommendations', [DashboardController::class, 'aiRecommendations']);
     Route::post('/dashboards/{dashboard}/duplicate', [DashboardController::class, 'duplicate']);
+    Route::get('/dashboards/{dashboard}/slicer-values', [DashboardController::class, 'slicerValues']);
     Route::get('/dashboards/{dashboard}/export/excel', [DashboardExportController::class, 'excel']);
 
     Route::get('/dashboards/{dashboard}/collaborators', [DashboardCollaboratorController::class, 'index']);

@@ -334,7 +334,8 @@ export type DataModel = {
 
 export type ChartType = "bar" | "line" | "pie" | "table" | "kpi" | "scatter" | "heatmap" | "geo_map";
 
-export type ChartFilter = { field: string; operator: string; value: string };
+/** `in` takes a list (multi-select slicer); every other operator takes a single value. */
+export type ChartFilter = { field: string; operator: string; value: string | string[] };
 
 export type BarVariant = "vertical" | "horizontal" | "stacked" | "grouped";
 export type LineVariant = "straight" | "smooth" | "area";
@@ -377,6 +378,8 @@ export type Chart = {
     agg?: string;
     /** Bar only: splits each x_field category into multiple series (grouped/stacked variants). */
     series_field?: string;
+    /** Buckets a date x_field (or a KPI's trend field) by day/month/quarter/year. */
+    x_grain?: "day" | "month" | "quarter" | "year";
     /** Heatmap only: the measured field (y_field is the row dimension there). */
     value_field?: string;
     /** Scatter only: optional field shown in point tooltips. */
@@ -405,6 +408,10 @@ export type Dashboard = {
   share_token?: string | null;
   is_shared?: boolean;
   role?: DashboardRole;
+  /** Presentation settings; slicers are the fields shown in the dashboard's filter panel. */
+  settings?: { slicers?: { field: string }[] } | null;
+  /** When the freshest dataset behind the dashboard last changed. */
+  data_refreshed_at?: string | null;
   created_at?: string;
   updated_at?: string;
 };

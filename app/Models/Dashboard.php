@@ -16,6 +16,7 @@ class Dashboard extends Model
         'organization_id',
         'name',
         'description',
+        'settings',
         'share_token',
         'is_shared',
     ];
@@ -24,6 +25,7 @@ class Dashboard extends Model
     {
         return [
             'is_shared' => 'boolean',
+            'settings' => 'array',
         ];
     }
 

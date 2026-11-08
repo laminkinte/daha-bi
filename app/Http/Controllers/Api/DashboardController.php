@@ -54,7 +54,31 @@ class DashboardController extends Controller
     {
         $this->authorize('view', $dashboard);
 
-        return $dashboard->load('charts.dataset:id,name,columns')->setAttribute('role', $dashboard->roleFor($request->user()));
+        $dashboard->load('charts.dataset:id,name,columns,updated_at');
+
+        return $dashboard
+            ->setAttribute('role', $dashboard->roleFor($request->user()))
+            // When the freshest dataset behind this dashboard last changed — shown as "Data refreshed".
+            ->setAttribute('data_refreshed_at', $dashboard->charts->pluck('dataset.updated_at')->filter()->max());
+    }
+
+    /**
+     * Distinct values of a field across the datasets this dashboard's charts use, for a filter
+     * slicer. Row-level security applies, so restricted viewers only see values they may filter on.
+     */
+    public function slicerValues(Request $request, Dashboard $dashboard, ChartDataService $chartData)
+    {
+        $this->authorize('view', $dashboard);
+
+        $field = $request->validate(['field' => ['required', 'string', 'max:255']])['field'];
+
+        $values = $dashboard->charts()->with('dataset.dataSource')->get()
+            ->pluck('dataset')->filter()->unique('id')
+            ->filter(fn ($dataset) => collect($dataset->columns ?? [])->contains('name', $field))
+            ->flatMap(fn ($dataset) => $chartData->distinctValues($dataset, $field, $request->user()))
+            ->unique()->sort(SORT_NATURAL | SORT_FLAG_CASE)->values()->take(200);
+
+        return response()->json(['field' => $field, 'values' => $values]);
     }
 
     public function update(Request $request, Dashboard $dashboard)
@@ -64,7 +88,18 @@ class DashboardController extends Controller
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:255'],
+            'settings' => ['sometimes', 'nullable', 'array'],
+            'settings.slicers' => ['sometimes', 'array', 'max:8'],
+            'settings.slicers.*.field' => ['required', 'string', 'max:255'],
         ]);
+
+        if (array_key_exists('settings', $validated)) {
+            // Store only known keys, so the column can't become a dumping ground for arbitrary JSON.
+            $validated['settings'] = [
+                'slicers' => collect($validated['settings']['slicers'] ?? [])
+                    ->map(fn ($s) => ['field' => $s['field']])->unique('field')->values()->all(),
+            ];
+        }
 
         $dashboard->update($validated);
 

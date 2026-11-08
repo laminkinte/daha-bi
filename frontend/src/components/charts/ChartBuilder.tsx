@@ -159,14 +159,22 @@ type Fields = {
   trend: string; // kpi trend-over field
   label: string; // scatter point label
   agg: string;
+  grain: "" | "day" | "month" | "quarter" | "year"; // date bucketing for x (or the KPI trend)
 };
 
-const EMPTY_FIELDS: Fields = { x: "", y: "", rows: "", series: "", trend: "", label: "", agg: "sum" };
+const EMPTY_FIELDS: Fields = { x: "", y: "", rows: "", series: "", trend: "", label: "", agg: "sum", grain: "" };
+
+const GRAINS: { value: Fields["grain"]; label: string }[] = [
+  { value: "day", label: "Day" },
+  { value: "month", label: "Month" },
+  { value: "quarter", label: "Quarter" },
+  { value: "year", label: "Year" },
+];
 
 function fieldsFromChart(chart: Chart): Fields {
   const c = chart.config;
   if (chart.type === "heatmap") return { ...EMPTY_FIELDS, x: c.x_field ?? "", rows: c.y_field ?? "", y: c.value_field ?? "", agg: c.agg ?? "sum" };
-  if (chart.type === "kpi") return { ...EMPTY_FIELDS, y: c.y_field ?? "", trend: c.x_field ?? "", agg: c.agg ?? "count" };
+  if (chart.type === "kpi") return { ...EMPTY_FIELDS, y: c.y_field ?? "", trend: c.x_field ?? "", agg: c.agg ?? "count", grain: c.x_grain ?? "" };
   return {
     ...EMPTY_FIELDS,
     x: c.x_field ?? "",
@@ -174,6 +182,7 @@ function fieldsFromChart(chart: Chart): Fields {
     series: c.series_field ?? "",
     label: c.label_field ?? "",
     agg: c.agg ?? "sum",
+    grain: c.x_grain ?? "",
   };
 }
 
@@ -205,6 +214,13 @@ function withDefaults(type: ChartType, f: Fields, dataset: Dataset, kinds: Recor
     if (!next.y || kinds[next.y] !== "number") next.y = numbers[0] ?? "";
     if (!next.y && next.agg !== "count") next.agg = "count";
   }
+  // Dates default to monthly buckets: daily points make trends noisy and "vs previous" meaningless.
+  const dateField = type === "kpi" ? next.trend : next.x;
+  if (dateField && kinds[dateField] === "date" && type !== "heatmap") {
+    if (!next.grain) next.grain = "month";
+  } else {
+    next.grain = "";
+  }
   return next;
 }
 
@@ -223,11 +239,13 @@ function buildConfig(type: ChartType, f: Fields, format: ValueFormat, currency: 
     config.agg = f.agg;
     if (f.agg !== "count" && f.y) config.y_field = f.y;
     if (f.trend) config.x_field = f.trend;
+    if (f.trend && f.grain) config.x_grain = f.grain;
   } else if (type !== "table") {
     if (f.x) config.x_field = f.x;
     config.agg = f.agg;
     if (f.agg !== "count" && f.y) config.y_field = f.y;
     if (type === "bar" && f.series) config.series_field = f.series;
+    if (f.x && f.grain && !(type === "bar" && f.series)) config.x_grain = f.grain;
   }
   if (type !== "table" && format !== "number") {
     config.format = format;
@@ -255,7 +273,7 @@ function missing(type: ChartType, f: Fields): string | null {
   }
 }
 
-const CONFIG_FIELDS = ["x_field", "y_field", "agg", "series_field", "label_field", "value_field", "format", "currency"] as const;
+const CONFIG_FIELDS = ["x_field", "y_field", "agg", "series_field", "label_field", "value_field", "format", "currency", "x_grain"] as const;
 
 export default function ChartBuilder({
   dashboardId,
@@ -344,8 +362,17 @@ export default function ChartBuilder({
   }
 
   function set<K extends keyof Fields>(key: K, value: Fields[K]) {
-    setFields((f) => ({ ...f, [key]: value }));
+    setFields((f) => {
+      const next = { ...f, [key]: value };
+      // Picking a different x/trend field re-decides whether a date grain applies.
+      if ((key === "x" || key === "trend") && dataset && kindsReady) return withDefaults(type, { ...next, grain: "" }, dataset, kinds);
+      return next;
+    });
   }
+
+  const grainField = type === "kpi" ? fields.trend : fields.x;
+  const showGrain =
+    !!grainField && kinds[grainField] === "date" && ["bar", "line", "pie", "kpi"].includes(type) && !(type === "bar" && fields.series);
 
   async function save() {
     if (!datasetId || gap) return;
@@ -537,6 +564,25 @@ export default function ChartBuilder({
                       <div>
                         <label className={FIELD_LABEL}>Split by</label>
                         <FieldSelect value={fields.series} onChange={(v) => set("series", v)} dataset={dataset} kinds={kinds} prefer={["text"]} optional="Nothing — one series" />
+                      </div>
+                    )}
+                    {showGrain && (
+                      <div>
+                        <label className={FIELD_LABEL}>Group dates by</label>
+                        <div className="inline-flex rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-0.5">
+                          {GRAINS.map((g) => (
+                            <button
+                              key={g.value}
+                              type="button"
+                              onClick={() => set("grain", g.value)}
+                              className={`rounded-md px-3 py-1.5 text-xs font-medium ${
+                                fields.grain === g.value ? "bg-[var(--surface-1)] text-[var(--text-primary)] shadow-sm" : "text-[var(--text-secondary)]"
+                              }`}
+                            >
+                              {g.label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     )}
                     {type === "kpi" && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type RefObject } from "react";
 import Link from "next/link";
 import { GridLayout, useContainerWidth, type Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
@@ -8,6 +8,8 @@ import RequireAuth from "@/components/RequireAuth";
 import { useAuth } from "@/lib/auth-context";
 import ChartCard from "@/components/charts/ChartCard";
 import ChartBuilder from "@/components/charts/ChartBuilder";
+import ChartErrorBoundary from "@/components/charts/ChartErrorBoundary";
+import SlicerPanel, { selectionsToFilters, type SlicerSelection } from "@/components/dashboard/SlicerPanel";
 import { Modal, BTN_PRIMARY, BTN_SECONDARY, FIELD_INPUT, FIELD_LABEL } from "@/components/Modal";
 import { Skeleton, CardSkeleton } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
@@ -722,6 +724,16 @@ const GRID_COLS = 12;
 const MIN_ROWS: Partial<Record<Chart["type"], number>> = { kpi: 4, table: 9 };
 const DEFAULT_MIN_ROWS = 8;
 
+/** Same positions and sizes, regardless of array identity or item order. */
+function sameLayout(a: Layout, b: Layout): boolean {
+  if (a.length !== b.length) return false;
+  const byId = new Map(b.map((item) => [item.i, item]));
+  return a.every((item) => {
+    const o = byId.get(item.i);
+    return !!o && o.x === item.x && o.y === item.y && o.w === item.w && o.h === item.h;
+  });
+}
+
 function chartsToLayout(charts: Chart[]): Layout {
   return charts.map((chart, i) => {
     const pos = chart.position;
@@ -754,7 +766,11 @@ function DraggableChartGrid({
   onUpdated,
   onEdit,
   chartsRef,
+  dashboardFilters,
+  refreshKey,
 }: {
+  dashboardFilters: ChartFilter[];
+  refreshKey: number;
   dashboard: Dashboard;
   canEdit: boolean;
   crossFilter: ChartFilter | null;
@@ -816,7 +832,9 @@ function DraggableChartGrid({
             dragConfig={{ enabled: canEdit && !isNarrow, handle: ".chart-drag-handle" }}
             resizeConfig={{ enabled: canEdit && !isNarrow }}
             onLayoutChange={(l) => {
-              if (!isNarrow) setLayout(l);
+              // Only store real changes: echoing an equal-but-new array back into the grid can make
+              // it re-emit onLayoutChange, and that ping-pong is a render loop.
+              if (!isNarrow) setLayout((cur) => (sameLayout(cur, l) ? cur : l));
             }}
             onDragStop={(l) => {
               if (!isNarrow) persist(l);
@@ -827,6 +845,7 @@ function DraggableChartGrid({
           >
             {charts.map((chart) => (
               <div key={String(chart.id)} className="h-full">
+                <ChartErrorBoundary title={chart.title}>
                 <ChartCard
                   chart={chart}
                   onDeleted={onDeleted}
@@ -835,7 +854,10 @@ function DraggableChartGrid({
                   crossFilter={crossFilter}
                   onDrillDown={onDrillDown}
                   onEdit={onEdit}
+                  dashboardFilters={dashboardFilters}
+                  refreshKey={refreshKey}
                 />
+                </ChartErrorBoundary>
               </div>
             ))}
           </GridLayout>
@@ -845,6 +867,20 @@ function DraggableChartGrid({
   );
 }
 
+function timeAgo(iso: string) {
+  const minutes = Math.max(0, (Date.now() - new Date(iso).getTime()) / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${Math.floor(minutes)} min ago`;
+  const hours = minutes / 60;
+  if (hours < 24) return `${Math.floor(hours)} h ago`;
+  const days = hours / 24;
+  if (days < 30) return `${Math.floor(days)} d ago`;
+  return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+
+const ICON_BTN =
+  "flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-1)] text-[var(--text-secondary)] shadow-sm transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]";
+
 function DashboardDetail({ dashboardId }: { dashboardId: number }) {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
@@ -852,7 +888,58 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [builder, setBuilder] = useState<null | { chart?: Chart }>(null);
   const [askAi, setAskAi] = useState(false);
+  const [selections, setSelections] = useState<Record<string, SlicerSelection>>({});
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [slicerError, setSlicerError] = useState<string | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
   const chartsRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  const dashboardFilters = useMemo(() => selectionsToFilters(selections), [selections]);
+
+  // Every field any chart's dataset has, offered as a slicer.
+  const slicerColumns = useMemo(() => {
+    const seen = new Map<string, { name: string; label: string }>();
+    for (const chart of dashboard?.charts ?? []) {
+      for (const c of chart.dataset?.columns ?? []) {
+        if (seen.has(c.name)) continue;
+        // CSV columns arrive labelled with their raw name ("payment_method"); show "Payment method".
+        const pretty = c.label === c.name ? c.name.replace(/_/g, " ").replace(/^./, (ch) => ch.toUpperCase()) : c.label;
+        seen.set(c.name, { name: c.name, label: pretty });
+      }
+    }
+    return [...seen.values()];
+  }, [dashboard?.charts]);
+
+  useEffect(() => {
+    const onChange = () => setFullscreen(document.fullscreenElement === rootRef.current && !!rootRef.current);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  function toggleFullscreen() {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else rootRef.current?.requestFullscreen().catch(() => {});
+  }
+
+  async function saveSlicers(fields: string[]) {
+    if (!dashboard) return;
+    const previous = dashboard.settings;
+    setSlicerError(null);
+    setDashboard({ ...dashboard, settings: { ...previous, slicers: fields.map((field) => ({ field })) } });
+    setSelections((sel) => Object.fromEntries(Object.entries(sel).filter(([f]) => fields.includes(f))));
+    try {
+      await api.put(`/dashboards/${dashboard.id}`, { settings: { slicers: fields.map((field) => ({ field })) } });
+    } catch (err) {
+      setDashboard((d) => (d ? { ...d, settings: previous } : d));
+      setSlicerError(err instanceof ApiError ? err.message : "Couldn't save the filter panel.");
+    }
+  }
+
+  function pick(field: string, value: string) {
+    // Clicking the selected bar/slice again clears it, like Power BI.
+    setCrossFilter((cur) => (cur && cur.field === field && cur.value === value ? null : { field, operator: "=", value }));
+  }
 
   function load() {
     api
@@ -914,8 +1001,11 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
   const role = dashboard.role ?? "owner";
   const canEdit = role === "owner" || role === "editor";
 
+  const slicerFields = (dashboard.settings?.slicers ?? []).map((s) => s.field);
+  const showSlicers = !!dashboard.charts?.length && (slicerFields.length > 0 || canEdit);
+
   return (
-    <div className="mx-auto max-w-[1600px] px-4 py-5 sm:px-6 sm:py-6">
+    <div ref={rootRef} className={`mx-auto max-w-[1600px] px-4 py-5 sm:px-6 sm:py-6 ${fullscreen ? "h-full overflow-y-auto bg-[var(--page-plane)]" : ""}`}>
       <nav className="flex items-center gap-1.5 text-[13px] text-[var(--text-muted)]">
         <Link href="/dashboards" className="hover:text-[var(--accent)]">
           Dashboards
@@ -938,12 +1028,47 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
               </span>
             )}
           </div>
-          <p className="mt-1 line-clamp-2 max-w-3xl text-sm text-[var(--text-muted)]">
-            {dashboard.description ? `${dashboard.description} · ` : ""}
-            {dashboard.charts?.length ?? 0} chart{dashboard.charts?.length === 1 ? "" : "s"}
+          {dashboard.description && <p className="mt-1 line-clamp-2 max-w-3xl text-sm text-[var(--text-secondary)]">{dashboard.description}</p>}
+          <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--text-muted)]">
+            <span>
+              {dashboard.charts?.length ?? 0} chart{dashboard.charts?.length === 1 ? "" : "s"}
+            </span>
+            {dashboard.data_refreshed_at && (
+              <span className="flex items-center gap-1.5" title={new Date(dashboard.data_refreshed_at).toLocaleString()}>
+                <span className="h-1.5 w-1.5 rounded-full bg-[var(--status-good)]" />
+                Data refreshed {timeAgo(dashboard.data_refreshed_at)}
+              </span>
+            )}
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {dashboard.charts && dashboard.charts.length > 0 && (
+            <>
+              <button
+                onClick={() => {
+                  setRefreshKey((k) => k + 1);
+                  load();
+                }}
+                className={ICON_BTN}
+                title="Refresh data"
+                aria-label="Refresh data"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" />
+                </svg>
+              </button>
+              <button
+                onClick={toggleFullscreen}
+                className={ICON_BTN}
+                title={fullscreen ? "Exit full screen" : "Full screen"}
+                aria-label={fullscreen ? "Exit full screen" : "Full screen"}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  {fullscreen ? <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" /> : <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />}
+                </svg>
+              </button>
+            </>
+          )}
           {dashboard.charts && dashboard.charts.length > 0 && <ExportButton dashboard={dashboard} chartsRef={chartsRef} />}
           {dashboard.charts && dashboard.charts.length > 0 && <AiRecommendationsPanel dashboard={dashboard} />}
           {canEdit && <ReportSchedulesPanel dashboard={dashboard} />}
@@ -984,29 +1109,62 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
       )}
 
       {crossFilter && (
-        <div className="mt-6 flex items-center gap-2 rounded-md bg-[var(--accent)]/10 px-3 py-2 text-sm text-[var(--accent)]">
-          Filtering dashboard where <strong>{crossFilter.field}</strong> = {crossFilter.value}
+        <div className="mt-5 flex items-center gap-2 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-3 py-2 text-sm text-[var(--text-primary)]">
+          <span className="text-[var(--accent)]">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+            </svg>
+          </span>
+          <span>
+            Selected <strong>{slicerColumns.find((c) => c.name === crossFilter.field)?.label ?? crossFilter.field}</strong> ={" "}
+            <strong>{String(crossFilter.value)}</strong>
+            <span className="hidden text-[var(--text-muted)] sm:inline"> — other charts are filtered to it. Click it again to clear.</span>
+          </span>
           <button
             onClick={() => setCrossFilter(null)}
-            className="ml-auto rounded-md border border-[var(--accent)]/30 px-2 py-0.5 text-xs hover:bg-[var(--accent)]/10"
+            className="ml-auto shrink-0 rounded-md px-2 py-0.5 text-xs font-medium text-[var(--accent)] hover:bg-[var(--accent)]/10"
           >
-            Clear
+            Clear selection
           </button>
         </div>
       )}
+      {slicerError && <p className="mt-3 text-sm text-[var(--status-critical)]">{slicerError}</p>}
 
       {dashboard.charts && dashboard.charts.length > 0 ? (
-        <div className="mt-6">
+        <div className="mt-6 flex flex-col gap-4 xl:flex-row">
+          {showSlicers && (
+            <SlicerPanel
+              dashboardId={dashboard.id}
+              slicers={slicerFields}
+              columns={slicerColumns}
+              selections={selections}
+              canEdit={canEdit}
+              onSelect={(field, sel) =>
+                setSelections((cur) => {
+                  const next = { ...cur };
+                  if (sel) next[field] = sel;
+                  else delete next[field];
+                  return next;
+                })
+              }
+              onSlicersChange={saveSlicers}
+              onReset={() => setSelections({})}
+            />
+          )}
+          <div className="min-w-0 flex-1">
           <DraggableChartGrid
             dashboard={dashboard}
             canEdit={canEdit}
             crossFilter={crossFilter}
-            onDrillDown={(field, val) => setCrossFilter({ field, operator: "=", value: val })}
+            dashboardFilters={dashboardFilters}
+            refreshKey={refreshKey}
+            onDrillDown={pick}
             onDeleted={load}
             onUpdated={load}
             onEdit={(chart) => setBuilder({ chart })}
             chartsRef={chartsRef}
           />
+          </div>
         </div>
       ) : (
         <div className="mt-6 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-1)] px-6 py-12 text-center">

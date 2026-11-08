@@ -972,6 +972,8 @@ export default function ChartCard({
   crossFilter,
   onDrillDown,
   onEdit,
+  dashboardFilters,
+  refreshKey = 0,
 }: {
   chart: Chart;
   onDeleted?: () => void;
@@ -983,6 +985,10 @@ export default function ChartCard({
   onDrillDown?: (field: string, value: string) => void;
   /** Opens the chart builder on this chart; the "Edit chart" menu item only shows when given. */
   onEdit?: (chart: Chart) => void;
+  /** Dashboard slicer filters; only those on fields this chart's dataset has are applied. */
+  dashboardFilters?: ChartFilter[];
+  /** Bump to re-fetch data (dashboard "Refresh"). */
+  refreshKey?: number;
 }) {
   const [data, setData] = useState<ChartData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -1023,14 +1029,27 @@ export default function ChartCard({
 
   const insight = useMemo(() => (data ? computeInsight(chart, data) : null), [chart, data]);
 
-  const crossFilterApplies =
-    !!crossFilter && !!chart.dataset?.columns.some((c) => c.name === crossFilter.field);
+  const hasField = (field: string) => !!chart.dataset?.columns.some((c) => c.name === field);
+  // A chart grouped by the clicked field highlights the pick instead of filtering itself down to
+  // one bar (the Power BI behaviour); every other chart with that field is filtered by it.
+  const selectedValue =
+    crossFilter && crossFilter.field === chart.config.x_field && typeof crossFilter.value === "string" ? crossFilter.value : undefined;
+  const crossFilterApplies = !!crossFilter && !selectedValue && hasField(crossFilter.field);
+  const slicerFilters = useMemo(
+    () => (dashboardFilters ?? []).filter((f) => chart.dataset?.columns.some((c) => c.name === f.field)),
+    [dashboardFilters, chart.dataset],
+  );
 
   const effectiveFilters = useMemo(() => {
-    const filters = [...manualFilters];
+    const filters = [...manualFilters, ...slicerFilters];
     if (crossFilterApplies && crossFilter) filters.push(crossFilter);
     return filters;
-  }, [manualFilters, crossFilterApplies, crossFilter]);
+  }, [manualFilters, slicerFilters, crossFilterApplies, crossFilter]);
+
+  // Line ↔ bar quick switch for single-series trend/breakdown charts; view-only, never saved.
+  const canSwitchView = chart.type === "line" && !!chart.config.x_field;
+  const [viewAs, setViewAs] = useState<"line" | "bar" | null>(null);
+  const shownChart = viewAs && viewAs !== chart.type ? { ...chart, type: viewAs } : chart;
 
   useEffect(() => {
     let cancelled = false;
@@ -1051,7 +1070,7 @@ export default function ChartCard({
     };
     // Re-fetch when the chart's definition changes too (the builder can edit fields/type in place).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chart.id, chart.type, JSON.stringify(chart.config), effectiveFilters]);
+  }, [chart.id, chart.type, JSON.stringify(chart.config), JSON.stringify(effectiveFilters), refreshKey]);
 
   function applyFilter() {
     if (!field || !value) return;
@@ -1123,13 +1142,43 @@ export default function ChartCard({
             <h3 className="truncate text-[15px] font-semibold leading-snug tracking-tight text-[var(--text-primary)]" title={chart.title}>
               {chart.title}
             </h3>
-            <p className="truncate text-xs text-[var(--text-muted)]" title={describeChart(chart)}>
-              {describeChart(chart)}
-            </p>
+            {chart.type !== "kpi" && (
+              <p className="truncate text-xs text-[var(--text-muted)]" title={describeChart(chart)}>
+                {describeChart(chart)}
+              </p>
+            )}
           </div>
         </div>
 
         <div ref={toolsRef} className="relative -mr-2 -mt-0.5 flex shrink-0 items-center">
+          {canSwitchView && (
+            <div className="mr-1 hidden items-center rounded-lg border border-[var(--border)] p-0.5 sm:flex" role="group" aria-label="Show as">
+              {(["line", "bar"] as const).map((v) => {
+                const on = (viewAs ?? chart.type) === v;
+                return (
+                  <button
+                    key={v}
+                    onClick={() => setViewAs(v === chart.type ? null : v)}
+                    aria-pressed={on}
+                    title={v === "line" ? "Show as line" : "Show as bars"}
+                    className={`flex h-6 w-7 items-center justify-center rounded-md ${on ? "bg-[var(--accent-soft)] text-[var(--accent)]" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
+                  >
+                    {v === "line" ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 17l6-6 4 4 8-8" />
+                      </svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="4" y="11" width="4" height="9" rx="1" />
+                        <rect x="10" y="5" width="4" height="15" rx="1" />
+                        <rect x="16" y="14" width="4" height="6" rx="1" />
+                      </svg>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {canFilter && (
             <button
               onClick={() => setShowFilter((s) => !s)}
@@ -1274,8 +1323,9 @@ export default function ChartCard({
         {!error && !data && <Skeleton className="h-full min-h-24 w-full" />}
         {data && (
           <ChartRenderer
-            chart={chart}
+            chart={shownChart}
             data={data}
+            selected={selectedValue}
             onDrillDown={canDrillDown ? (val) => onDrillDown!(chart.config.x_field!, val) : undefined}
           />
         )}

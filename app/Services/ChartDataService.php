@@ -12,7 +12,10 @@ use InvalidArgumentException;
 
 class ChartDataService
 {
-    protected const ALLOWED_OPERATORS = ['=', '!=', '>', '<', '>=', '<=', 'contains'];
+    protected const ALLOWED_OPERATORS = ['=', '!=', '>', '<', '>=', '<=', 'contains', 'in'];
+
+    /** Most values an 'in' filter (a multi-select slicer) may carry. */
+    protected const MAX_IN_VALUES = 200;
 
     protected const ALLOWED_AGGREGATIONS = ['sum', 'avg', 'count', 'count_distinct', 'min', 'max'];
 
@@ -210,7 +213,7 @@ class ChartDataService
             $trendQuery = $this->baseQuery($dataset, $user);
             $this->applyFilters($trendQuery, $columnNames, $filters);
 
-            $result['trend'] = $this->seriesFor($trendQuery, $trendField, $agg, $yField, $this->rowLimit(30, $user));
+            $result['trend'] = $this->seriesFor($trendQuery, $trendField, $agg, $yField, $this->rowLimit(30, $user), $config['x_grain'] ?? null, true);
         }
 
         return $result;
@@ -234,7 +237,7 @@ class ChartDataService
             return $this->multiSeriesData($query, $columnNames, $xField, $this->validateField($columnNames, $seriesField), $agg, $yField, $user);
         }
 
-        $result = $this->seriesFor($query, $xField, $agg, $yField, $this->rowLimit(200, $user));
+        $result = $this->seriesFor($query, $xField, $agg, $yField, $this->rowLimit(200, $user), $config['x_grain'] ?? null);
 
         // Predictive forecasting: project the next N periods via simple linear regression over
         // the existing series. Capped at 24 and only offered for a single series — a
@@ -279,17 +282,29 @@ class ChartDataService
      * Shared single-series (label, value) grouping used by both the grouped chart types and
      * the KPI sparkline trend.
      */
-    protected function seriesFor(Builder $query, string $xField, string $agg, ?string $yField, int $limit): array
+    /** Date buckets a chart can group an ISO date/datetime field into (config x_grain). */
+    protected const GRAINS = ['day', 'month', 'quarter', 'year'];
+
+    /**
+     * Groups by $xField, optionally bucketed by a date grain. $latest takes the newest $limit
+     * groups instead of the oldest (still returned oldest→newest) — what a KPI trend needs, since
+     * its "vs previous period" compares the last two points.
+     */
+    protected function seriesFor(Builder $query, string $xField, string $agg, ?string $yField, int $limit, ?string $grain = null, bool $latest = false): array
     {
-        $labelExpr = "JSON_UNQUOTE(JSON_EXTRACT(data, '$.\"{$xField}\"'))";
+        $labelExpr = $this->grainExpression("JSON_UNQUOTE(JSON_EXTRACT(data, '$.\"{$xField}\"'))", $grain);
         $valueExpr = $this->aggExpression($agg, $yField);
 
         $rows = $query
             ->selectRaw("{$labelExpr} as label, {$valueExpr} as value")
             ->groupBy('label')
-            ->orderBy('label')
+            ->orderBy('label', $latest ? 'desc' : 'asc')
             ->limit($limit)
             ->get();
+
+        if ($latest) {
+            $rows = $rows->reverse()->values();
+        }
 
         $labels = $rows->pluck('label')->all();
         $values = $rows->pluck('value')->map(fn ($v) => is_numeric($v) ? (float) $v : 0)->all();
@@ -300,6 +315,18 @@ class ChartDataService
         }
 
         return ['labels' => $labels, 'values' => $values];
+    }
+
+    /** Buckets an ISO date string ("2025-03-14…") by grain; unknown grains leave it as is. */
+    protected function grainExpression(string $expr, ?string $grain): string
+    {
+        return match (in_array($grain, self::GRAINS, true) ? $grain : null) {
+            'day' => "LEFT({$expr}, 10)",
+            'month' => "LEFT({$expr}, 7)",
+            'quarter' => "CONCAT(LEFT({$expr}, 4), '-Q', CEIL(SUBSTRING({$expr}, 6, 2) / 3))",
+            'year' => "LEFT({$expr}, 4)",
+            default => $expr,
+        };
     }
 
     protected const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
@@ -450,12 +477,40 @@ class ChartDataService
 
             $extract = "JSON_UNQUOTE(JSON_EXTRACT(data, '$.\"{$field}\"'))";
 
-            if ($operator === 'contains') {
+            if ($operator === 'in') {
+                // Multi-select slicer: an empty selection means "all", so it adds no condition.
+                $values = array_slice(array_values(array_filter((array) $value, 'is_scalar')), 0, self::MAX_IN_VALUES);
+                if ($values !== []) {
+                    $query->whereRaw("{$extract} IN (".implode(',', array_fill(0, count($values), '?')).')', array_map('strval', $values));
+                }
+            } elseif ($operator === 'contains') {
                 $query->whereRaw("{$extract} LIKE ?", ['%'.$value.'%']);
             } else {
                 $query->whereRaw("{$extract} {$operator} ?", [$value]);
             }
         }
+    }
+
+    /**
+     * Distinct values of one column, for filter slicers. Goes through baseQuery() so a viewer
+     * restricted by row-level security only ever sees the values they're allowed to filter on.
+     *
+     * @return array<int, string>
+     */
+    public function distinctValues(Dataset $dataset, string $field, ?User $user = null, int $limit = 200): array
+    {
+        $columnNames = collect($dataset->columns ?? [])->pluck('name')->all();
+        $field = $this->validateField($columnNames, $field);
+        $extract = "JSON_UNQUOTE(JSON_EXTRACT(data, '$.\"{$field}\"'))";
+
+        return $this->baseQuery($dataset, $user)
+            ->selectRaw("DISTINCT {$extract} as v")
+            ->whereRaw("{$extract} IS NOT NULL AND {$extract} <> '' AND {$extract} <> 'null'")
+            ->orderBy('v')
+            ->limit($limit)
+            ->pluck('v')
+            ->map(fn ($v) => (string) $v)
+            ->all();
     }
 
     protected function aggExpression(string $agg, ?string $field): string

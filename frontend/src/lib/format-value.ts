@@ -85,6 +85,17 @@ export function formatValue(
   return value.toLocaleString();
 }
 
+const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** Makes ISO period labels readable: "2025-03" → "Mar 2025", "2025-03-14" → "14 Mar 2025". Others pass through. */
+export function formatPeriod(label: string): string {
+  const m = /^(\d{4})-(\d{2})(?:-(\d{2}))?$/.exec(String(label));
+  if (!m) return String(label);
+  const month = MONTH_SHORT[Number(m[2]) - 1];
+  if (!month) return String(label);
+  return m[3] ? `${Number(m[3])} ${month} ${m[1]}` : `${month} ${m[1]}`;
+}
+
 /**
  * Short form for axis ticks and tight spaces: 15,725 → "15.7K", 2,400,000 → "2.4M". Keeps the
  * currency symbol / percent sign so an axis still says what it measures.
