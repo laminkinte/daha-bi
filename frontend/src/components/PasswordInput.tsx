@@ -53,7 +53,7 @@ export default function PasswordInput({
         onChange={onChange}
         className={
           className ??
-          "w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 pr-10 text-sm outline-none focus:border-[var(--accent)]"
+          "w-full rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3.5 py-2.5 pr-10 text-sm text-[var(--text-primary)] outline-none"
         }
       />
       <button

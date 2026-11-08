@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { AuthShell, AUTH_INPUT } from "@/components/AuthShell";
 import { api, ApiError } from "@/lib/api";
 
 export default function ForgotPasswordPage() {
@@ -25,34 +26,23 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-sm rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-8">
-        <div className="mb-6 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent)] text-sm font-bold text-white">
-            D
-          </div>
-          <span className="font-semibold text-[var(--text-primary)]">Daha BI</span>
-        </div>
-        <h1 className="text-xl font-semibold">Reset your password</h1>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">
-          Enter your email and we&apos;ll send you a link to reset it.
-        </p>
-
+    <AuthShell title="Reset your password" subtitle="Enter your email and we'll send you a link to reset it.">
+      <div>
         {sent ? (
-          <p className="mt-6 rounded-md bg-[var(--status-good)]/10 p-3 text-sm text-[var(--status-good)]">
+          <p className="rounded-lg bg-[var(--status-good)]/10 p-3 text-sm text-[var(--status-good)]">
             If an account exists for that email, a reset link has been sent.
           </p>
         ) : (
-          <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-4">
+          <form onSubmit={onSubmit} className="flex flex-col gap-4">
             <div>
-              <label className="mb-1 block text-sm text-[var(--text-secondary)]">Email</label>
+              <label className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">Email</label>
               <input
                 type="email"
                 autoComplete="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
+                className={AUTH_INPUT}
               />
             </div>
 
@@ -61,19 +51,19 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="mt-2 rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+              className="mt-2 rounded-lg bg-[var(--accent)] px-3 py-2.5 text-sm font-medium text-white shadow-sm disabled:opacity-60"
             >
               {submitting ? "Sending..." : "Send reset link"}
             </button>
           </form>
         )}
 
-        <p className="mt-6 text-center text-sm text-[var(--text-muted)]">
-          <Link href="/login" className="text-[var(--accent)]">
+        <p className="mt-8 text-center text-sm text-[var(--text-muted)]">
+          <Link href="/login" className="font-medium text-[var(--accent)] hover:underline">
             Back to log in
           </Link>
         </p>
       </div>
-    </div>
+    </AuthShell>
   );
 }

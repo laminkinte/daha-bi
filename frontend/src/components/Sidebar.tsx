@@ -8,6 +8,7 @@ import { useTheme } from "@/lib/theme-context";
 import { api, type Alert, type Organization } from "@/lib/api";
 import AdminShell from "./AdminShell";
 import LanguageSwitcher from "./LanguageSwitcher";
+import { BrandMark } from "./BrandMark";
 import { useEffect, useState, type ReactNode } from "react";
 
 function DashboardIcon() {
@@ -210,19 +211,6 @@ const NAV_SECTIONS = [
     ],
   },
 ] as const;
-
-function BrandMark({ size = 32 }: { size?: number }) {
-  return (
-    <div
-      className="flex shrink-0 items-center justify-center rounded-[10px] text-white shadow-sm"
-      style={{ width: size, height: size, background: "var(--accent-glow)" }}
-    >
-      <svg width={size * 0.56} height={size * 0.56} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-        <path d="M5 19V11M12 19V5M19 19v-5" />
-      </svg>
-    </div>
-  );
-}
 
 function initials(name?: string | null, email?: string | null) {
   const source = (name || email || "?").trim();

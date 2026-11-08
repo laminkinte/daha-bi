@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api";
 import PasswordInput from "@/components/PasswordInput";
+import { AuthShell, AUTH_INPUT } from "@/components/AuthShell";
 
 export default function LoginPage() {
   const t = useTranslations("auth.login");
@@ -36,38 +37,27 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-sm rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-8">
-        <div className="mb-6 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent)] text-sm font-bold text-white">
-            D
-          </div>
-          <span className="font-semibold text-[var(--text-primary)]">{t("brand")}</span>
-        </div>
-        <h1 className="text-xl font-semibold">{t("title")}</h1>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">
-          {t("demoNotice")}
-        </p>
-
-        <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-4">
+    <AuthShell title={t("title")} subtitle={t("demoNotice")}>
+        <form onSubmit={onSubmit} className="flex flex-col gap-4">
           <div>
-            <label className="mb-1 block text-sm text-[var(--text-secondary)]">
+            <label htmlFor="login-email" className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">
               {t("email")}
             </label>
             <input
+              id="login-email"
               type="email"
               name="email"
               autoComplete="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
+              className={AUTH_INPUT}
             />
           </div>
           <div>
-            <div className="mb-1 flex items-center justify-between">
-              <label className="block text-sm text-[var(--text-secondary)]">{t("password")}</label>
-              <Link href="/forgot-password" className="text-xs text-[var(--accent)]">
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="block text-sm font-medium text-[var(--text-secondary)]">{t("password")}</label>
+              <Link href="/forgot-password" className="text-xs font-medium text-[var(--accent)] hover:underline">
                 {t("forgotPassword")}
               </Link>
             </div>
@@ -81,25 +71,24 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <p className="text-sm text-[var(--status-critical)]">{error}</p>
+            <p className="rounded-lg bg-[var(--status-critical)]/10 px-3 py-2 text-sm text-[var(--status-critical)]">{error}</p>
           )}
 
           <button
             type="submit"
             disabled={submitting}
-            className="mt-2 rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+            className="mt-2 rounded-lg bg-[var(--accent)] px-3 py-2.5 text-sm font-medium text-white shadow-sm disabled:opacity-60"
           >
             {submitting ? t("submitting") : t("submit")}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-[var(--text-muted)]">
+        <p className="mt-8 text-center text-sm text-[var(--text-muted)]">
           {t("noAccount")}{" "}
-          <Link href="/register" className="text-[var(--accent)]">
+          <Link href="/register" className="font-medium text-[var(--accent)] hover:underline">
             {t("register")}
           </Link>
         </p>
-      </div>
-    </div>
+    </AuthShell>
   );
 }

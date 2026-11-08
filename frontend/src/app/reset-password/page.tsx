@@ -2,6 +2,7 @@
 
 import { Suspense, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { AuthShell, AUTH_INPUT } from "@/components/AuthShell";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
 
@@ -38,18 +39,10 @@ function ResetPasswordForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-sm rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-8">
-        <div className="mb-6 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent)] text-sm font-bold text-white">
-            D
-          </div>
-          <span className="font-semibold text-[var(--text-primary)]">Daha BI</span>
-        </div>
-        <h1 className="text-xl font-semibold">Set a new password</h1>
-
+    <AuthShell title="Set a new password">
+      <div>
         {!token || !email ? (
-          <p className="mt-4 text-sm text-[var(--status-critical)]">
+          <p className="text-sm text-[var(--status-critical)]">
             This reset link is missing or invalid. Request a new one from the{" "}
             <Link href="/forgot-password" className="text-[var(--accent)]">
               forgot password
@@ -57,13 +50,13 @@ function ResetPasswordForm() {
             page.
           </p>
         ) : done ? (
-          <p className="mt-6 rounded-md bg-[var(--status-good)]/10 p-3 text-sm text-[var(--status-good)]">
+          <p className="rounded-lg bg-[var(--status-good)]/10 p-3 text-sm text-[var(--status-good)]">
             Password reset. Redirecting you to log in...
           </p>
         ) : (
-          <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-4">
+          <form onSubmit={onSubmit} className="flex flex-col gap-4">
             <div>
-              <label className="mb-1 block text-sm text-[var(--text-secondary)]">New password</label>
+              <label className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">New password</label>
               <input
                 type="password"
                 autoComplete="new-password"
@@ -71,11 +64,11 @@ function ResetPasswordForm() {
                 minLength={8}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
+                className={AUTH_INPUT}
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm text-[var(--text-secondary)]">Confirm new password</label>
+              <label className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">Confirm new password</label>
               <input
                 type="password"
                 autoComplete="new-password"
@@ -83,7 +76,7 @@ function ResetPasswordForm() {
                 minLength={8}
                 value={passwordConfirmation}
                 onChange={(e) => setPasswordConfirmation(e.target.value)}
-                className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
+                className={AUTH_INPUT}
               />
             </div>
 
@@ -92,14 +85,14 @@ function ResetPasswordForm() {
             <button
               type="submit"
               disabled={submitting}
-              className="mt-2 rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+              className="mt-2 rounded-lg bg-[var(--accent)] px-3 py-2.5 text-sm font-medium text-white shadow-sm disabled:opacity-60"
             >
               {submitting ? "Resetting..." : "Reset password"}
             </button>
           </form>
         )}
       </div>
-    </div>
+    </AuthShell>
   );
 }
 

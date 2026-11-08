@@ -6,8 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api";
-import PublicHeader from "@/components/PublicHeader";
-import Footer from "@/components/Footer";
+import { AuthShell, AUTH_INPUT } from "@/components/AuthShell";
 import PasswordInput from "@/components/PasswordInput";
 
 function CheckIcon() {
@@ -73,21 +72,17 @@ function RegisterForm() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--page-plane)]">
-      <PublicHeader />
-      <div className="flex flex-1 items-center justify-center px-4 py-12">
-        <div className="w-full max-w-sm rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-8 shadow-sm">
-          <h1 className="text-xl font-semibold text-[var(--text-primary)]">{t("title")}</h1>
-          <p className="mt-1 text-sm text-[var(--text-muted)]">{t("subtitle")}</p>
+    <AuthShell title={t("title")} subtitle={t("subtitle")}>
+        <div>
           {referralCode && (
-            <p className="mt-3 rounded-md bg-[var(--status-good)]/10 px-3 py-2 text-sm text-[var(--status-good)]">
+            <p className="mb-5 rounded-lg bg-[var(--status-good)]/10 px-3 py-2 text-sm text-[var(--status-good)]">
               {t("referredNotice")}
             </p>
           )}
 
-          <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-4">
+          <form onSubmit={onSubmit} className="flex flex-col gap-4">
             <div>
-              <label className="mb-1 block text-sm text-[var(--text-secondary)]">
+              <label className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">
                 {t("name")}
               </label>
               <input
@@ -96,11 +91,11 @@ function RegisterForm() {
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
+                className={AUTH_INPUT}
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm text-[var(--text-secondary)]">
+              <label className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">
                 {t("email")}
               </label>
               <input
@@ -110,11 +105,11 @@ function RegisterForm() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
+                className={AUTH_INPUT}
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm text-[var(--text-secondary)]">
+              <label className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">
                 {t("password")}
               </label>
               <PasswordInput
@@ -180,22 +175,20 @@ function RegisterForm() {
             <button
               type="submit"
               disabled={submitting || !agreed}
-              className="mt-2 rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+              className="mt-2 rounded-lg bg-[var(--accent)] px-3 py-2.5 text-sm font-medium text-white shadow-sm disabled:opacity-60"
             >
               {submitting ? t("submitting") : t("submit")}
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-[var(--text-muted)]">
+          <p className="mt-8 text-center text-sm text-[var(--text-muted)]">
             {t("haveAccount")}{" "}
-            <Link href="/login" className="text-[var(--accent)]">
+            <Link href="/login" className="font-medium text-[var(--accent)] hover:underline">
               {t("login")}
             </Link>
           </p>
         </div>
-      </div>
-      <Footer />
-    </div>
+    </AuthShell>
   );
 }
 

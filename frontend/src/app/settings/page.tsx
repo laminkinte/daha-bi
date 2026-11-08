@@ -163,8 +163,8 @@ function OrganizationSection() {
   ];
 
   return (
-    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-5">
-      <h2 className="font-medium text-[var(--text-primary)]">{t("organization")}</h2>
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-5 sm:p-6">
+      <h2 className="-mx-5 -mt-5 mb-4 border-b border-[var(--border)] px-5 py-3.5 text-[15px] font-semibold tracking-tight text-[var(--text-primary)] sm:-mx-6 sm:-mt-6 sm:px-6">{t("organization")}</h2>
 
       <div className="mt-3 flex items-center gap-2">
         {canManage ? (
@@ -294,8 +294,8 @@ function ActivitySection() {
   if (!canView) return null;
 
   return (
-    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-5">
-      <h2 className="font-medium text-[var(--text-primary)]">{t("activity")}</h2>
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-5 sm:p-6">
+      <h2 className="-mx-5 -mt-5 mb-4 border-b border-[var(--border)] px-5 py-3.5 text-[15px] font-semibold tracking-tight text-[var(--text-primary)] sm:-mx-6 sm:-mt-6 sm:px-6">{t("activity")}</h2>
       <p className="mt-1 text-sm text-[var(--text-muted)]">
         Who did what to your organization&apos;s members, data sources, and dashboards.
       </p>
@@ -368,8 +368,8 @@ function PlanSection() {
   }
 
   return (
-    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-5">
-      <h2 className="font-medium text-[var(--text-primary)]">{t("plan")}</h2>
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-5 sm:p-6">
+      <h2 className="-mx-5 -mt-5 mb-4 border-b border-[var(--border)] px-5 py-3.5 text-[15px] font-semibold tracking-tight text-[var(--text-primary)] sm:-mx-6 sm:-mt-6 sm:px-6">{t("plan")}</h2>
       <div className="mt-3 flex items-center gap-2">
         <span className="text-lg font-semibold text-[var(--text-primary)]">{PLAN_LABELS[plan]}</span>
         {org.plan_status !== "active" && (
@@ -473,8 +473,8 @@ function ProfileForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-5">
-      <h2 className="font-medium text-[var(--text-primary)]">{t("profile")}</h2>
+    <form onSubmit={onSubmit} className="rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-5 sm:p-6">
+      <h2 className="-mx-5 -mt-5 mb-4 border-b border-[var(--border)] px-5 py-3.5 text-[15px] font-semibold tracking-tight text-[var(--text-primary)] sm:-mx-6 sm:-mt-6 sm:px-6">{t("profile")}</h2>
       <div className="mt-4 flex flex-col gap-3 sm:max-w-sm">
         <div>
           <label className="mb-1 block text-sm text-[var(--text-secondary)]">Name</label>
@@ -558,8 +558,8 @@ function PasswordForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-5">
-      <h2 className="font-medium text-[var(--text-primary)]">{t("password")}</h2>
+    <form onSubmit={onSubmit} className="rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-5 sm:p-6">
+      <h2 className="-mx-5 -mt-5 mb-4 border-b border-[var(--border)] px-5 py-3.5 text-[15px] font-semibold tracking-tight text-[var(--text-primary)] sm:-mx-6 sm:-mt-6 sm:px-6">{t("password")}</h2>
       <div className="mt-4 flex flex-col gap-3 sm:max-w-sm">
         <div>
           <label className="mb-1 block text-sm text-[var(--text-secondary)]">Current password</label>
