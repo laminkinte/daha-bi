@@ -24,7 +24,7 @@ import {
   YAxis,
 } from "recharts";
 import { useChartTheme, foldToOther } from "@/lib/chart-theme";
-import { formatValue } from "@/lib/format-value";
+import { formatCompact, formatValue } from "@/lib/format-value";
 import type {
   BarVariant,
   Chart,
@@ -66,7 +66,9 @@ function lineVariant(style: ChartStyle): LineVariant {
 
 function pieVariant(style: ChartStyle): PieVariant {
   if (style.variant) return style.variant as PieVariant;
-  return style.donut ? "donut" : "pie";
+  // Donut is the default: the hole leaves room for the eye to compare arc lengths. Only an explicit
+  // donut: false (or variant "pie") keeps a full pie.
+  return style.donut === false ? "pie" : "donut";
 }
 
 function kpiVariant(style: ChartStyle): KpiVariant {
@@ -81,6 +83,16 @@ function matchColorRule(value: number, rules: ColorRule[] | undefined, fallback:
   }
   return fallback;
 }
+
+/** Rounds an axis maximum up to a clean 1/2/2.5/5 × 10ⁿ step so ticks read 0, 100K, 200K… not 85K, 170K. */
+function niceCeil(max: number, ticks = 4): number {
+  if (!Number.isFinite(max) || max <= 0) return max;
+  const raw = max / ticks;
+  const mag = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((st) => st >= raw) ?? 10 * mag;
+  return Math.ceil(max / step) * step;
+}
+const BAR_DOMAIN: [number, (dataMax: number) => number] = [0, (dataMax: number) => niceCeil(dataMax)];
 
 function cumulative(values: number[]): number[] {
   let running = 0;
@@ -148,32 +160,42 @@ function TooltipCard({
   label,
   theme,
   chart,
+  total,
 }: {
   active?: boolean;
-  payload?: { value: number; name?: string; dataKey?: string }[];
+  payload?: { value: number; name?: string; dataKey?: string; color?: string; payload?: { fill?: string } }[];
   label?: string;
   theme: ReturnType<typeof useChartTheme>;
   chart: Chart;
+  /** When set (pie), each row also shows its share of this total. */
+  total?: number;
 }) {
   if (!active || !payload?.length) return null;
   const rows = payload.filter((p) => p.dataKey !== "trend" && typeof p.value === "number" && Number.isFinite(p.value));
   if (!rows.length) return null;
+  const heading = label ?? (total !== undefined ? rows[0].name : undefined);
   return (
     <div
       style={{
         background: theme.surface,
         border: `1px solid ${theme.gridline}`,
-        borderRadius: 6,
-        padding: "6px 10px",
+        borderRadius: 8,
+        padding: "8px 10px",
         fontSize: 12,
         color: theme.primaryInk,
+        boxShadow: "0 8px 24px -8px rgba(0,0,0,.18)",
+        minWidth: 120,
       }}
     >
-      {label && <div style={{ color: theme.secondaryInk, marginBottom: 2 }}>{label}</div>}
+      {heading && <div style={{ color: theme.secondaryInk, marginBottom: 4 }}>{heading}</div>}
       {rows.map((p, i) => (
-        <div key={p.name ?? i} style={{ fontWeight: 600 }}>
-          {p.name && rows.length > 1 ? `${p.name}: ` : ""}
-          {formatValue(p.value, chart.config.format, chart.config.currency)}
+        <div key={p.name ?? i} style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600 }}>
+          <span style={{ width: 8, height: 8, borderRadius: 2, background: p.payload?.fill ?? p.color, flexShrink: 0 }} />
+          {rows.length > 1 && p.name && <span style={{ fontWeight: 400, color: theme.secondaryInk }}>{p.name}</span>}
+          <span style={{ marginLeft: "auto", fontVariantNumeric: "tabular-nums" }}>
+            {formatValue(p.value, chart.config.format, chart.config.currency)}
+            {total ? <span style={{ fontWeight: 400, color: theme.mutedInk }}> · {((p.value / total) * 100).toFixed(1)}%</span> : null}
+          </span>
         </div>
       ))}
     </div>
@@ -242,6 +264,13 @@ export default function ChartRenderer({
   function labelFormatter(value: unknown) {
     return formatValue(Number(value), chart.config.format, chart.config.currency);
   }
+
+  /** Axis ticks stay short ("15.7K") so the value axis never eats the plot width. */
+  const tickFormatter = (value: number) => formatCompact(Number(value), chart.config.format, chart.config.currency);
+  const tick = { fontSize: 11, fill: theme.mutedInk };
+  const seriesName =
+    style.y_axis_label ||
+    (chart.config.agg === "count" || !chart.config.y_field ? "Records" : chart.config.y_field.replace(/_/g, " "));
 
   if (chart.type === "kpi" && "value" in data) {
     const variant = kpiVariant(style);
@@ -334,7 +363,7 @@ export default function ChartRenderer({
               <Label value={style.x_axis_label} position="insideBottom" offset={-15} fill={theme.mutedInk} fontSize={11} />
             )}
           </XAxis>
-          <YAxis type="number" dataKey="y" tick={{ fontSize: 11, fill: theme.mutedInk }} axisLine={false} tickLine={false} width={style.y_axis_label ? 60 : 48}>
+          <YAxis type="number" dataKey="y" tick={tick} tickFormatter={tickFormatter} axisLine={false} tickLine={false} width={style.y_axis_label ? 64 : 52}>
             {style.y_axis_label && (
               <Label value={style.y_axis_label} angle={-90} position="insideLeft" fill={theme.mutedInk} fontSize={11} />
             )}
@@ -359,6 +388,7 @@ export default function ChartRenderer({
     }
     const rows = labels.map((label, i) => ({ name: label, value: values[i] }));
     const isDonut = pieVariant(style) === "donut";
+    const total = values.reduce((a, b) => a + b, 0);
 
     return (
       <ResponsiveContainer width="100%" height="100%">
@@ -367,8 +397,8 @@ export default function ChartRenderer({
             data={rows}
             dataKey="value"
             nameKey="name"
-            innerRadius={isDonut ? 55 : 0}
-            outerRadius={90}
+            innerRadius={isDonut ? "58%" : 0}
+            outerRadius="82%"
             stroke={theme.surface}
             strokeWidth={2}
             onClick={onDrillDown ? (_, i) => handlePointClick(rows[i].name) : undefined}
@@ -382,12 +412,13 @@ export default function ChartRenderer({
           </Pie>
           {showLegend && (
             <Legend
-              wrapperStyle={{ fontSize: 12, color: theme.secondaryInk }}
+              wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
               iconType="circle"
               iconSize={8}
+              formatter={(value) => <span style={{ color: theme.secondaryInk }}>{value}</span>}
             />
           )}
-          <Tooltip content={<TooltipCard theme={theme} chart={chart} />} />
+          <Tooltip content={<TooltipCard theme={theme} chart={chart} total={total} />} />
         </PieChart>
       </ResponsiveContainer>
     );
@@ -420,18 +451,19 @@ export default function ChartRenderer({
     const axes = (
       <>
         {showGridlines && <CartesianGrid vertical={false} stroke={theme.gridline} />}
-        <XAxis dataKey="name" tick={{ fontSize: 11, fill: theme.mutedInk }} axisLine={{ stroke: theme.baseline }} tickLine={false}>
+        <XAxis dataKey="name" tick={tick} axisLine={{ stroke: theme.baseline }} tickLine={false} minTickGap={24} interval="preserveStartEnd">
           {style.x_axis_label && (
             <Label value={style.x_axis_label} position="insideBottom" offset={-15} fill={theme.mutedInk} fontSize={11} />
           )}
         </XAxis>
-        <YAxis tick={{ fontSize: 11, fill: theme.mutedInk }} axisLine={false} tickLine={false} width={style.y_axis_label ? 60 : 48}>
+        <YAxis tick={tick} tickFormatter={tickFormatter} axisLine={false} tickLine={false} width={style.y_axis_label ? 64 : 52}>
           {style.y_axis_label && (
             <Label value={style.y_axis_label} angle={-90} position="insideLeft" fill={theme.mutedInk} fontSize={11} />
           )}
         </YAxis>
-        <Tooltip content={<TooltipCard theme={theme} chart={chart} />} />
-        {showLegend && <Legend wrapperStyle={{ fontSize: 12, color: theme.secondaryInk }} />}
+        <Tooltip content={<TooltipCard theme={theme} chart={chart} />} cursor={{ stroke: theme.baseline, strokeDasharray: "3 3" }} />
+        {/* A single line is named by the card title; a legend only earns its place once a forecast joins it. */}
+        {showLegend && forecast && <Legend wrapperStyle={{ fontSize: 12, color: theme.secondaryInk }} iconType="plainline" />}
       </>
     );
 
@@ -456,7 +488,13 @@ export default function ChartRenderer({
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={rows} margin={margin}>
             {axes}
-            <Area type={interpolation} dataKey="value" stroke={color(0)} strokeWidth={2} fill={color(0)} fillOpacity={0.25}>
+            <defs>
+              <linearGradient id={`area-${chart.id}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={color(0)} stopOpacity={0.28} />
+                <stop offset="100%" stopColor={color(0)} stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <Area type={interpolation} dataKey="value" name={seriesName} stroke={color(0)} strokeWidth={2} fill={`url(#area-${chart.id})`} activeDot={{ r: 4, strokeWidth: 2, stroke: theme.surface }}>
               {showDataLabels && <LabelList dataKey="value" position="top" formatter={labelFormatter} fontSize={11} fill={theme.secondaryInk} />}
             </Area>
             {trendLine}
@@ -473,10 +511,11 @@ export default function ChartRenderer({
           <Line
             type={interpolation}
             dataKey="value"
+            name={seriesName}
             stroke={color(0)}
             strokeWidth={2}
             dot={style.show_points ? { r: 3, fill: color(0) } : false}
-            activeDot={{ r: 5 }}
+            activeDot={{ r: 4, strokeWidth: 2, stroke: theme.surface }}
           >
             {showDataLabels && <LabelList dataKey="value" position="top" formatter={labelFormatter} fontSize={11} fill={theme.secondaryInk} />}
           </Line>
@@ -492,7 +531,7 @@ export default function ChartRenderer({
       <PowerMapChart
         labels={data.labels}
         values={data.values}
-        isDark={theme.surface !== "#fcfcfb"}
+        isDark={theme.isDark}
         format={chart.config.format}
         currency={chart.config.currency}
         onDrillDown={onDrillDown}
@@ -594,6 +633,8 @@ export default function ChartRenderer({
     }
 
     const isMultiSeries = barKeys.length > 1;
+    // Clean 0-based ticks only when nothing is negative; otherwise let Recharts fit both signs.
+    const valueDomain = rows.every((r) => barKeys.every((k) => Number(r[k] ?? 0) >= 0)) ? BAR_DOMAIN : undefined;
     const showTrend = style.show_trendline && !isMultiSeries && !isHorizontal && displayValues && displayValues.length > 1;
     if (showTrend && displayValues) {
       const trend = regressionValues(displayValues);
@@ -607,40 +648,44 @@ export default function ChartRenderer({
           {showGridlines && <CartesianGrid vertical={isHorizontal} horizontal={!isHorizontal} stroke={theme.gridline} />}
           {isHorizontal ? (
             <>
-              <XAxis type="number" tick={{ fontSize: 11, fill: theme.mutedInk }} axisLine={false} tickLine={false} />
+              <XAxis type="number" tick={tick} tickFormatter={tickFormatter} axisLine={false} tickLine={false} domain={valueDomain} tickCount={5} />
               <YAxis
                 type="category"
                 dataKey="name"
-                tick={{ fontSize: 11, fill: theme.mutedInk }}
+                tick={tick}
                 axisLine={{ stroke: theme.baseline }}
                 tickLine={false}
-                width={90}
+                width={96}
               />
             </>
           ) : (
             <>
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: theme.mutedInk }} axisLine={{ stroke: theme.baseline }} tickLine={false}>
+              <XAxis dataKey="name" tick={tick} axisLine={{ stroke: theme.baseline }} tickLine={false} minTickGap={8} interval="preserveStartEnd">
                 {style.x_axis_label && (
                   <Label value={style.x_axis_label} position="insideBottom" offset={-15} fill={theme.mutedInk} fontSize={11} />
                 )}
               </XAxis>
-              <YAxis tick={{ fontSize: 11, fill: theme.mutedInk }} axisLine={false} tickLine={false} width={style.y_axis_label ? 60 : 48}>
+              <YAxis tick={tick} tickFormatter={tickFormatter} axisLine={false} tickLine={false} width={style.y_axis_label ? 64 : 52} domain={valueDomain} tickCount={5}>
                 {style.y_axis_label && (
                   <Label value={style.y_axis_label} angle={-90} position="insideLeft" fill={theme.mutedInk} fontSize={11} />
                 )}
               </YAxis>
             </>
           )}
-          <Tooltip content={<TooltipCard theme={theme} chart={chart} />} cursor={{ fill: theme.gridline }} />
-          {showLegend && <Legend wrapperStyle={{ fontSize: 12, color: theme.secondaryInk }} />}
+          <Tooltip content={<TooltipCard theme={theme} chart={chart} />} cursor={{ fill: theme.gridline, opacity: 0.6 }} />
+          {/* One series is named by the card title; a legend box for it would just say "value". */}
+          {showLegend && isMultiSeries && (
+            <Legend wrapperStyle={{ fontSize: 12, color: theme.secondaryInk }} iconType="circle" iconSize={8} />
+          )}
           {barKeys.map((key, idx) => (
             <Bar
               key={key}
               dataKey={key}
               radius={isHorizontal ? [0, 4, 4, 0] : [4, 4, 0, 0]}
-              maxBarSize={48}
+              maxBarSize={44}
+              name={isMultiSeries ? key : seriesName}
               stackId={isStacked ? "series" : undefined}
-              fill={isMultiSeries ? color(idx) : undefined}
+              fill={color(isMultiSeries ? idx : 0)}
               onClick={!isMultiSeries && onDrillDown ? (_, i) => handlePointClick(rows[i].name as string) : undefined}
               cursor={!isMultiSeries && onDrillDown ? "pointer" : undefined}
             >
@@ -656,6 +701,22 @@ export default function ChartRenderer({
                   formatter={labelFormatter}
                   fontSize={11}
                   fill={theme.secondaryInk}
+                  // Vertical bars: drop a label wider than its bar instead of letting neighbours collide
+                  // (narrow cards / phones); the tooltip still carries every value.
+                  content={
+                    isHorizontal
+                      ? undefined
+                      : (props: { x?: number | string; y?: number | string; width?: number | string; value?: unknown }) => {
+                          const text = labelFormatter(props.value);
+                          const width = Number(props.width ?? 0);
+                          if (text.length * 6.2 > width + 10) return null;
+                          return (
+                            <text x={Number(props.x) + width / 2} y={Number(props.y) - 6} textAnchor="middle" fontSize={11} fill={theme.secondaryInk}>
+                              {text}
+                            </text>
+                          );
+                        }
+                  }
                 />
               )}
             </Bar>

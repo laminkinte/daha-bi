@@ -63,7 +63,7 @@ export default function PowerMapChart({
 
   const matchedCount = valueByCountry.size;
   const noDataFill = isDark ? NO_DATA_FILL_DARK : NO_DATA_FILL_LIGHT;
-  const borderColor = isDark ? "#1a1a19" : "#fcfcfb";
+  const borderColor = isDark ? "#121a1c" : "#ffffff";
 
   const featureStyle: StyleFunction<CountryProperties> = (feature) => {
     const value = feature ? valueByCountry.get(feature.properties.name) : undefined;
@@ -132,7 +132,7 @@ export default function PowerMapChart({
       </MapContainer>
 
       {matchedCount > 0 && (
-        <div className="pointer-events-none absolute bottom-2 left-2 z-[1000] flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs shadow-md" style={{ background: isDark ? "#1a1a19" : "#fcfcfb", borderColor: isDark ? "#2c2c2a" : "#e1e0d9", color: isDark ? "#c3c2b7" : "#52514e" }}>
+        <div className="pointer-events-none absolute bottom-2 left-2 z-[1000] flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs shadow-md" style={{ background: isDark ? "#121a1c" : "#ffffff", borderColor: isDark ? "#223033" : "#e3e8e9", color: isDark ? "#c3c2b7" : "#52514e" }}>
           <span className="tabular-nums">{formatValue(min, format, currency)}</span>
           <div
             className="h-2 w-20 rounded-full"
@@ -144,7 +144,7 @@ export default function PowerMapChart({
       {labels.length > 0 && matchedCount === 0 && (
         <div
           className="pointer-events-none absolute bottom-2 left-2 z-[1000] rounded-md border px-2.5 py-1.5 text-xs shadow-md"
-          style={{ background: isDark ? "#1a1a19" : "#fcfcfb", borderColor: isDark ? "#2c2c2a" : "#e1e0d9", color: isDark ? "#898781" : "#898781" }}
+          style={{ background: isDark ? "#121a1c" : "#ffffff", borderColor: isDark ? "#223033" : "#e3e8e9", color: isDark ? "#898781" : "#898781" }}
         >
           None of the region values matched a recognized country name.
         </div>

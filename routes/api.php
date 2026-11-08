@@ -120,6 +120,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/ai-messages/{message}/save-dashboard', [AiConversationController::class, 'saveDashboard']);
 
     Route::post('/dashboards/{dashboard}/charts', [ChartController::class, 'store']);
+    Route::post('/dashboards/{dashboard}/charts/preview', [ChartController::class, 'preview']);
     Route::get('/charts/{chart}', [ChartController::class, 'show']);
     Route::put('/charts/{chart}', [ChartController::class, 'update']);
     Route::delete('/charts/{chart}', [ChartController::class, 'destroy']);

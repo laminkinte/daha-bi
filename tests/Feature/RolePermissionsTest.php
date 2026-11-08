@@ -115,6 +115,30 @@ class RolePermissionsTest extends TestCase
         $this->asToken($guestToken)->getJson("/api/data-sources/{$this->sourceId}")->assertForbidden();
     }
 
+    public function test_chart_preview_computes_without_saving_and_respects_roles(): void
+    {
+        $payload = [
+            'dataset_id' => $this->datasetId,
+            'type' => 'bar',
+            'config' => ['x_field' => 'city', 'y_field' => 'revenue', 'agg' => 'sum'],
+        ];
+
+        $this->asToken($this->ownerToken)->postJson("/api/dashboards/{$this->dashboardId}/charts/preview", $payload)
+            ->assertOk()
+            ->assertJsonPath('labels', ['Lagos'])
+            ->assertJsonPath('values', [100]);
+        $this->asToken($this->ownerToken)->getJson("/api/dashboards/{$this->dashboardId}")->assertJsonCount(0, 'charts');
+
+        $this->asToken($this->member('viewer'))
+            ->postJson("/api/dashboards/{$this->dashboardId}/charts/preview", $payload)
+            ->assertForbidden();
+
+        // A stranger can't preview someone else's dataset through their own dashboard.
+        [, $strangerToken] = $this->registerUser('Stranger');
+        $strangerDashboard = $this->asToken($strangerToken)->postJson('/api/dashboards', ['name' => 'Mine'])->json('id');
+        $this->asToken($strangerToken)->postJson("/api/dashboards/{$strangerDashboard}/charts/preview", $payload)->assertForbidden();
+    }
+
     public function test_ai_conversations_are_private_to_their_author(): void
     {
         $conversationId = $this->asToken($this->ownerToken)

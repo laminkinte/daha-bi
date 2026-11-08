@@ -377,6 +377,8 @@ export type Chart = {
     agg?: string;
     /** Bar only: splits each x_field category into multiple series (grouped/stacked variants). */
     series_field?: string;
+    /** Heatmap only: the measured field (y_field is the row dimension there). */
+    value_field?: string;
     /** Scatter only: optional field shown in point tooltips. */
     label_field?: string;
     /** KPI only: target value the "progress" variant compares the headline number against. */

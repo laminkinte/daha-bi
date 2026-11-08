@@ -39,6 +39,32 @@ class ChartController extends Controller
         return response()->json($chart, 201);
     }
 
+    /**
+     * Computes chart data for an unsaved chart definition, so the chart builder can show a live
+     * preview before anything is written. Same authorization as creating a chart on this dashboard.
+     */
+    public function preview(Request $request, Dashboard $dashboard)
+    {
+        $this->authorize('update', $dashboard);
+
+        $validated = $request->validate([
+            'dataset_id' => ['required', 'exists:datasets,id'],
+            'type' => ['required', 'in:bar,line,pie,table,kpi,scatter,heatmap,geo_map'],
+            'config' => ['nullable', 'array'],
+        ]);
+
+        $dataset = \App\Models\Dataset::findOrFail($validated['dataset_id']);
+        $this->authorize('useDataset', [$dashboard, $dataset]);
+
+        try {
+            $data = $this->chartData->run($dataset, $validated['type'], $validated['config'] ?? [], [], $request->user());
+        } catch (InvalidArgumentException $e) {
+            throw ValidationException::withMessages(['config' => [$e->getMessage()]]);
+        }
+
+        return response()->json($data);
+    }
+
     public function show(Request $request, Chart $chart)
     {
         $this->authorize('view', $chart);

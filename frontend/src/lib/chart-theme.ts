@@ -2,13 +2,16 @@
 
 import { useEffect, useState } from "react";
 
+// surface/gridline/baseline mirror --surface-1/--gridline/--baseline in globals.css, so the 2px
+// separators between slices and bars read as true gaps on the card, not off-white seams.
 const LIGHT = {
-  surface: "#fcfcfb",
+  isDark: false,
+  surface: "#ffffff",
   primaryInk: "#0b0b0b",
   secondaryInk: "#52514e",
   mutedInk: "#898781",
-  gridline: "#e1e0d9",
-  baseline: "#c3c2b7",
+  gridline: "#e3e8e9",
+  baseline: "#c5cdce",
   categorical: [
     "#2a78d6",
     "#eb6834",
@@ -22,12 +25,13 @@ const LIGHT = {
 };
 
 const DARK = {
-  surface: "#1a1a19",
+  isDark: true,
+  surface: "#121a1c",
   primaryInk: "#ffffff",
   secondaryInk: "#c3c2b7",
   mutedInk: "#898781",
-  gridline: "#2c2c2a",
-  baseline: "#383835",
+  gridline: "#223033",
+  baseline: "#33454a",
   categorical: [
     "#3987e5",
     "#d95926",
@@ -40,7 +44,7 @@ const DARK = {
   ],
 };
 
-export type ChartTheme = typeof LIGHT;
+export type ChartTheme = Omit<typeof LIGHT, "isDark"> & { isDark: boolean };
 
 function resolveIsDark(mql: MediaQueryList): boolean {
   const override = document.documentElement.getAttribute("data-theme");
@@ -68,7 +72,7 @@ export function useChartTheme(): ChartTheme {
     };
   }, []);
 
-  return isDark ? DARK : LIGHT;
+  return (isDark ? DARK : LIGHT) as ChartTheme;
 }
 
 /**

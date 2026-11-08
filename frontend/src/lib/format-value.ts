@@ -84,3 +84,22 @@ export function formatValue(
 
   return value.toLocaleString();
 }
+
+/**
+ * Short form for axis ticks and tight spaces: 15,725 → "15.7K", 2,400,000 → "2.4M". Keeps the
+ * currency symbol / percent sign so an axis still says what it measures.
+ */
+export function formatCompact(value: number, format: ValueFormat = "number", currency = "NGN"): string {
+  if (!Number.isFinite(value)) return "";
+  if (format === "percent") return `${value.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`;
+  const compact = (opts: Intl.NumberFormatOptions) =>
+    new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1, ...opts }).format(value);
+  if (format === "currency") {
+    try {
+      return compact({ style: "currency", currency });
+    } catch {
+      return `${currency} ${compact({})}`;
+    }
+  }
+  return compact({});
+}

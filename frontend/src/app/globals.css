@@ -259,3 +259,21 @@ input[type="file"]::file-selector-button:hover {
 ::selection {
   background: var(--accent-soft);
 }
+
+/* Dialog entrance (components/Modal.tsx). */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [class*="animate-[popIn"], [class*="animate-[fadeIn"] { animation: none !important; }
+}
+
+/* A chart card with an open menu/panel must paint above the grid items after it. */
+.react-grid-item:has(.chart-popover-open) {
+  z-index: 40;
+}

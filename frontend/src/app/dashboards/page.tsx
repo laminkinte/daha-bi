@@ -8,6 +8,7 @@ import { StatCard } from "@/components/StatCard";
 import { RowSkeleton } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { useRouter } from "next/navigation";
+import { Modal, BTN_PRIMARY, BTN_SECONDARY, FIELD_INPUT, FIELD_LABEL } from "@/components/Modal";
 import { api, ApiError, type DashboardTemplate, type DataSource, type Dashboard, type Dataset } from "@/lib/api";
 
 function PlusIcon() {
@@ -128,109 +129,190 @@ function TemplateIcon({ icon }: { icon: string }) {
   );
 }
 
-function TemplateGalleryPanel({ onCreated }: { onCreated: (dashboardId: number) => void }) {
+type CreateMode = "blank" | "template";
+
+/**
+ * One dialog for both ways of starting a dashboard: blank (name + description) or from a template
+ * (which builds starter charts from a dataset). Either way it lands the user inside the new dashboard.
+ */
+function CreateDashboardDialog({
+  initialMode,
+  onClose,
+  onCreated,
+}: {
+  initialMode: CreateMode;
+  onClose: () => void;
+  onCreated: (dashboardId: number) => void;
+}) {
+  const [mode, setMode] = useState<CreateMode>(initialMode);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [templates, setTemplates] = useState<DashboardTemplate[] | null>(null);
   const [datasets, setDatasets] = useState<Dataset[] | null>(null);
-  const [selected, setSelected] = useState<DashboardTemplate | null>(null);
+  const [template, setTemplate] = useState<DashboardTemplate | null>(null);
   const [datasetId, setDatasetId] = useState<number | "">("");
-  const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     api.get<DashboardTemplate[]>("/dashboard-templates").then(setTemplates).catch(() => setTemplates([]));
-    api.get<Dataset[]>("/datasets").then(setDatasets).catch(() => setDatasets([]));
+    api
+      .get<Dataset[]>("/datasets")
+      .then((all) => {
+        setDatasets(all);
+        if (all[0]) setDatasetId(all[0].id);
+      })
+      .catch(() => setDatasets([]));
   }, []);
 
-  function selectTemplate(t: DashboardTemplate) {
-    setSelected(t);
-    setName(t.name);
-    setError(null);
+  function pickTemplate(t: DashboardTemplate) {
+    setTemplate(t);
+    if (!name.trim() || templates?.some((x) => x.name === name)) setName(t.name);
   }
 
-  async function onCreate(e: FormEvent) {
-    e.preventDefault();
-    if (!selected || !datasetId) return;
+  const canCreate = mode === "blank" ? !!name.trim() : !!template && !!datasetId && !!name.trim();
+
+  async function create(e?: FormEvent) {
+    e?.preventDefault();
+    if (!canCreate || creating) return;
     setCreating(true);
     setError(null);
     try {
-      const dashboard = await api.post<{ id: number }>("/dashboard-templates", {
-        template: selected.key,
-        dataset_id: datasetId,
-        name,
-      });
+      const dashboard =
+        mode === "blank"
+          ? await api.post<{ id: number }>("/dashboards", { name: name.trim(), description: description.trim() || null })
+          : await api.post<{ id: number }>("/dashboard-templates", { template: template!.key, dataset_id: datasetId, name: name.trim() });
       onCreated(dashboard.id);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to create dashboard from template.");
+      setError(err instanceof ApiError ? err.message : "Failed to create dashboard.");
       setCreating(false);
     }
   }
 
+  const modeCard = (value: CreateMode, title: string, hint: string, icon: React.ReactNode) => (
+    <button
+      type="button"
+      onClick={() => setMode(value)}
+      aria-pressed={mode === value}
+      className={`flex items-start gap-3 rounded-xl border p-3.5 text-left transition-colors ${
+        mode === value
+          ? "border-[var(--accent)] bg-[var(--accent-soft)] ring-1 ring-[var(--accent)]"
+          : "border-[var(--border)] hover:border-[var(--accent)]/50"
+      }`}
+    >
+      <span className={`mt-0.5 ${mode === value ? "text-[var(--accent)]" : "text-[var(--text-muted)]"}`}>{icon}</span>
+      <span>
+        <span className="block text-sm font-semibold text-[var(--text-primary)]">{title}</span>
+        <span className="mt-0.5 block text-xs text-[var(--text-muted)]">{hint}</span>
+      </span>
+    </button>
+  );
+
   return (
-    <div className="mt-6 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-4">
-      <h2 className="text-sm font-medium text-[var(--text-primary)]">Start from a template</h2>
-      <p className="mt-1 text-xs text-[var(--text-muted)]">
-        Picks sensible charts from your data automatically — a KPI, a breakdown, a trend, and a
-        table. Everything&apos;s a normal chart afterward, fully editable.
-      </p>
-
-      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
-        {templates === null && <p className="text-xs text-[var(--text-muted)]">Loading...</p>}
-        {templates?.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => selectTemplate(t)}
-            className={`flex flex-col items-start gap-1.5 rounded-md border p-3 text-left transition-colors ${
-              selected?.key === t.key
-                ? "border-[var(--accent)] bg-[var(--accent)]/5"
-                : "border-[var(--border)] hover:border-[var(--accent)]/50"
-            }`}
-          >
-            <span className="text-[var(--accent)]">
-              <TemplateIcon icon={t.icon} />
-            </span>
-            <span className="text-sm font-medium text-[var(--text-primary)]">{t.name}</span>
-            <span className="text-xs text-[var(--text-muted)]">{t.description}</span>
+    <Modal
+      open
+      onClose={onClose}
+      size="lg"
+      icon={<GridIcon size={18} />}
+      title="New dashboard"
+      description="Start from scratch, or let a template lay out the first charts for you."
+      footer={
+        <>
+          {error && <p className="mr-auto text-sm text-[var(--status-critical)]">{error}</p>}
+          <button onClick={onClose} className={BTN_SECONDARY}>
+            Cancel
           </button>
-        ))}
-      </div>
-
-      {selected && (
-        <form onSubmit={onCreate} className="mt-4 flex flex-wrap items-center gap-2 border-t border-[var(--border)] pt-4">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Dashboard name"
-            className="min-w-0 flex-1 rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
-          />
-          <select
-            value={datasetId}
-            onChange={(e) => setDatasetId(e.target.value ? Number(e.target.value) : "")}
-            className="rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm"
-          >
-            <option value="">Choose a dataset...</option>
-            {datasets?.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-          <button
-            type="submit"
-            disabled={creating || !datasetId || !name.trim()}
-            className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-          >
-            {creating ? "Creating..." : "Create dashboard"}
+          <button onClick={() => create()} disabled={!canCreate || creating} className={BTN_PRIMARY}>
+            {creating ? "Creating…" : "Create dashboard"}
           </button>
-        </form>
-      )}
-      {datasets?.length === 0 && (
-        <p className="mt-3 text-xs text-[var(--text-muted)]">
-          Connect a data source first — templates need a dataset to build charts from.
-        </p>
-      )}
-      {error && <p className="mt-2 text-sm text-[var(--status-critical)]">{error}</p>}
-    </div>
+        </>
+      }
+    >
+      <form onSubmit={create} className="space-y-5 p-5">
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          {modeCard("blank", "Blank dashboard", "An empty canvas — add charts one by one.", <PlusIcon />)}
+          {modeCard("template", "From a template", "Starter charts picked from your data.", <TemplateIcon icon="sprout" />)}
+        </div>
+
+        {mode === "template" && (
+          <div>
+            <label className={FIELD_LABEL}>Template</label>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {templates === null &&
+                [0, 1, 2].map((i) => <div key={i} className="h-24 animate-pulse rounded-xl bg-[var(--surface-2)]" />)}
+              {templates?.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => pickTemplate(t)}
+                  className={`flex flex-col items-start gap-1 rounded-xl border p-3 text-left transition-colors ${
+                    template?.key === t.key
+                      ? "border-[var(--accent)] bg-[var(--accent-soft)] ring-1 ring-[var(--accent)]"
+                      : "border-[var(--border)] hover:border-[var(--accent)]/50"
+                  }`}
+                >
+                  <span className="text-[var(--accent)]">
+                    <TemplateIcon icon={t.icon} />
+                  </span>
+                  <span className="text-[13px] font-semibold text-[var(--text-primary)]">{t.name}</span>
+                  <span className="line-clamp-2 text-[11.5px] leading-4 text-[var(--text-muted)]">{t.description}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className={mode === "template" ? "grid gap-4 sm:grid-cols-2" : "space-y-4"}>
+          <div>
+            <label className={FIELD_LABEL}>Name</label>
+            <input
+              data-autofocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={mode === "template" ? template?.name ?? "Pick a template" : "e.g. Weekly sales review"}
+              className={FIELD_INPUT}
+              maxLength={255}
+            />
+          </div>
+          {mode === "blank" ? (
+            <div>
+              <label className={FIELD_LABEL}>
+                Description <span className="font-normal text-[var(--text-muted)]">(optional)</span>
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={2}
+                maxLength={255}
+                placeholder="What is this dashboard for?"
+                className={`${FIELD_INPUT} resize-none`}
+              />
+            </div>
+          ) : (
+            <div>
+              <label className={FIELD_LABEL}>Build it from</label>
+              <select value={datasetId} onChange={(e) => setDatasetId(e.target.value ? Number(e.target.value) : "")} className={FIELD_INPUT}>
+                {datasets?.length === 0 && <option value="">No datasets yet</option>}
+                {datasets?.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+        {mode === "template" && datasets?.length === 0 && (
+          <p className="text-xs text-[var(--text-muted)]">
+            Templates need a dataset to build charts from.{" "}
+            <Link href="/data-sources" className="font-medium text-[var(--accent)]">
+              Connect a data source
+            </Link>{" "}
+            first.
+          </p>
+        )}
+      </form>
+    </Modal>
   );
 }
 
@@ -240,10 +322,7 @@ function DashboardsList() {
   const [dashboards, setDashboards] = useState<Dashboard[] | null>(null);
   const [dataSources, setDataSources] = useState<DataSource[] | null>(null);
   const [search, setSearch] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [showTemplates, setShowTemplates] = useState(false);
-  const [name, setName] = useState("");
-  const [creating, setCreating] = useState(false);
+  const [createMode, setCreateMode] = useState<CreateMode | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   function load() {
@@ -254,23 +333,6 @@ function DashboardsList() {
     load();
     api.get<DataSource[]>("/data-sources").then(setDataSources).catch(() => setDataSources([]));
   }, []);
-
-  async function onCreate(e: FormEvent) {
-    e.preventDefault();
-    if (!name.trim()) return;
-    setCreating(true);
-    setError(null);
-    try {
-      await api.post("/dashboards", { name });
-      setName("");
-      setShowForm(false);
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to create dashboard.");
-    } finally {
-      setCreating(false);
-    }
-  }
 
   async function onDelete(id: number) {
     if (!confirm("Delete this dashboard and all its charts?")) return;
@@ -325,19 +387,15 @@ function DashboardsList() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={() => setShowTemplates((s) => !s)}
-              className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
-                showTemplates
-                  ? "border-[var(--accent)]/50 bg-[var(--accent-soft)] text-[var(--accent)]"
-                  : "border-[var(--border)] bg-[var(--surface-1)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-              }`}
+              onClick={() => setCreateMode("template")}
+              className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-4 py-2.5 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]"
             >
               <TemplateIcon icon="sprout" />
               {t("fromTemplate")}
             </button>
             <button
-              onClick={() => setShowForm((s) => !s)}
-              className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-white shadow-sm"
+              onClick={() => setCreateMode("blank")}
+              className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-[var(--accent-hover)]"
             >
               <PlusIcon />
               {t("newDashboard")}
@@ -346,7 +404,13 @@ function DashboardsList() {
         </div>
       </div>
 
-      {showTemplates && <TemplateGalleryPanel onCreated={(id) => router.push(`/dashboards/${id}`)} />}
+      {createMode && (
+        <CreateDashboardDialog
+          initialMode={createMode}
+          onClose={() => setCreateMode(null)}
+          onCreated={(id) => router.push(`/dashboards/${id}`)}
+        />
+      )}
 
       <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
         <StatCard label="Dashboards" value={dashboards?.length ?? "—"} icon={<GridIcon size={16} />} />
@@ -354,27 +418,6 @@ function DashboardsList() {
         <StatCard label="Data Sources" value={dataSources?.length ?? "—"} icon={<DbIcon />} hint={dataSources?.length === 0 ? "Connect one to start building" : undefined} />
       </div>
 
-      {showForm && (
-        <form
-          onSubmit={onCreate}
-          className="mt-6 flex gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-4"
-        >
-          <input
-            autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Dashboard name"
-            className="flex-1 rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
-          />
-          <button
-            type="submit"
-            disabled={creating}
-            className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-          >
-            Create
-          </button>
-        </form>
-      )}
       {error && <p className="mt-2 text-sm text-[var(--status-critical)]">{error}</p>}
 
       {dashboards && dashboards.length > 0 && (
@@ -412,7 +455,7 @@ function DashboardsList() {
             description={t("emptyDescription")}
             action={
               <button
-                onClick={() => setShowForm(true)}
+                onClick={() => setCreateMode("blank")}
                 className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white"
               >
                 <PlusIcon />

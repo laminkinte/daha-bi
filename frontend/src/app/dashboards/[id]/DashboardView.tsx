@@ -2,13 +2,13 @@
 
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from "react";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
 import { GridLayout, useContainerWidth, type Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import RequireAuth from "@/components/RequireAuth";
 import { useAuth } from "@/lib/auth-context";
 import ChartCard from "@/components/charts/ChartCard";
-import DatasetPreviewToggle from "@/components/DatasetPreviewToggle";
+import ChartBuilder from "@/components/charts/ChartBuilder";
+import { Modal, BTN_PRIMARY, BTN_SECONDARY, FIELD_INPUT, FIELD_LABEL } from "@/components/Modal";
 import { Skeleton, CardSkeleton } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import {
@@ -16,13 +16,11 @@ import {
   ApiError,
   type Chart,
   type ChartFilter,
-  type ChartType,
   type Collaborator,
   type Dashboard,
   type Dataset,
   type ReportSchedule,
 } from "@/lib/api";
-import { CURRENCIES, type ValueFormat } from "@/lib/format-value";
 import { downloadDashboardPdf } from "@/lib/dashboard-export";
 
 function ChartIcon() {
@@ -31,371 +29,6 @@ function ChartIcon() {
       <path d="M3 3v18h18" />
       <path d="M7 15l4-6 4 3 5-8" />
     </svg>
-  );
-}
-
-const CHART_TYPES: { value: ChartType; label: string; needsFields: boolean }[] = [
-  { value: "bar", label: "Bar", needsFields: true },
-  { value: "line", label: "Line", needsFields: true },
-  { value: "pie", label: "Pie", needsFields: true },
-  { value: "kpi", label: "KPI", needsFields: false },
-  { value: "table", label: "Table", needsFields: false },
-  { value: "scatter", label: "Scatter", needsFields: false },
-  { value: "heatmap", label: "Heatmap", needsFields: true },
-  { value: "geo_map", label: "Geo map", needsFields: true },
-];
-
-const AGGREGATIONS = ["sum", "avg", "count", "count_distinct", "min", "max"];
-const AGG_LABELS: Record<string, string> = { count_distinct: "distinct count" };
-
-function AddChartForm({
-  dashboardId,
-  datasets,
-  onCreated,
-}: {
-  dashboardId: number;
-  datasets: Dataset[];
-  onCreated: () => void;
-}) {
-  const t = useTranslations("chartBuilder");
-  const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState("");
-  const [type, setType] = useState<ChartType>("bar");
-  const [datasetId, setDatasetId] = useState<number | "">("");
-  const [xField, setXField] = useState("");
-  const [yField, setYField] = useState("");
-  const [yAxisField, setYAxisField] = useState("");
-  const [seriesField, setSeriesField] = useState("");
-  const [trendField, setTrendField] = useState("");
-  const [labelField, setLabelField] = useState("");
-  const [agg, setAgg] = useState("sum");
-  const [format, setFormat] = useState<ValueFormat>("number");
-  const [currency, setCurrency] = useState("NGN");
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  const dataset = datasets.find((d) => d.id === datasetId);
-  const needsFields = CHART_TYPES.find((c) => c.value === type)?.needsFields ?? false;
-  const isScatter = type === "scatter";
-  const isHeatmap = type === "heatmap";
-  const showFormat = type !== "table";
-  const showAgg = !isScatter;
-
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!title.trim() || !datasetId) return;
-    if (isScatter && (!xField || !yField)) return;
-    if (isHeatmap && (!xField || !yAxisField)) return;
-    setSubmitting(true);
-    setError(null);
-
-    const config: Record<string, string> = {};
-    if (isScatter) {
-      config.x_field = xField;
-      config.y_field = yField;
-      if (labelField) config.label_field = labelField;
-    } else if (isHeatmap) {
-      config.x_field = xField;
-      config.y_field = yAxisField;
-      config.agg = agg;
-      if (agg !== "count" && yField) config.value_field = yField;
-    } else if (needsFields) {
-      if (xField) config.x_field = xField;
-      config.agg = agg;
-      if (agg !== "count" && yField) config.y_field = yField;
-      if (type === "bar" && seriesField) config.series_field = seriesField;
-    } else if (type === "kpi") {
-      config.agg = agg;
-      if (agg !== "count" && yField) config.y_field = yField;
-      if (trendField) config.x_field = trendField;
-    }
-    if (showFormat && format !== "number") {
-      config.format = format;
-      if (format === "currency") config.currency = currency;
-    }
-
-    try {
-      await api.post(`/dashboards/${dashboardId}/charts`, {
-        dataset_id: datasetId,
-        title,
-        type,
-        config,
-      });
-      setTitle("");
-      setOpen(false);
-      onCreated();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to create chart.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  const selectClass =
-    "w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1.5 outline-none focus:border-[var(--accent)]";
-  const labelClass = "mb-1 block text-xs font-medium text-[var(--text-secondary)]";
-
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-white shadow-sm"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-        {t("addChart").replace(/^\+\s*/, "")}
-      </button>
-    );
-  }
-
-  return (
-    <form
-      onSubmit={onSubmit}
-      className="rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-4 text-sm"
-    >
-      <h3 className="mb-3 text-sm font-medium text-[var(--text-primary)]">{t("title")}</h3>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <div>
-          <label className={labelClass}>{t("chartTitle")}</label>
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className={selectClass}
-            required
-          />
-        </div>
-        <div>
-          <label className={labelClass}>{t("type")}</label>
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value as ChartType)}
-            className={selectClass}
-          >
-            {CHART_TYPES.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className={labelClass}>{t("dataset")}</label>
-          <select
-            value={datasetId}
-            onChange={(e) => setDatasetId(Number(e.target.value))}
-            className={selectClass}
-            required
-          >
-            <option value="">{t("selectPlaceholder")}</option>
-            {datasets.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {needsFields && dataset && (
-          <div>
-            <label className={labelClass}>{type === "geo_map" ? "Region field" : "X field"}</label>
-            <select
-              value={xField}
-              onChange={(e) => setXField(e.target.value)}
-              className={selectClass}
-              required
-            >
-              <option value="">Select...</option>
-              {dataset.columns.map((c) => (
-                <option key={c.name} value={c.name}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {isHeatmap && dataset && (
-          <div>
-            <label className={labelClass}>Y-axis field</label>
-            <select
-              value={yAxisField}
-              onChange={(e) => setYAxisField(e.target.value)}
-              className={selectClass}
-              required
-            >
-              <option value="">Select...</option>
-              {dataset.columns.map((c) => (
-                <option key={c.name} value={c.name}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {type === "bar" && dataset && (
-          <div>
-            <label className={labelClass}>Series field (optional)</label>
-            <select
-              value={seriesField}
-              onChange={(e) => setSeriesField(e.target.value)}
-              className={selectClass}
-            >
-              <option value="">None — single series</option>
-              {dataset.columns.map((c) => (
-                <option key={c.name} value={c.name}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {type === "kpi" && dataset && (
-          <div>
-            <label className={labelClass}>Trend field (optional)</label>
-            <select
-              value={trendField}
-              onChange={(e) => setTrendField(e.target.value)}
-              className={selectClass}
-            >
-              <option value="">None — number only</option>
-              {dataset.columns.map((c) => (
-                <option key={c.name} value={c.name}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {isScatter && dataset && (
-          <>
-            <div>
-              <label className={labelClass}>X field</label>
-              <select value={xField} onChange={(e) => setXField(e.target.value)} className={selectClass} required>
-                <option value="">Select...</option>
-                {dataset.columns.map((c) => (
-                  <option key={c.name} value={c.name}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={labelClass}>Y field</label>
-              <select value={yField} onChange={(e) => setYField(e.target.value)} className={selectClass} required>
-                <option value="">Select...</option>
-                {dataset.columns.map((c) => (
-                  <option key={c.name} value={c.name}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={labelClass}>Point label (optional)</label>
-              <select value={labelField} onChange={(e) => setLabelField(e.target.value)} className={selectClass}>
-                <option value="">None</option>
-                {dataset.columns.map((c) => (
-                  <option key={c.name} value={c.name}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </>
-        )}
-
-        {showAgg && (
-          <div>
-            <label className={labelClass}>Aggregation</label>
-            <select
-              value={agg}
-              onChange={(e) => setAgg(e.target.value)}
-              className={selectClass}
-            >
-              {AGGREGATIONS.map((a) => (
-                <option key={a} value={a}>
-                  {AGG_LABELS[a] ?? a}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {showAgg && agg !== "count" && dataset && (
-          <div>
-            <label className={labelClass}>{isHeatmap || type === "geo_map" ? "Value field" : "Y field"}</label>
-            <select
-              value={yField}
-              onChange={(e) => setYField(e.target.value)}
-              className={selectClass}
-              required
-            >
-              <option value="">Select...</option>
-              {dataset.columns.map((c) => (
-                <option key={c.name} value={c.name}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {showFormat && (
-          <div>
-            <label className={labelClass}>Format</label>
-            <select
-              value={format}
-              onChange={(e) => setFormat(e.target.value as ValueFormat)}
-              className={selectClass}
-            >
-              <option value="number">Number</option>
-              <option value="currency">Currency</option>
-              <option value="percent">Percent</option>
-            </select>
-          </div>
-        )}
-
-        {showFormat && format === "currency" && (
-          <div>
-            <label className={labelClass}>Currency</label>
-            <select
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-              className={selectClass}
-            >
-              {CURRENCIES.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-      </div>
-
-      <DatasetPreviewToggle datasetId={datasetId} />
-
-      <div className="mt-4 flex gap-2">
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded-md bg-[var(--accent)] px-3 py-1.5 font-medium text-white disabled:opacity-60"
-        >
-          Add
-        </button>
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          className="rounded-md border border-[var(--border)] px-3 py-1.5 text-[var(--text-secondary)]"
-        >
-          Cancel
-        </button>
-      </div>
-
-      {error && <p className="mt-2 text-[var(--status-critical)]">{error}</p>}
-    </form>
   );
 }
 
@@ -411,33 +44,33 @@ type AiResult =
   | { response_type: "answer"; answer: string }
   | { response_type: "chart"; chart: { title: string } };
 
-function AiPromptPanel({
+const AI_EXAMPLES = ["Revenue by region as a bar chart", "Monthly trend of orders", "Top 5 products by sales", "What's the average order value?"];
+
+function AiPromptDialog({
   dashboardId,
   datasets,
   onCreated,
+  onClose,
 }: {
   dashboardId: number;
   datasets: Dataset[];
   onCreated: () => void;
+  onClose: () => void;
 }) {
-  const [open, setOpen] = useState(false);
   const [datasetId, setDatasetId] = useState<number | "">(datasets[0]?.id ?? "");
   const [prompt, setPrompt] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AiResult | null>(null);
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!prompt.trim() || !datasetId) return;
+  async function onSubmit(e?: FormEvent) {
+    e?.preventDefault();
+    if (!prompt.trim() || !datasetId || submitting) return;
     setSubmitting(true);
     setError(null);
     setResult(null);
     try {
-      const res = await api.post<AiResult>(`/dashboards/${dashboardId}/ai-prompt`, {
-        dataset_id: datasetId,
-        prompt,
-      });
+      const res = await api.post<AiResult>(`/dashboards/${dashboardId}/ai-prompt`, { dataset_id: datasetId, prompt });
       setResult(res);
       if (res.response_type === "chart") {
         setPrompt("");
@@ -450,35 +83,30 @@ function AiPromptPanel({
     }
   }
 
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-4 py-2.5 text-sm font-medium text-[var(--accent)] transition-colors hover:border-[var(--accent)]/60"
-      >
-        <SparkleIcon />
-        Ask AI
-      </button>
-    );
-  }
-
   return (
-    <form
-      onSubmit={onSubmit}
-      className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-4 text-sm"
+    <Modal
+      open
+      onClose={onClose}
+      size="lg"
+      icon={<SparkleIcon />}
+      title="Ask AI"
+      description="Describe the chart you want, or ask a question about your data."
+      footer={
+        <>
+          <button onClick={onClose} className={BTN_SECONDARY}>
+            {result?.response_type === "chart" ? "Done" : "Cancel"}
+          </button>
+          <button onClick={() => onSubmit()} disabled={submitting || !prompt.trim() || !datasetId} className={BTN_PRIMARY}>
+            <SparkleIcon />
+            {submitting ? "Thinking…" : "Ask"}
+          </button>
+        </>
+      }
     >
-      <h3 className="mb-3 flex items-center gap-1.5 text-sm font-medium text-[var(--text-primary)]">
-        <SparkleIcon />
-        Ask AI
-      </h3>
-      <div className="flex flex-wrap gap-3">
-        <div className="w-48">
-          <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">Dataset</label>
-          <select
-            value={datasetId}
-            onChange={(e) => setDatasetId(Number(e.target.value))}
-            className="w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1.5 outline-none focus:border-[var(--accent)]"
-          >
+      <form onSubmit={onSubmit} className="space-y-4 p-5">
+        <div>
+          <label className={FIELD_LABEL}>Dataset</label>
+          <select value={datasetId} onChange={(e) => setDatasetId(Number(e.target.value))} className={FIELD_INPUT}>
             {datasets.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.name}
@@ -486,49 +114,50 @@ function AiPromptPanel({
             ))}
           </select>
         </div>
-        <div className="min-w-64 flex-1">
-          <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">
-            What do you want to know?
-          </label>
-          <input
+        <div>
+          <label className={FIELD_LABEL}>Your request</label>
+          <textarea
+            data-autofocus
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                onSubmit();
+              }
+            }}
+            rows={3}
             placeholder="e.g. revenue by region as a bar chart"
-            className="w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1.5 outline-none focus:border-[var(--accent)]"
+            className={`${FIELD_INPUT} resize-none`}
           />
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {AI_EXAMPLES.map((ex) => (
+              <button
+                key={ex}
+                type="button"
+                onClick={() => setPrompt(ex)}
+                className="rounded-full border border-[var(--border)] px-2.5 py-1 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)]/50 hover:text-[var(--accent)]"
+              >
+                {ex}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
 
-      <div className="mt-3 flex gap-2">
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded-md bg-[var(--accent)] px-3 py-1.5 font-medium text-white disabled:opacity-60"
-        >
-          {submitting ? "Thinking..." : "Ask"}
-        </button>
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          className="rounded-md border border-[var(--border)] px-3 py-1.5 text-[var(--text-secondary)]"
-        >
-          Close
-        </button>
-      </div>
-
-      {error && <p className="mt-3 text-[var(--status-critical)]">{error}</p>}
-
-      {result?.response_type === "answer" && (
-        <div className="mt-3 rounded-md bg-[var(--page-plane)] p-3 text-[var(--text-primary)]">
-          {result.answer}
-        </div>
-      )}
-      {result?.response_type === "chart" && (
-        <div className="mt-3 rounded-md bg-[var(--page-plane)] p-3 text-[var(--status-good)]">
-          Added chart &ldquo;{result.chart.title}&rdquo; to this dashboard.
-        </div>
-      )}
-    </form>
+        {error && <p className="rounded-lg bg-[var(--status-critical)]/10 px-3 py-2 text-sm text-[var(--status-critical)]">{error}</p>}
+        {result?.response_type === "answer" && (
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3.5 text-sm leading-6 text-[var(--text-primary)]">
+            {result.answer}
+          </div>
+        )}
+        {result?.response_type === "chart" && (
+          <div className="flex items-center gap-2 rounded-lg bg-[var(--status-good)]/10 px-3.5 py-2.5 text-sm text-[var(--text-primary)]">
+            <span className="text-[var(--status-good)]">✓</span>
+            Added &ldquo;{result.chart.title}&rdquo; to this dashboard. Ask for another, or close.
+          </div>
+        )}
+      </form>
+    </Modal>
   );
 }
 
@@ -603,10 +232,12 @@ function ExportButton({ dashboard, chartsRef }: { dashboard: Dashboard; chartsRe
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
+        aria-label={"Export"}
+        title={"Export"}
         className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-[13px] font-medium text-[var(--text-secondary)] shadow-sm transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
       >
         <DownloadIcon />
-        Export
+        <span className="hidden sm:inline">Export</span>
       </button>
       {open && (
         <div className="absolute right-0 z-10 mt-2 w-52 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-2 text-sm shadow-lg">
@@ -685,10 +316,12 @@ function ShareButton({
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
+        aria-label={dashboard.is_shared ? "Shared" : "Share"}
+        title={dashboard.is_shared ? "Shared" : "Share"}
         className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-[13px] font-medium text-[var(--text-secondary)] shadow-sm transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
       >
         <ShareIcon />
-        {dashboard.is_shared ? "Shared" : "Share"}
+        <span className="hidden sm:inline">{dashboard.is_shared ? "Shared" : "Share"}</span>
       </button>
 
       {open && (
@@ -798,10 +431,12 @@ function CollaboratorsPanel({ dashboard }: { dashboard: Dashboard }) {
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
+        aria-label={"Team"}
+        title={"Team"}
         className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-[13px] font-medium text-[var(--text-secondary)] shadow-sm transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
       >
         <TeamIcon />
-        Team
+        <span className="hidden sm:inline">Team</span>
       </button>
 
       {open && (
@@ -883,10 +518,12 @@ function AiRecommendationsPanel({ dashboard }: { dashboard: Dashboard }) {
     <div className="relative">
       <button
         onClick={() => (open ? setOpen(false) : onOpen())}
+        aria-label={"AI insights"}
+        title={"AI insights"}
         className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-[13px] font-medium text-[var(--text-secondary)] shadow-sm transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
       >
         <SparkleIcon />
-        AI insights
+        <span className="hidden sm:inline">AI insights</span>
       </button>
       {open && (
         <div className="absolute right-0 z-10 mt-2 w-80 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-3 text-sm shadow-lg">
@@ -983,10 +620,12 @@ function ReportSchedulesPanel({ dashboard }: { dashboard: Dashboard }) {
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
+        aria-label={"Reports"}
+        title={"Reports"}
         className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-[13px] font-medium text-[var(--text-secondary)] shadow-sm transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
       >
         <ReportIcon />
-        Reports
+        <span className="hidden sm:inline">Reports</span>
       </button>
 
       {open && (
@@ -1113,6 +752,7 @@ function DraggableChartGrid({
   onDrillDown,
   onDeleted,
   onUpdated,
+  onEdit,
   chartsRef,
 }: {
   dashboard: Dashboard;
@@ -1121,6 +761,7 @@ function DraggableChartGrid({
   onDrillDown: (field: string, value: string) => void;
   onDeleted: () => void;
   onUpdated: () => void;
+  onEdit: (chart: Chart) => void;
   chartsRef: RefObject<HTMLDivElement | null>;
 }) {
   const charts = dashboard.charts ?? [];
@@ -1171,7 +812,7 @@ function DraggableChartGrid({
           <GridLayout
             width={width}
             layout={displayLayout}
-            gridConfig={{ cols: GRID_COLS, rowHeight: GRID_ROW_HEIGHT, margin: isNarrow ? [0, 12] : [16, 16] }}
+            gridConfig={{ cols: GRID_COLS, rowHeight: GRID_ROW_HEIGHT, margin: isNarrow ? [0, 12] : [16, 16], containerPadding: [0, 0] }}
             dragConfig={{ enabled: canEdit && !isNarrow, handle: ".chart-drag-handle" }}
             resizeConfig={{ enabled: canEdit && !isNarrow }}
             onLayoutChange={(l) => {
@@ -1193,6 +834,7 @@ function DraggableChartGrid({
                   canEdit={canEdit}
                   crossFilter={crossFilter}
                   onDrillDown={onDrillDown}
+                  onEdit={onEdit}
                 />
               </div>
             ))}
@@ -1208,13 +850,17 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [crossFilter, setCrossFilter] = useState<ChartFilter | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [builder, setBuilder] = useState<null | { chart?: Chart }>(null);
+  const [askAi, setAskAi] = useState(false);
   const chartsRef = useRef<HTMLDivElement>(null);
 
   function load() {
-    setLoadError(null);
     api
       .get<Dashboard>(`/dashboards/${dashboardId}`)
-      .then(setDashboard)
+      .then((d) => {
+        setLoadError(null);
+        setDashboard(d);
+      })
       .catch((err) =>
         setLoadError(
           err instanceof ApiError && err.status === 403
@@ -1277,7 +923,7 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
         <span aria-hidden>/</span>
         <span className="truncate text-[var(--text-secondary)]">{dashboard.name}</span>
       </nav>
-      <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="mt-2 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-[26px] font-semibold leading-tight tracking-tight">{dashboard.name}</h1>
@@ -1292,37 +938,49 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
               </span>
             )}
           </div>
-          <p className="mt-1 text-sm text-[var(--text-muted)]">
+          <p className="mt-1 line-clamp-2 max-w-3xl text-sm text-[var(--text-muted)]">
             {dashboard.description ? `${dashboard.description} · ` : ""}
             {dashboard.charts?.length ?? 0} chart{dashboard.charts?.length === 1 ? "" : "s"}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           {dashboard.charts && dashboard.charts.length > 0 && <ExportButton dashboard={dashboard} chartsRef={chartsRef} />}
           {dashboard.charts && dashboard.charts.length > 0 && <AiRecommendationsPanel dashboard={dashboard} />}
           {canEdit && <ReportSchedulesPanel dashboard={dashboard} />}
           {role === "owner" && <CollaboratorsPanel dashboard={dashboard} />}
           {role === "owner" && <ShareButton dashboard={dashboard} onChanged={load} />}
-        </div>
-      </div>
-
-      {canEdit && (
-        <div className="mt-5 flex flex-wrap items-start gap-2 border-t border-[var(--border)] pt-5">
-          {datasets.length === 0 ? (
-            <p className="text-sm text-[var(--text-muted)]">
-              No datasets available yet.{" "}
-              <Link href="/data-sources" className="text-[var(--accent)]">
-                Add a data source
-              </Link>{" "}
-              first.
-            </p>
-          ) : (
+          {canEdit && datasets.length > 0 && (
             <>
-              <AddChartForm dashboardId={dashboardId} datasets={datasets} onCreated={load} />
-              <AiPromptPanel dashboardId={dashboardId} datasets={datasets} onCreated={load} />
+              <span className="mx-1 hidden h-6 w-px bg-[var(--border)] sm:block" aria-hidden />
+              <button
+                onClick={() => setAskAi(true)}
+                className="flex items-center gap-1.5 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-3 py-2 text-[13px] font-medium text-[var(--accent)] transition-colors hover:border-[var(--accent)]/60"
+              >
+                <SparkleIcon />
+                Ask AI
+              </button>
+              <button
+                onClick={() => setBuilder({})}
+                className="flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3.5 py-2 text-[13px] font-medium text-white shadow-sm hover:bg-[var(--accent-hover)]"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                Add chart
+              </button>
             </>
           )}
         </div>
+      </div>
+
+      {canEdit && datasets.length === 0 && (
+        <p className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-4 py-3 text-sm text-[var(--text-secondary)]">
+          No datasets available yet.{" "}
+          <Link href="/data-sources" className="font-medium text-[var(--accent)]">
+            Add a data source
+          </Link>{" "}
+          to start adding charts.
+        </p>
       )}
 
       {crossFilter && (
@@ -1346,18 +1004,55 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
             onDrillDown={(field, val) => setCrossFilter({ field, operator: "=", value: val })}
             onDeleted={load}
             onUpdated={load}
+            onEdit={(chart) => setBuilder({ chart })}
             chartsRef={chartsRef}
           />
         </div>
       ) : (
-        <div className="mt-6">
-          <EmptyState
-            icon={<ChartIcon />}
-            title="No charts yet"
-            description="Use the form above to add your first chart from a dataset."
-          />
+        <div className="mt-6 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-1)] px-6 py-12 text-center">
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent)]">
+            <ChartIcon />
+          </span>
+          <h2 className="mt-4 text-lg font-semibold tracking-tight">This dashboard is empty</h2>
+          <p className="mx-auto mt-1 max-w-md text-sm text-[var(--text-muted)]">
+            {canEdit ? "Add your first chart — build it yourself, or describe it and let AI build it." : "No charts have been added yet."}
+          </p>
+          {canEdit && datasets.length > 0 && (
+            <div className="mx-auto mt-6 grid max-w-xl gap-3 sm:grid-cols-2">
+              <button
+                onClick={() => setBuilder({})}
+                className="group rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-4 text-left shadow-sm transition-colors hover:border-[var(--accent)]/60"
+              >
+                <span className="text-sm font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent)]">Build a chart</span>
+                <span className="mt-1 block text-xs text-[var(--text-muted)]">Pick a dataset, a visual and fields, with a live preview.</span>
+              </button>
+              <button
+                onClick={() => setAskAi(true)}
+                className="group rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-4 text-left shadow-sm transition-colors hover:border-[var(--accent)]/60"
+              >
+                <span className="flex items-center gap-1.5 text-sm font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent)]">
+                  <span className="text-[var(--accent)]">
+                    <SparkleIcon />
+                  </span>
+                  Ask AI
+                </span>
+                <span className="mt-1 block text-xs text-[var(--text-muted)]">Describe it in plain words — &ldquo;sales by region&rdquo;.</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
+
+      {builder && (
+        <ChartBuilder
+          dashboardId={dashboardId}
+          datasets={datasets}
+          chart={builder.chart}
+          onClose={() => setBuilder(null)}
+          onSaved={load}
+        />
+      )}
+      {askAi && <AiPromptDialog dashboardId={dashboardId} datasets={datasets} onCreated={load} onClose={() => setAskAi(false)} />}
     </div>
   );
 }

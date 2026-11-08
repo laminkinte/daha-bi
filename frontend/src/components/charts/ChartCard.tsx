@@ -23,6 +23,7 @@ import { downloadChartPng } from "@/lib/chart-export";
 import { computeInsight } from "@/lib/insights";
 import { useChartTheme } from "@/lib/chart-theme";
 import { formatValue } from "@/lib/format-value";
+import { describeChart } from "@/lib/chart-describe";
 
 function ImageIcon() {
   return (
@@ -86,6 +87,52 @@ function CopyIcon() {
   );
 }
 
+function MoreIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="5" cy="12" r="1.7" />
+      <circle cx="12" cy="12" r="1.7" />
+      <circle cx="19" cy="12" r="1.7" />
+    </svg>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" />
+      <path d="m13.5 6.5 4 4" />
+    </svg>
+  );
+}
+
+function MenuItem({
+  icon,
+  label,
+  onClick,
+  danger,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      role="menuitem"
+      onClick={onClick}
+      className={`flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-[13px] ${
+        danger
+          ? "text-[var(--status-critical)] hover:bg-[var(--status-critical)]/10"
+          : "text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
+      }`}
+    >
+      <span className="flex w-4 justify-center opacity-80">{icon}</span>
+      {label}
+    </button>
+  );
+}
+
 function TrashIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -96,7 +143,8 @@ function TrashIcon() {
 
 /** Compact, always-visible toolbar button for the chart card header. */
 const TOOL_BTN =
-  "flex h-7 w-7 items-center justify-center rounded-md text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]";
+  "flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]";
+const TOOL_BTN_ON = "bg-[var(--accent-soft)] !text-[var(--accent)]";
 
 function GripIcon() {
   return (
@@ -163,7 +211,7 @@ const KPI_VARIANTS: { value: KpiVariant; label: string }[] = [
 
 function defaultVariant(chart: Chart, style: ChartStyle): string {
   if (style.variant) return style.variant;
-  if (chart.type === "pie") return style.donut ? "donut" : "pie";
+  if (chart.type === "pie") return style.donut === false ? "pie" : "donut";
   if (chart.type === "line") return style.smooth === false ? "straight" : "smooth";
   if (chart.type === "bar") return "vertical";
   return "number";
@@ -173,14 +221,15 @@ function ChartStylePanel({
   chart,
   data,
   onUpdated,
+  onClose,
 }: {
   chart: Chart;
   data: ChartData | null;
   onUpdated: () => void;
+  onClose: () => void;
 }) {
   const theme = useChartTheme();
   const initial = chart.config.style ?? {};
-  const [open, setOpen] = useState(false);
   const [xAxisLabel, setXAxisLabel] = useState(initial.x_axis_label ?? "");
   const [yAxisLabel, setYAxisLabel] = useState(initial.y_axis_label ?? "");
   const [showLegend, setShowLegend] = useState(initial.show_legend ?? chart.type === "pie");
@@ -259,7 +308,7 @@ function ChartStylePanel({
     };
     try {
       await api.put(`/charts/${chart.id}`, { config });
-      setOpen(false);
+      onClose();
       onUpdated();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to save chart style.");
@@ -273,17 +322,8 @@ function ChartStylePanel({
   const inputClass = "w-full rounded border border-[var(--border)] bg-transparent px-2 py-1";
 
   return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className={`${TOOL_BTN} ${open ? "bg-[var(--accent-soft)] !text-[var(--accent)]" : ""}`}
-        title="Customize"
-      >
-        <PaletteIcon />
-      </button>
-
-      {open && (
-        <div className="absolute right-0 z-10 mt-2 max-h-[28rem] w-80 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-3 text-xs shadow-lg">
+    <>
+        <div className="chart-popover absolute right-0 top-full z-30 mt-1.5 max-h-[28rem] w-80 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-3 text-xs shadow-lg">
           <h4 className="mb-2 font-medium text-[var(--text-primary)]">Customize chart</h4>
 
           <div className="flex flex-col gap-2.5">
@@ -511,14 +551,13 @@ function ChartStylePanel({
             >
               {saving ? "Saving..." : "Save"}
             </button>
-            <button onClick={() => setOpen(false)} className="rounded border border-[var(--border)] px-3 py-1.5 text-[var(--text-secondary)]">
+            <button onClick={onClose} className="rounded border border-[var(--border)] px-3 py-1.5 text-[var(--text-secondary)]">
               Cancel
             </button>
           </div>
           {error && <p className="mt-2 text-[var(--status-critical)]">{error}</p>}
         </div>
-      )}
-    </div>
+    </>
   );
 }
 
@@ -543,7 +582,6 @@ function isoDate(d: Date) {
 }
 
 function AlertsPanel({ chart }: { chart: Chart }) {
-  const [open, setOpen] = useState(false);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [condition, setCondition] = useState<"above" | "below" | "anomaly">("above");
   const [threshold, setThreshold] = useState("");
@@ -561,11 +599,9 @@ function AlertsPanel({ chart }: { chart: Chart }) {
   }
 
   useEffect(() => {
-    if (open) load();
+    load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
-  const breached = alerts.some((a) => a.last_status === "breached");
+  }, []);
 
   async function onSubmit() {
     if (condition === "anomaly" ? !sensitivity : !threshold) return;
@@ -597,18 +633,8 @@ function AlertsPanel({ chart }: { chart: Chart }) {
   }
 
   return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className={`${TOOL_BTN} w-auto min-w-7 gap-1 px-1.5 ${breached ? "!text-[var(--status-critical)]" : ""}`}
-        title="Alerts"
-      >
-        <BellIcon />
-        {breached && <span className="h-1.5 w-1.5 rounded-full bg-[var(--status-critical)]" />}
-      </button>
-
-      {open && (
-        <div className="absolute right-0 z-10 mt-2 w-72 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-3 text-xs shadow-lg">
+    <>
+        <div className="chart-popover absolute right-0 top-full z-30 mt-1.5 w-72 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-3 text-xs shadow-lg">
           <h4 className="mb-2 font-medium text-[var(--text-primary)]">Alerts</h4>
 
           {alerts.length > 0 && (
@@ -686,13 +712,11 @@ function AlertsPanel({ chart }: { chart: Chart }) {
           )}
           {error && <p className="mt-1.5 text-[var(--status-critical)]">{error}</p>}
         </div>
-      )}
-    </div>
+    </>
   );
 }
 
 function GoalsPanel({ chart }: { chart: Chart }) {
-  const [open, setOpen] = useState(false);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [name, setName] = useState("");
   const [direction, setDirection] = useState<"increase" | "decrease">("increase");
@@ -711,11 +735,9 @@ function GoalsPanel({ chart }: { chart: Chart }) {
   }
 
   useEffect(() => {
-    if (open) load();
+    load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
-  const anyAchieved = goals.some((g) => g.is_achieved);
+  }, []);
 
   async function onSubmit() {
     if (!name || !targetValue) return;
@@ -764,17 +786,8 @@ function GoalsPanel({ chart }: { chart: Chart }) {
   }
 
   return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className={`${TOOL_BTN} w-auto min-w-7 gap-1 px-1.5 ${anyAchieved ? "!text-[var(--status-good)]" : ""}`}
-        title="Goals"
-      >
-        <FlagIcon />
-      </button>
-
-      {open && (
-        <div className="absolute right-0 z-10 mt-2 w-80 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-3 text-xs shadow-lg">
+    <>
+        <div className="chart-popover absolute right-0 top-full z-30 mt-1.5 w-80 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-3 text-xs shadow-lg">
           <h4 className="mb-2 font-medium text-[var(--text-primary)]">Goals</h4>
 
           {goals.length > 0 && (
@@ -855,8 +868,7 @@ function GoalsPanel({ chart }: { chart: Chart }) {
           </div>
           {error && <p className="mt-1.5 text-[var(--status-critical)]">{error}</p>}
         </div>
-      )}
-    </div>
+    </>
   );
 }
 
@@ -878,7 +890,6 @@ function ScenarioPanel({
   format: Chart["config"]["format"];
   currency: Chart["config"]["currency"];
 }) {
-  const [open, setOpen] = useState(false);
   const [adjustments, setAdjustments] = useState<Record<string, string>>({});
 
   const baseline = values.reduce((a, b) => a + b, 0);
@@ -894,16 +905,8 @@ function ScenarioPanel({
   }
 
   return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className={`${TOOL_BTN} ${open ? "bg-[var(--accent-soft)] !text-[var(--accent)]" : ""}`}
-        title="What-if scenario"
-      >
-        <FlaskIcon />
-      </button>
-      {open && (
-        <div className="absolute right-0 z-10 mt-2 max-h-96 w-72 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-3 text-xs shadow-lg">
+    <>
+        <div className="chart-popover absolute right-0 top-full z-30 mt-1.5 max-h-96 w-72 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-3 text-xs shadow-lg">
           <h4 className="mb-2 font-medium text-[var(--text-primary)]">What if...</h4>
           <div className="flex flex-col gap-1.5">
             {labels.slice(0, 30).map((label) => (
@@ -955,8 +958,7 @@ function ScenarioPanel({
             </button>
           )}
         </div>
-      )}
-    </div>
+    </>
   );
 }
 
@@ -969,6 +971,7 @@ export default function ChartCard({
   canEdit = true,
   crossFilter,
   onDrillDown,
+  onEdit,
 }: {
   chart: Chart;
   onDeleted?: () => void;
@@ -978,6 +981,8 @@ export default function ChartCard({
   canEdit?: boolean;
   crossFilter?: ChartFilter | null;
   onDrillDown?: (field: string, value: string) => void;
+  /** Opens the chart builder on this chart; the "Edit chart" menu item only shows when given. */
+  onEdit?: (chart: Chart) => void;
 }) {
   const [data, setData] = useState<ChartData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -988,6 +993,33 @@ export default function ChartCard({
   const [operator, setOperator] = useState("=");
   const [value, setValue] = useState("");
   const [manualFilters, setManualFilters] = useState<ChartFilter[]>([]);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [panel, setPanel] = useState<null | "style" | "alerts" | "goals" | "scenario">(null);
+  const toolsRef = useRef<HTMLDivElement>(null);
+
+  // Menus and panels close on outside click or Escape.
+  useEffect(() => {
+    if (!menuOpen && !panel) return;
+    const close = () => {
+      setMenuOpen(false);
+      setPanel(null);
+    };
+    const onDown = (e: MouseEvent) => {
+      if (toolsRef.current && !toolsRef.current.contains(e.target as Node)) close();
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen, panel]);
+
+  function openPanel(next: NonNullable<typeof panel>) {
+    setMenuOpen(false);
+    setPanel((p) => (p === next ? null : next));
+  }
 
   const insight = useMemo(() => (data ? computeInsight(chart, data) : null), [chart, data]);
 
@@ -1002,13 +1034,14 @@ export default function ChartCard({
 
   useEffect(() => {
     let cancelled = false;
-    setError(null);
     const endpoint = dataEndpoint ?? `/charts/${chart.id}/data`;
     api
       .post<ChartData>(endpoint, { filters: effectiveFilters })
       .catch(() => api.post<ChartData>(endpoint, { filters: effectiveFilters })) // one silent retry for rare transient 500s under load
       .then((result) => {
-        if (!cancelled) setData(result);
+        if (cancelled) return;
+        setError(null);
+        setData(result);
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof ApiError ? err.message : "Failed to load chart data.");
@@ -1016,8 +1049,9 @@ export default function ChartCard({
     return () => {
       cancelled = true;
     };
+    // Re-fetch when the chart's definition changes too (the builder can edit fields/type in place).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chart.id, effectiveFilters]);
+  }, [chart.id, chart.type, JSON.stringify(chart.config), effectiveFilters]);
 
   function applyFilter() {
     if (!field || !value) return;
@@ -1061,94 +1095,120 @@ export default function ChartCard({
 
   const canDrillDown = !!onDrillDown && !!chart.config.x_field;
 
+  const scenarioData =
+    data && "labels" in data && "values" in data && !chart.config.series_field && (chart.type === "bar" || chart.type === "pie" || chart.type === "geo_map")
+      ? data
+      : null;
+  const editable = !readOnly && canEdit;
+  const canFilter = chart.type !== "table" && chart.type !== "kpi";
+  const filtersOn = manualFilters.length > 0;
+
   return (
-    <div className="group flex h-full flex-col rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-4 transition-shadow hover:shadow-lg">
-      <div className="flex shrink-0 flex-wrap items-start justify-between gap-x-3 gap-y-1">
-        {/* min width keeps the title readable — on narrow cards the toolbar wraps below instead. */}
-        <div className="flex min-w-[9rem] flex-1 items-start gap-1.5">
-          {canEdit && !readOnly && (
-            <span
-              className="chart-drag-handle -ml-1 mt-0.5 shrink-0 cursor-grab rounded p-0.5 text-[var(--text-muted)] hover:bg-[var(--surface-2)] active:cursor-grabbing"
-              title="Drag to move"
-            >
+    <div
+      className={`flex h-full flex-col rounded-xl border border-[var(--border)] bg-[var(--surface-1)] shadow-[var(--shadow-card)] transition-colors hover:border-[var(--baseline)] ${
+        menuOpen || panel ? "chart-popover-open" : ""
+      }`}
+    >
+      <div className="flex shrink-0 items-start gap-1.5 px-4 pt-3.5">
+        <div
+          className={`flex min-w-0 flex-1 items-start gap-1.5 ${editable ? "chart-drag-handle cursor-grab active:cursor-grabbing" : ""}`}
+          title={editable ? "Drag to move" : undefined}
+        >
+          {editable && (
+            <span className="-ml-1.5 mt-[3px] shrink-0 text-[var(--text-muted)] opacity-50">
               <GripIcon />
             </span>
           )}
           <div className="min-w-0">
-            <h3 className="truncate text-[15px] font-semibold tracking-tight text-[var(--text-primary)]" title={chart.title}>
+            <h3 className="truncate text-[15px] font-semibold leading-snug tracking-tight text-[var(--text-primary)]" title={chart.title}>
               {chart.title}
             </h3>
-            <span className="text-[10.5px] font-medium uppercase tracking-[0.08em] text-[var(--text-muted)]">
-              {chart.type.replace("_", " ")}
-            </span>
+            <p className="truncate text-xs text-[var(--text-muted)]" title={describeChart(chart)}>
+              {describeChart(chart)}
+            </p>
           </div>
         </div>
-        <div className="-mr-1 flex shrink-0 items-center gap-0.5 text-xs [&>*]:shrink-0">
-          {!readOnly && chart.type === "kpi" && <AlertsPanel chart={chart} />}
-          {!readOnly && chart.type === "kpi" && <GoalsPanel chart={chart} />}
-          {data &&
-            "labels" in data &&
-            "values" in data &&
-            !chart.config.series_field &&
-            (chart.type === "bar" || chart.type === "pie" || chart.type === "geo_map") && (
-              <ScenarioPanel labels={data.labels} values={data.values} format={chart.config.format} currency={chart.config.currency} />
-            )}
-          {!readOnly && canEdit && chart.type !== "table" && (
-            <ChartStylePanel chart={chart} data={data} onUpdated={() => onUpdated?.()} />
-          )}
-          {chart.type !== "table" && chart.type !== "kpi" && (
+
+        <div ref={toolsRef} className="relative -mr-2 -mt-0.5 flex shrink-0 items-center">
+          {canFilter && (
             <button
               onClick={() => setShowFilter((s) => !s)}
-              className={`${TOOL_BTN} ${showFilter || manualFilters.length > 0 ? "bg-[var(--accent-soft)] !text-[var(--accent)]" : ""}`}
+              className={`${TOOL_BTN} relative ${showFilter || filtersOn ? TOOL_BTN_ON : ""}`}
               title="Filter"
               aria-label="Filter"
             >
               <FilterIcon />
+              {filtersOn && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />}
             </button>
           )}
-          {data && (
+          {editable && chart.type !== "table" && (
             <button
-              onClick={() => downloadChartCsv(chart, data)}
-              className={TOOL_BTN}
-              title="Export CSV"
-              aria-label="Export CSV"
+              onClick={() => openPanel("style")}
+              className={`${TOOL_BTN} ${panel === "style" ? TOOL_BTN_ON : ""}`}
+              title="Customize look"
+              aria-label="Customize look"
             >
-              <DownloadIcon />
+              <PaletteIcon />
             </button>
           )}
-          {data && canExportImage && (
-            <button
-              onClick={() =>
-                chartAreaRef.current &&
-                downloadChartPng(chartAreaRef.current, `${chart.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`)
-              }
-              className={TOOL_BTN}
-              title="Export PNG"
-              aria-label="Export PNG"
-            >
-              <ImageIcon />
-            </button>
+          <button
+            onClick={() => {
+              setPanel(null);
+              setMenuOpen((o) => !o);
+            }}
+            className={`${TOOL_BTN} ${menuOpen ? TOOL_BTN_ON : ""}`}
+            title="More actions"
+            aria-label="More actions"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+          >
+            <MoreIcon />
+          </button>
+
+          {menuOpen && (
+            <div role="menu" className="chart-popover absolute right-0 top-full z-30 mt-1.5 w-52 rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-1.5 shadow-[var(--shadow-pop)]">
+              {editable && onEdit && (
+                <MenuItem icon={<PencilIcon />} label="Edit chart" onClick={() => { setMenuOpen(false); onEdit(chart); }} />
+              )}
+              {scenarioData && <MenuItem icon={<FlaskIcon />} label="What-if scenario" onClick={() => openPanel("scenario")} />}
+              {!readOnly && chart.type === "kpi" && <MenuItem icon={<BellIcon />} label="Alerts" onClick={() => openPanel("alerts")} />}
+              {!readOnly && chart.type === "kpi" && <MenuItem icon={<FlagIcon />} label="Goals" onClick={() => openPanel("goals")} />}
+              {data && (
+                <>
+                  <div className="my-1 h-px bg-[var(--border)]" />
+                  <MenuItem icon={<DownloadIcon />} label="Download CSV" onClick={() => { setMenuOpen(false); downloadChartCsv(chart, data); }} />
+                  {canExportImage && (
+                    <MenuItem
+                      icon={<ImageIcon />}
+                      label="Download PNG"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        if (chartAreaRef.current) downloadChartPng(chartAreaRef.current, `${chart.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`);
+                      }}
+                    />
+                  )}
+                </>
+              )}
+              {editable && (
+                <>
+                  <div className="my-1 h-px bg-[var(--border)]" />
+                  <MenuItem icon={<CopyIcon />} label="Duplicate" onClick={() => { setMenuOpen(false); onDuplicate(); }} />
+                  <MenuItem icon={<TrashIcon />} label="Delete" danger onClick={() => { setMenuOpen(false); onDelete(); }} />
+                </>
+              )}
+            </div>
           )}
-          {!readOnly && canEdit && (
-            <button onClick={onDuplicate} className={TOOL_BTN} title="Duplicate" aria-label="Duplicate chart">
-              <CopyIcon />
-            </button>
-          )}
-          {!readOnly && canEdit && (
-            <button
-              onClick={onDelete}
-              className={`${TOOL_BTN} hover:!bg-[var(--status-critical)]/10 hover:!text-[var(--status-critical)]`}
-              title="Delete"
-              aria-label="Delete chart"
-            >
-              <TrashIcon />
-            </button>
+          {panel === "style" && <ChartStylePanel chart={chart} data={data} onUpdated={() => onUpdated?.()} onClose={() => setPanel(null)} />}
+          {panel === "alerts" && <AlertsPanel chart={chart} />}
+          {panel === "goals" && <GoalsPanel chart={chart} />}
+          {panel === "scenario" && scenarioData && (
+            <ScenarioPanel labels={scenarioData.labels} values={scenarioData.values} format={chart.config.format} currency={chart.config.currency} />
           )}
         </div>
       </div>
 
       {showFilter && chart.dataset && (
-        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--page-plane)] p-2.5 text-xs">
+        <div className="mx-4 mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-2.5 text-xs">
           <select
             value={field}
             onChange={(e) => setField(e.target.value)}
@@ -1204,14 +1264,14 @@ export default function ChartCard({
       )}
 
       {crossFilterApplies && crossFilter && (
-        <div className="mt-3 flex items-center gap-1.5 rounded-md bg-[var(--accent)]/10 px-2.5 py-1.5 text-xs text-[var(--accent)]">
+        <div className="mx-4 mt-3 flex items-center gap-1.5 rounded-md bg-[var(--accent)]/10 px-2.5 py-1.5 text-xs text-[var(--accent)]">
           Cross-filtered: {crossFilter.field} = {crossFilter.value}
         </div>
       )}
 
-      <div className="mt-3 min-h-0 flex-1" ref={chartAreaRef}>
-        {error && <p className="text-sm text-[var(--status-critical)]">{error}</p>}
-        {!error && !data && <Skeleton className="h-56 w-full" />}
+      <div className="min-h-0 flex-1 px-3 pb-3 pt-3" ref={chartAreaRef}>
+        {error && <p className="px-1 text-sm text-[var(--status-critical)]">{error}</p>}
+        {!error && !data && <Skeleton className="h-full min-h-24 w-full" />}
         {data && (
           <ChartRenderer
             chart={chart}
@@ -1223,7 +1283,7 @@ export default function ChartCard({
 
       {data && insight && (
         <div
-          className={`mt-2 flex shrink-0 items-center gap-1.5 text-xs ${
+          className={`flex shrink-0 items-center gap-1.5 border-t border-[var(--border)] px-4 py-2 text-xs ${
             insight.tone === "up"
               ? "text-[var(--status-good)]"
               : insight.tone === "down"
