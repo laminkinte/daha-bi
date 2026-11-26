@@ -22,7 +22,9 @@ import {
   type Dashboard,
   type Dataset,
   type ReportSchedule,
+  type InviteSent,
 } from "@/lib/api";
+import { InviteSentNotice, PendingInvites } from "@/components/PendingInvites";
 import { downloadDashboardPdf } from "@/lib/dashboard-export";
 
 function ChartIcon() {
@@ -327,7 +329,7 @@ function ShareButton({
       </button>
 
       {open && (
-        <div className="absolute right-0 z-10 mt-2 w-80 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-4 text-sm shadow-lg">
+        <div className="absolute right-0 z-30 mt-2 max-h-[70vh] w-[min(24rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-4 text-sm shadow-lg">
           {!dashboard.is_shared ? (
             <>
               <p className="text-[var(--text-secondary)]">
@@ -391,6 +393,8 @@ function CollaboratorsPanel({ dashboard }: { dashboard: Dashboard }) {
   const [role, setRole] = useState<"viewer" | "editor">("viewer");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [inviteSent, setInviteSent] = useState<InviteSent | null>(null);
+  const [inviteRefresh, setInviteRefresh] = useState(0);
 
   function load() {
     api
@@ -410,9 +414,15 @@ function CollaboratorsPanel({ dashboard }: { dashboard: Dashboard }) {
     setBusy(true);
     setError(null);
     try {
-      await api.post(`/dashboards/${dashboard.id}/collaborators`, { email, role });
+      const res = await api.post<InviteSent | Collaborator>(`/dashboards/${dashboard.id}/collaborators`, { email, role });
       setEmail("");
-      load();
+      if ("pending" in res && res.pending) {
+        setInviteSent(res);
+        setInviteRefresh((n) => n + 1);
+      } else {
+        setInviteSent(null);
+        load();
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to invite.");
     } finally {
@@ -443,7 +453,10 @@ function CollaboratorsPanel({ dashboard }: { dashboard: Dashboard }) {
 
       {open && (
         <div className="absolute right-0 z-10 mt-2 w-80 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-4 text-sm shadow-lg">
-          <p className="text-[var(--text-secondary)]">Invite teammates who already have a daha-bi account.</p>
+          <p className="font-medium text-[var(--text-primary)]">Share this dashboard</p>
+          <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
+            Invite anyone by email — teammates or people at partner companies. They only see this dashboard.
+          </p>
 
           {collaborators.length > 0 && (
             <div className="mt-3 flex flex-col gap-1.5">
@@ -468,7 +481,7 @@ function CollaboratorsPanel({ dashboard }: { dashboard: Dashboard }) {
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="teammate@email.com"
+              placeholder="name@company.com"
               type="email"
               className="min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--page-plane)] px-2 py-1.5 text-xs"
             />
@@ -489,6 +502,12 @@ function CollaboratorsPanel({ dashboard }: { dashboard: Dashboard }) {
             </button>
           </form>
           {error && <p className="mt-2 text-[var(--status-critical)]">{error}</p>}
+          {inviteSent && (
+            <div className="mt-3">
+              <InviteSentNotice invite={inviteSent} onClose={() => setInviteSent(null)} />
+            </div>
+          )}
+          <PendingInvites listUrl={`/dashboards/${dashboard.id}/invitations`} refreshKey={inviteRefresh} />
         </div>
       )}
     </div>

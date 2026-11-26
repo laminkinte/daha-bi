@@ -116,6 +116,27 @@ export type User = {
   current_organization?: OrganizationBilling;
 };
 
+/** An emailed invitation not yet accepted (the person has no account yet). */
+export type PendingInvitation = {
+  id: number;
+  email: string;
+  role: string;
+  invited_by: string | null;
+  expires_at: string;
+  expired: boolean;
+  created_at: string;
+};
+
+/** Returned (HTTP 202) when inviting an email that has no account: the link to share. */
+export type InviteSent = {
+  pending: true;
+  id: number;
+  email: string;
+  role: string;
+  invite_url: string;
+  email_sent: boolean;
+};
+
 export type BillingInterval = "monthly" | "yearly";
 
 export type OrgRole = "owner" | "admin" | "analyst" | "viewer";

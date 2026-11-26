@@ -26,10 +26,22 @@ class DashboardCollaboratorController extends Controller
             'role' => ['required', 'in:viewer,editor'],
         ]);
 
-        $collaborator = User::where('email', $validated['email'])->first();
+        $collaborator = User::whereRaw('LOWER(email) = ?', [strtolower(trim($validated['email']))])->first();
 
+        // No account yet (typically someone at a partner company): email them a guest invitation.
         if (! $collaborator) {
-            abort(Response::HTTP_UNPROCESSABLE_ENTITY, 'No daha-bi account found with that email. They need to create an account first.');
+            [$invitation, $token, $sent] = app(\App\Services\InvitationService::class)->invite(
+                $dashboard->organization, $request->user(), $validated['email'], null, $dashboard, $validated['role']
+            );
+
+            return response()->json([
+                'pending' => true,
+                'id' => $invitation->id,
+                'email' => $invitation->email,
+                'role' => $invitation->dashboard_role,
+                'invite_url' => \App\Services\InvitationService::url($token),
+                'email_sent' => $sent,
+            ], 202);
         }
 
         if ($collaborator->id === $dashboard->user_id) {

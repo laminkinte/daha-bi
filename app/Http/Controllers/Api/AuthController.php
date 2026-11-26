@@ -19,6 +19,7 @@ class AuthController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
             'referral_code' => ['nullable', 'string', 'max:12'],
+            'invite_token' => ['nullable', 'string', 'max:100'],
         ]);
 
         $referredBy = ! empty($validated['referral_code'])
@@ -42,7 +43,29 @@ class AuthController extends Controller
 
         $organization->members()->attach($user->id, ['role' => 'owner']);
 
+        // Signing up from an invitation link: join the inviting workspace/dashboard right away.
+        // A bad or mismatched link must not block the signup itself, so failures are reported, not thrown.
+        $inviteError = null;
+        if (! empty($validated['invite_token'])) {
+            $invitation = \App\Models\Invitation::findByToken($validated['invite_token']);
+            try {
+                abort_unless($invitation, 404, 'This invitation link is not valid.');
+                app(\App\Services\InvitationService::class)->accept($invitation, $user);
+                $user->refresh();
+            } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+                $inviteError = $e->getMessage();
+            }
+        }
+
         $token = $user->createToken('api')->plainTextToken;
+
+        if ($inviteError) {
+            return response()->json([
+                'user' => $user->load('currentOrganization'),
+                'token' => $token,
+                'invite_error' => $inviteError,
+            ], 201);
+        }
 
         return response()->json([
             'user' => $user->load('currentOrganization'),

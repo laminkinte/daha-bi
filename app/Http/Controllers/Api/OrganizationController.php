@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Organization;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\InvitationService;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -62,10 +63,21 @@ class OrganizationController extends Controller
             'role' => ['required', 'in:owner,admin,analyst,viewer'],
         ]);
 
-        $invitee = User::where('email', $validated['email'])->first();
+        $invitee = User::whereRaw('LOWER(email) = ?', [strtolower(trim($validated['email']))])->first();
 
+        // No account yet: email them an invitation link instead of failing.
         if (! $invitee) {
-            abort(Response::HTTP_UNPROCESSABLE_ENTITY, 'No daha-bi account found with that email. They need to create an account first.');
+            [$invitation, $token, $sent] = app(InvitationService::class)
+                ->invite($organization, $request->user(), $validated['email'], $validated['role']);
+
+            return response()->json([
+                'pending' => true,
+                'id' => $invitation->id,
+                'email' => $invitation->email,
+                'role' => $invitation->role,
+                'invite_url' => InvitationService::url($token),
+                'email_sent' => $sent,
+            ], 202);
         }
 
         $organization->members()->syncWithoutDetaching([$invitee->id => ['role' => $validated['role']]]);

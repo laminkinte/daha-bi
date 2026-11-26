@@ -11,6 +11,7 @@ import {
   ApiError,
   type AuditLog,
   type BillingInterval,
+  type InviteSent,
   type Organization,
   type OrganizationMember,
   type OrgRole,
@@ -21,6 +22,7 @@ import {
 import BillingIntervalToggle, { yearlySavingsPercent } from "@/components/BillingIntervalToggle";
 import DataTable, { type Column } from "@/components/admin/DataTable";
 import { PageHeader, PAGE_CONTAINER } from "@/components/PageHeader";
+import { InviteSentNotice, PendingInvites } from "@/components/PendingInvites";
 
 const PLAN_LABELS: Record<Plan, string> = { free: "Free", growth: "Growth", business: "Business" };
 
@@ -36,6 +38,8 @@ function OrganizationSection() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<OrgRole>("analyst");
   const [inviting, setInviting] = useState(false);
+  const [inviteSent, setInviteSent] = useState<InviteSent | null>(null);
+  const [inviteRefresh, setInviteRefresh] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -88,9 +92,16 @@ function OrganizationSection() {
     setInviting(true);
     setError(null);
     try {
-      await api.post(`/organizations/${org.id}/members`, { email: inviteEmail, role: inviteRole });
+      const res = await api.post<InviteSent | OrganizationMember>(`/organizations/${org.id}/members`, { email: inviteEmail, role: inviteRole });
       setInviteEmail("");
-      loadMembers(org.id);
+      if ("pending" in res && res.pending) {
+        // No account yet — an invitation link was emailed instead.
+        setInviteSent(res);
+        setInviteRefresh((n) => n + 1);
+      } else {
+        setInviteSent(null);
+        loadMembers(org.id);
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to invite member.");
     } finally {
@@ -207,7 +218,7 @@ function OrganizationSection() {
             value={inviteEmail}
             onChange={(e) => setInviteEmail(e.target.value)}
             type="email"
-            placeholder="Invite by email..."
+            placeholder="Invite by email — teammates or partners..."
             className="min-w-0 flex-1 rounded-md border border-[var(--border)] bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[var(--accent)]"
           />
           <select
@@ -230,9 +241,15 @@ function OrganizationSection() {
           </button>
         </form>
       )}
+      {canManage && inviteSent && (
+        <div className="mt-3">
+          <InviteSentNotice invite={inviteSent} onClose={() => setInviteSent(null)} />
+        </div>
+      )}
+      {canManage && <PendingInvites listUrl={`/organizations/${org.id}/invitations`} refreshKey={inviteRefresh} />}
       {canManage && (
         <p className="mt-2 text-xs text-[var(--text-muted)]">
-          The invitee needs an existing daha-bi account. Owner/admin can create and edit everything;
+          People without an account get an email with a secure 7-day link. Owner/admin can create and edit everything;
           analyst can create and edit dashboards and data sources; viewer is read-only.
         </p>
       )}
