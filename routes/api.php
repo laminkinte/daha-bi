@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\AlertController;
 use App\Http\Controllers\Api\GoalController;
 use App\Http\Controllers\Api\InvitationController;
 use App\Http\Controllers\Api\CommentController;
+use App\Http\Controllers\Api\DashboardShareController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillingController;
@@ -39,6 +40,7 @@ Route::post('/public/dashboards/{token}/charts/{chart}/data', [PublicDashboardCo
 Route::get('/site-settings', [SiteSettingsController::class, 'show']);
 
 Route::get('/public/invitations/{token}', [InvitationController::class, 'preview'])->middleware('throttle:30,1');
+Route::get('/public/shares/{token}', [DashboardShareController::class, 'preview'])->middleware('throttle:30,1');
 
 // Paystack calls this server-to-server — authenticated by HMAC signature, not Sanctum.
 Route::post('/webhooks/paystack', [BillingController::class, 'webhook']);
@@ -69,6 +71,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/invitations/{invitation}/resend', [InvitationController::class, 'resend'])->middleware('throttle:10,1');
     Route::delete('/invitations/{invitation}', [InvitationController::class, 'destroy']);
     Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept'])->middleware('throttle:10,1');
+
+    Route::get('/dashboards/{dashboard}/company-shares', [DashboardShareController::class, 'index']);
+    Route::post('/dashboards/{dashboard}/company-shares', [DashboardShareController::class, 'store'])->middleware('throttle:20,1');
+    Route::put('/company-shares/{share}', [DashboardShareController::class, 'update']);
+    Route::delete('/company-shares/{share}', [DashboardShareController::class, 'destroy']);
+    Route::post('/shares/{token}/accept', [DashboardShareController::class, 'accept'])->middleware('throttle:10,1');
 
     Route::get('/dashboards/{dashboard}/comments', [CommentController::class, 'index']);
     Route::get('/dashboards/{dashboard}/mentionable', [CommentController::class, 'mentionable']);

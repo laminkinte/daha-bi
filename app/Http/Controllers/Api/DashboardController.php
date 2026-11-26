@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Dashboard;
+use App\Models\User;
 use App\Services\AiPromptService;
 use App\Services\AuditLogger;
 use App\Services\ChartDataService;
@@ -26,11 +27,19 @@ class DashboardController extends Controller
 
         // Every dashboard in the current org, plus any dashboard in a *different* org this user
         // has been individually invited to as a guest collaborator (see Dashboard::roleFor()).
+        // ...and dashboards another company shared with the current workspace (shared_by = that company).
         $dashboards = Dashboard::withCount('charts')
+            ->with('organization:id,name')
             ->where('organization_id', $user->current_organization_id)
             ->orWhereHas('collaborators', fn ($q) => $q->where('user_id', $user->id))
+            ->orWhereHas('shares', fn ($q) => $q->active()->where('organization_id', $user->current_organization_id))
             ->get()
-            ->each(fn (Dashboard $d) => $d->setAttribute('role', $d->roleFor($user)));
+            ->each(function (Dashboard $d) use ($user) {
+                $d->setAttribute('role', $d->roleFor($user));
+                $d->setAttribute('shared_by', $d->organization_id !== $user->current_organization_id ? $d->organization?->name : null);
+                $d->unsetRelation('organization');
+                $this->hidePublicLink($d, $user);
+            });
 
         return $dashboards->sortByDesc('created_at')->values();
     }
@@ -56,10 +65,27 @@ class DashboardController extends Controller
 
         $dashboard->load('charts.dataset:id,name,columns,updated_at');
 
+        $user = $request->user();
+        $this->hidePublicLink($dashboard, $user);
+
         return $dashboard
-            ->setAttribute('role', $dashboard->roleFor($request->user()))
+            ->setAttribute('role', $dashboard->roleFor($user))
+            // Set when the viewer reaches this dashboard from another company (a company share or guest invite).
+            ->setAttribute('shared_by', $user->roleInOrganization($dashboard->organization_id) === null ? \App\Models\Organization::whereKey($dashboard->organization_id)->value('name') : null)
             // When the freshest dataset behind this dashboard last changed — shown as "Data refreshed".
             ->setAttribute('data_refreshed_at', $dashboard->charts->pluck('dataset.updated_at')->filter()->max());
+    }
+
+    /**
+     * The public link token shows every row to anyone holding it, so only people who may manage
+     * the dashboard ever receive it. A partner company (row-filtered) or a viewer must not, or the
+     * token would be a way around their row filters.
+     */
+    protected function hidePublicLink(Dashboard $dashboard, User $user): void
+    {
+        if (! $user->can('manage', $dashboard)) {
+            $dashboard->makeHidden(['share_token', 'is_shared']);
+        }
     }
 
     /**

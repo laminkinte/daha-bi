@@ -73,7 +73,21 @@ class Dashboard extends Model
         return match ($user->roleInOrganization($this->organization_id)) {
             'owner', 'admin', 'analyst' => 'editor',
             'viewer' => 'viewer',
-            default => null,
+            // Not in the owning company: a member of a partner workspace this dashboard was shared with reads it.
+            default => $this->sharedWithUser($user) ? 'viewer' : null,
         };
+    }
+
+    public function shares(): HasMany
+    {
+        return $this->hasMany(DashboardShare::class);
+    }
+
+    /** Whether any workspace the user belongs to has an accepted share of this dashboard. */
+    public function sharedWithUser(User $user): bool
+    {
+        return $this->shares()->active()
+            ->whereIn('organization_id', $user->organizations()->pluck('organizations.id'))
+            ->exists();
     }
 }

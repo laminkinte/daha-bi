@@ -32,14 +32,14 @@ class GoalController extends Controller
 
     public function forChart(Request $request, Chart $chart)
     {
-        $this->authorize('view', $chart);
+        $this->authorize('viewInternal', $chart);
 
         return $chart->goals()->get()->each(fn (Goal $g) => $this->goalCheck->check($g));
     }
 
     public function store(Request $request, Chart $chart)
     {
-        $this->authorize('view', $chart);
+        $this->authorize('viewInternal', $chart);
 
         abort_unless($chart->type === 'kpi', Response::HTTP_UNPROCESSABLE_ENTITY, 'Goals can only be set on KPI charts.');
 

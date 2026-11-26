@@ -13,13 +13,18 @@ import { api, setToken, type User } from "./api";
 type AuthContextValue = {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, referralCode?: string) => Promise<void>;
+  login: (email: string, password: string, next?: string | null) => Promise<void>;
+  register: (name: string, email: string, password: string, referralCode?: string, next?: string | null) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+/** Only same-site paths ("/share/abc"), never "//evil.com" or absolute URLs — no open redirects. */
+export function safeNext(next: string | null | undefined): string {
+  return next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : "/dashboards";
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -40,17 +45,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  async function login(email: string, password: string) {
+  async function login(email: string, password: string, next?: string | null) {
     const res = await api.post<{ user: User; token: string }>("/login", {
       email,
       password,
     });
     setToken(res.token);
     setUser(res.user);
-    router.push("/dashboards");
+    router.push(safeNext(next));
   }
 
-  async function register(name: string, email: string, password: string, referralCode?: string) {
+  async function register(name: string, email: string, password: string, referralCode?: string, next?: string | null) {
     const res = await api.post<{ user: User; token: string }>("/register", {
       name,
       email,
@@ -59,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     setToken(res.token);
     setUser(res.user);
-    router.push("/dashboards");
+    router.push(safeNext(next));
   }
 
   async function logout() {

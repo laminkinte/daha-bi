@@ -129,9 +129,13 @@ export type CommentReply = {
   can_delete: boolean;
 };
 
+/** A partner company's conversation on a shared dashboard (null space = internal). */
+export type CommentSpace = { id: number; name: string | null };
+
 /** A top-level comment (thread) on a dashboard, optionally pinned to one chart. */
 export type CommentThread = CommentReply & {
   chart_id: number | null;
+  space: CommentSpace | null;
   resolved_at: string | null;
   resolved_by: string | null;
   can_resolve: boolean;
@@ -139,6 +143,30 @@ export type CommentThread = CommentReply & {
 };
 
 export type Mentionable = { id: number; name: string; email: string };
+
+export type CommentsResponse = {
+  threads: CommentThread[];
+  /** Owner side only: partner companies it can talk to on this dashboard. */
+  spaces: CommentSpace[];
+  /** Partner viewers: their company's conversation (fixed). */
+  my_space: CommentSpace | null;
+};
+
+export type RowFilter = { field: string; operator: "=" | "!=" | "contains" | "in"; value: string | string[] };
+
+/** This dashboard shared with another company's workspace. */
+export type CompanyShare = {
+  id: number;
+  email: string;
+  company: string | null;
+  row_filters: RowFilter[];
+  status: "pending" | "active" | "expired";
+  accepted_at: string | null;
+  expires_at: string;
+  created_at: string;
+  share_url?: string;
+  email_sent?: boolean;
+};
 
 export type AppNotification = {
   id: string;
@@ -472,6 +500,8 @@ export type Dashboard = {
   settings?: { slicers?: { field: string }[] } | null;
   /** When the freshest dataset behind the dashboard last changed. */
   data_refreshed_at?: string | null;
+  /** Set when another company owns this dashboard and shared it with you: that company's name. */
+  shared_by?: string | null;
   created_at?: string;
   updated_at?: string;
 };

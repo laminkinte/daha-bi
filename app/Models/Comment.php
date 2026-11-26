@@ -13,6 +13,7 @@ class Comment extends Model
         'chart_id',
         'user_id',
         'parent_id',
+        'partner_organization_id',
         'body',
         'mentions',
         'resolved_at',
@@ -38,6 +39,11 @@ class Comment extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function partnerOrganization(): BelongsTo
+    {
+        return $this->belongsTo(Organization::class, 'partner_organization_id');
     }
 
     public function resolvedBy(): BelongsTo

@@ -26,6 +26,7 @@ import {
 } from "@/lib/api";
 import { InviteSentNotice, PendingInvites } from "@/components/PendingInvites";
 import CommentsPanel, { useComments } from "@/components/comments/CommentsPanel";
+import CompanySharesDialog from "@/components/dashboard/CompanySharesDialog";
 import { downloadDashboardPdf } from "@/lib/dashboard-export";
 
 function ChartIcon() {
@@ -922,6 +923,7 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentChart, setCommentChart] = useState<number | null>(null);
   const [focusComment, setFocusComment] = useState<number | null>(null);
+  const [companiesOpen, setCompaniesOpen] = useState(false);
   const chartsRef = useRef<HTMLDivElement>(null);
 
   // Notification links land here as ?comment=ID — open the panel on that thread.
@@ -1058,10 +1060,16 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-[26px] font-semibold leading-tight tracking-tight">{dashboard.name}</h1>
-            {role !== "owner" && (
-              <span className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-medium capitalize text-[var(--text-secondary)]">
-                {role}
+            {dashboard.shared_by ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--accent)]">
+                Shared with you by {dashboard.shared_by} · view only
               </span>
+            ) : (
+              role !== "owner" && (
+                <span className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-medium capitalize text-[var(--text-secondary)]">
+                  {role}
+                </span>
+              )
             )}
             {dashboard.is_shared && (
               <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--accent)]">
@@ -1137,6 +1145,19 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
             )}
           </button>
           {role === "owner" && <CollaboratorsPanel dashboard={dashboard} />}
+          {role === "owner" && (
+            <button
+              onClick={() => setCompaniesOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-[13px] font-medium text-[var(--text-secondary)] shadow-sm transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
+              title="Share with another company"
+              aria-label="Share with another company"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M14 9h1M9 13h1M14 13h1M9 17h1M14 17h1" />
+              </svg>
+              <span className="hidden sm:inline">Companies</span>
+            </button>
+          )}
           {role === "owner" && <ShareButton dashboard={dashboard} onChanged={load} />}
           {canEdit && datasets.length > 0 && (
             <>
@@ -1292,7 +1313,20 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
         onChartFilter={setCommentChart}
         focusId={focusComment}
         state={comments}
+        sharedBy={dashboard.shared_by}
       />
+      {role === "owner" && (
+        <CompanySharesDialog
+          dashboardId={dashboardId}
+          dashboardName={dashboard.name}
+          columns={slicerColumns}
+          open={companiesOpen}
+          onClose={() => {
+            setCompaniesOpen(false);
+            comments.reload();
+          }}
+        />
+      )}
     </div>
   );
 }

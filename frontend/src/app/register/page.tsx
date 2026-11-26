@@ -37,6 +37,7 @@ function RegisterForm() {
   const { register } = useAuth();
   const searchParams = useSearchParams();
   const referralCode = searchParams.get("ref") ?? undefined;
+  const next = searchParams.get("next");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -56,7 +57,7 @@ function RegisterForm() {
     const submittedEmail = String(formData.get("email") ?? email);
     const submittedPassword = String(formData.get("password") ?? password);
     try {
-      await register(submittedName, submittedEmail, submittedPassword, referralCode);
+      await register(submittedName, submittedEmail, submittedPassword, referralCode, next);
     } catch (err) {
       if (err instanceof ApiError) {
         const firstFieldError = err.errors

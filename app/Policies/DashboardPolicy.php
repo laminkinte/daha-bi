@@ -18,6 +18,17 @@ class DashboardPolicy
         return $dashboard->roleFor($user) !== null;
     }
 
+    /**
+     * The owning company's side (its members, the author, invited guests) — as opposed to a
+     * partner company the dashboard was shared with. Gates internal things like business goals.
+     */
+    public function viewInternal(User $user, Dashboard $dashboard): bool
+    {
+        return $dashboard->user_id === $user->id
+            || $user->roleInOrganization($dashboard->organization_id) !== null
+            || $dashboard->collaborators()->where('user_id', $user->id)->exists();
+    }
+
     /** Owner or editor may change content: details, charts, schedules, AI-generated charts. */
     public function update(User $user, Dashboard $dashboard): bool
     {

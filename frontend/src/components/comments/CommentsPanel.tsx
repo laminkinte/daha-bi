@@ -1,7 +1,16 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { api, ApiError, type Chart, type CommentReply, type CommentThread, type Mentionable } from "@/lib/api";
+import {
+  api,
+  ApiError,
+  type Chart,
+  type CommentReply,
+  type CommentSpace,
+  type CommentsResponse,
+  type CommentThread,
+  type Mentionable,
+} from "@/lib/api";
 import MentionInput, { initials, mentionedIds } from "./MentionInput";
 
 function timeAgo(iso: string): string {
@@ -17,22 +26,23 @@ function timeAgo(iso: string): string {
 /** Threads for one dashboard, loaded once and shared by the panel and the chart badges. */
 export function useComments(dashboardId: number) {
   const [threads, setThreads] = useState<CommentThread[] | null>(null);
-  const [people, setPeople] = useState<Mentionable[]>([]);
+  const [spaces, setSpaces] = useState<CommentSpace[]>([]);
+  const [mySpace, setMySpace] = useState<CommentSpace | null>(null);
 
   const reload = useCallback(() => {
     api
-      .get<CommentThread[]>(`/dashboards/${dashboardId}/comments`)
-      .then(setThreads)
+      .get<CommentsResponse>(`/dashboards/${dashboardId}/comments`)
+      .then((res) => {
+        setThreads(res.threads);
+        setSpaces(res.spaces);
+        setMySpace(res.my_space);
+      })
       .catch(() => setThreads((prev) => prev ?? []));
   }, [dashboardId]);
 
   useEffect(() => {
     reload();
-    api
-      .get<Mentionable[]>(`/dashboards/${dashboardId}/mentionable`)
-      .then(setPeople)
-      .catch(() => {});
-  }, [dashboardId, reload]);
+  }, [reload]);
 
   /** Open (unresolved) thread counts per chart id; key 0 = whole dashboard. */
   const openByChart = useMemo(() => {
@@ -43,7 +53,7 @@ export function useComments(dashboardId: number) {
 
   const openTotal = useMemo(() => (threads ?? []).filter((t) => !t.resolved_at).length, [threads]);
 
-  return { threads, setThreads, people, reload, openByChart, openTotal };
+  return { threads, setThreads, spaces, mySpace, reload, openByChart, openTotal };
 }
 
 function Body({ text, people }: { text: string; people: Mentionable[] }) {
@@ -128,6 +138,7 @@ export default function CommentsPanel({
   onChartFilter,
   focusId,
   state,
+  sharedBy,
 }: {
   dashboardId: number;
   open: boolean;
@@ -139,8 +150,14 @@ export default function CommentsPanel({
   /** A thread to scroll to and highlight (from a notification link). */
   focusId?: number | null;
   state: ReturnType<typeof useComments>;
+  /** The owning company's name, when the viewer is a partner it shared with. */
+  sharedBy?: string | null;
 }) {
-  const { threads, setThreads, people } = state;
+  const { threads, setThreads, spaces, mySpace } = state;
+  // Owner side: which conversation a new thread goes to (null = internal, team only).
+  const [space, setSpace] = useState<number | null>(null);
+  const [people, setPeople] = useState<Mentionable[]>([]);
+  const [peopleFor, setPeopleFor] = useState<string>("");
   const [tab, setTab] = useState<"open" | "resolved">("open");
   const [draft, setDraft] = useState("");
   const [replyTo, setReplyTo] = useState<number | null>(null);
@@ -149,6 +166,25 @@ export default function CommentsPanel({
   const [error, setError] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const chartTitle = (id: number | null) => (id ? (charts.find((c) => c.id === id)?.title ?? "A chart") : null);
+
+  // Mention suggestions depend on the conversation: only people who can read it are offered.
+  const replySpace = replyTo !== null ? ((threads ?? []).find((t) => t.id === replyTo)?.space?.id ?? null) : space;
+  const peopleKey = `${dashboardId}:${replySpace ?? ""}`;
+  useEffect(() => {
+    if (!open || peopleFor === peopleKey) return;
+    let alive = true;
+    api
+      .get<Mentionable[]>(`/dashboards/${dashboardId}/mentionable${replySpace ? `?space=${replySpace}` : ""}`)
+      .then((p) => {
+        if (!alive) return;
+        setPeople(p);
+        setPeopleFor(peopleKey);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [open, dashboardId, replySpace, peopleKey, peopleFor]);
 
   useEffect(() => {
     if (!open) return;
@@ -190,6 +226,7 @@ export default function CommentsPanel({
         body,
         chart_id: parentId ? undefined : chartFilter ?? undefined,
         parent_id: parentId,
+        partner_organization_id: parentId ? undefined : space ?? undefined,
         mentions: mentionedIds(body, people),
       });
       upsert(thread);
@@ -318,6 +355,11 @@ export default function CommentsPanel({
                     <span className="truncate">{chartTitle(t.chart_id)}</span>
                   </button>
                 )}
+                {t.space && !mySpace && (
+                  <span className="mb-2 ml-1 inline-flex items-center gap-1 rounded-md bg-[var(--status-warning)]/12 px-1.5 py-0.5 text-[11px] font-medium text-[var(--text-secondary)]">
+                    With {t.space.name ?? "partner"}
+                  </span>
+                )}
                 <Message c={t} people={people} onDelete={remove} />
                 {t.replies.length > 0 && (
                   <div className="mt-3 flex flex-col gap-3 border-l-2 border-[var(--border)] pl-3">
@@ -388,6 +430,28 @@ export default function CommentsPanel({
 
         <footer className="border-t border-[var(--border)] p-3">
           {error && <p className="mb-2 text-xs text-[var(--status-critical)]">{error}</p>}
+          {mySpace && (
+            <p className="mb-2 text-[11px] text-[var(--text-muted)]">
+              Private between {mySpace.name ?? "your company"} and {sharedBy ?? "the dashboard owner"}. Other companies can&apos;t see it.
+            </p>
+          )}
+          {!mySpace && spaces.length > 0 && (
+            <label className="mb-2 flex items-center gap-2 text-[11px] text-[var(--text-muted)]">
+              Visible to
+              <select
+                value={space ?? ""}
+                onChange={(e) => setSpace(e.target.value ? Number(e.target.value) : null)}
+                className="min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 text-xs font-medium text-[var(--text-primary)]"
+              >
+                <option value="">Your team only (internal)</option>
+                {spaces.map((sp) => (
+                  <option key={sp.id} value={sp.id}>
+                    Your team + {sp.name ?? "partner"}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <MentionInput
             value={draft}
             onChange={setDraft}

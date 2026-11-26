@@ -79,6 +79,11 @@ class ChartDataService
         // key too — otherwise a full-size result cached for one viewer could be served, unpruned,
         // to a low-bandwidth viewer of the same chart (or vice versa).
         $bandwidth = ($user?->low_bandwidth_mode ?? false) ? 'lo' : 'hi';
+        // A partner company's viewers see only their share's rows — key on that scope too.
+        $partner = $this->partnerScope($dataset, $user);
+        if ($partner !== null) {
+            $role = 'partner-'.md5(json_encode($partner));
+        }
 
         return sprintf(
             'chart_data:%d:%d:%s:%s:%s:%s:%s',
@@ -436,7 +441,25 @@ class ChartDataService
 
         $role = $user->roleInOrganization($dataset->dataSource->organization_id);
 
-        if ($role === null || $role === 'owner') {
+        if ($role === null) {
+            // Someone outside the owning company. Through a company share, only the share's rows;
+            // with several shares over this dataset, a row visible under any of them is visible.
+            $groups = $this->partnerScope($dataset, $user);
+            if ($groups) {
+                $columnNames = collect($dataset->columns ?? [])->pluck('name')->all();
+                $query->where(function ($outer) use ($groups, $columnNames) {
+                    foreach ($groups as $filters) {
+                        $outer->orWhere(function ($q) use ($filters, $columnNames) {
+                            $this->applyFilters($q, $columnNames, $filters);
+                        });
+                    }
+                });
+            }
+
+            return $query;
+        }
+
+        if ($role === 'owner') {
             return $query;
         }
 
@@ -511,6 +534,36 @@ class ChartDataService
             ->pluck('v')
             ->map(fn ($v) => (string) $v)
             ->all();
+    }
+
+    /**
+     * Row restrictions for a user who reaches this dataset only through company shares:
+     * null = not a partner viewer (no extra restriction), [] = a share grants all rows,
+     * otherwise one filter list per share (a row matching ANY list is visible).
+     *
+     * @return array<int, array<int, array{field: string, operator: string, value: mixed}>>|null
+     */
+    public function partnerScope(Dataset $dataset, ?User $user): ?array
+    {
+        // Deliberately not memoized: the service can outlive a request (queues, tests, Octane), and
+        // a changed or revoked share must take effect on the very next query.
+        if (! $user || $user->roleInOrganization($dataset->dataSource->organization_id) !== null) {
+            return null;
+        }
+
+        $shares = \App\Models\DashboardShare::active()
+            ->whereIn('organization_id', $user->organizations()->pluck('organizations.id'))
+            ->whereHas('dashboard.charts', fn ($q) => $q->where('dataset_id', $dataset->id))
+            ->get(['id', 'row_filters']);
+
+        if ($shares->isEmpty()) {
+            return null;
+        }
+        if ($shares->contains(fn ($s) => empty($s->row_filters))) {
+            return [];
+        }
+
+        return $shares->map(fn ($s) => array_values($s->row_filters))->values()->all();
     }
 
     /**

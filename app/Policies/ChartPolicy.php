@@ -17,6 +17,11 @@ class ChartPolicy
         return $this->dashboards->view($user, $chart->dashboard);
     }
 
+    public function viewInternal(User $user, Chart $chart): bool
+    {
+        return $this->dashboards->viewInternal($user, $chart->dashboard);
+    }
+
     public function update(User $user, Chart $chart): bool
     {
         return $this->dashboards->update($user, $chart->dashboard);

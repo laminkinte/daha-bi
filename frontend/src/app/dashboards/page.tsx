@@ -482,10 +482,20 @@ function DashboardsList() {
                   <div className="line-clamp-1 font-semibold tracking-tight text-[var(--text-primary)] group-hover:text-[var(--accent)]">
                     {d.name}
                   </div>
-                  {d.role && d.role !== "owner" && (
-                    <span className="shrink-0 rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-medium capitalize text-[var(--text-secondary)]">
-                      {d.role}
+                  {d.shared_by ? (
+                    <span
+                      className="max-w-[9rem] shrink-0 truncate rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--accent)]"
+                      title={`Shared with you by ${d.shared_by}`}
+                    >
+                      From {d.shared_by}
                     </span>
+                  ) : (
+                    d.role &&
+                    d.role !== "owner" && (
+                      <span className="shrink-0 rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-medium capitalize text-[var(--text-secondary)]">
+                        {d.role}
+                      </span>
+                    )
                   )}
                   {d.is_shared && (
                     <span className="shrink-0 rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--accent)]">

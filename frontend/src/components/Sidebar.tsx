@@ -324,7 +324,7 @@ export default function Sidebar({ children }: { children: ReactNode }) {
   }
 
   // The invitation landing page is a standalone screen even for signed-in users.
-  if (!user || pathname?.startsWith("/invite/")) return <>{children}</>;
+  if (!user || pathname?.startsWith("/invite/") || pathname?.startsWith("/share/")) return <>{children}</>;
 
   const notice = user.current_organization ? planNotice(user.current_organization) : null;
 

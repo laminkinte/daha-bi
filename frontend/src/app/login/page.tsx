@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { Suspense, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api";
@@ -9,6 +10,15 @@ import PasswordInput from "@/components/PasswordInput";
 import { AuthShell, AUTH_INPUT } from "@/components/AuthShell";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
+  const next = useSearchParams().get("next");
   const t = useTranslations("auth.login");
   const tCommon = useTranslations("common");
   const { login } = useAuth();
@@ -28,7 +38,7 @@ export default function LoginPage() {
     const submittedEmail = String(formData.get("email") ?? email);
     const submittedPassword = String(formData.get("password") ?? password);
     try {
-      await login(submittedEmail, submittedPassword);
+      await login(submittedEmail, submittedPassword, next);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : tCommon("somethingWentWrong"));
     } finally {
@@ -85,7 +95,7 @@ export default function LoginPage() {
 
         <p className="mt-8 text-center text-sm text-[var(--text-muted)]">
           {t("noAccount")}{" "}
-          <Link href="/register" className="font-medium text-[var(--accent)] hover:underline">
+          <Link href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"} className="font-medium text-[var(--accent)] hover:underline">
             {t("register")}
           </Link>
         </p>
