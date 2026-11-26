@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\AiPromptController;
 use App\Http\Controllers\Api\AlertController;
 use App\Http\Controllers\Api\GoalController;
 use App\Http\Controllers\Api\InvitationController;
+use App\Http\Controllers\Api\CommentController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\ChartController;
@@ -67,6 +69,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/invitations/{invitation}/resend', [InvitationController::class, 'resend'])->middleware('throttle:10,1');
     Route::delete('/invitations/{invitation}', [InvitationController::class, 'destroy']);
     Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept'])->middleware('throttle:10,1');
+
+    Route::get('/dashboards/{dashboard}/comments', [CommentController::class, 'index']);
+    Route::get('/dashboards/{dashboard}/mentionable', [CommentController::class, 'mentionable']);
+    Route::post('/dashboards/{dashboard}/comments', [CommentController::class, 'store'])->middleware('throttle:30,1');
+    Route::patch('/comments/{comment}', [CommentController::class, 'update']);
+    Route::delete('/comments/{comment}', [CommentController::class, 'destroy']);
+
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'readAll']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'read']);
 
     Route::post('/billing/checkout', [BillingController::class, 'checkout']);
     Route::get('/billing/verify', [BillingController::class, 'verify']);

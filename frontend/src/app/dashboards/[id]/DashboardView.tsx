@@ -25,6 +25,7 @@ import {
   type InviteSent,
 } from "@/lib/api";
 import { InviteSentNotice, PendingInvites } from "@/components/PendingInvites";
+import CommentsPanel, { useComments } from "@/components/comments/CommentsPanel";
 import { downloadDashboardPdf } from "@/lib/dashboard-export";
 
 function ChartIcon() {
@@ -787,7 +788,11 @@ function DraggableChartGrid({
   chartsRef,
   dashboardFilters,
   refreshKey,
+  commentCounts,
+  onComment,
 }: {
+  commentCounts: Map<number, number>;
+  onComment: (chart: Chart) => void;
   dashboardFilters: ChartFilter[];
   refreshKey: number;
   dashboard: Dashboard;
@@ -875,6 +880,8 @@ function DraggableChartGrid({
                   onEdit={onEdit}
                   dashboardFilters={dashboardFilters}
                   refreshKey={refreshKey}
+                  commentCount={commentCounts.get(chart.id) ?? 0}
+                  onComment={onComment}
                 />
                 </ChartErrorBoundary>
               </div>
@@ -911,7 +918,22 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [slicerError, setSlicerError] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
+  const comments = useComments(dashboardId);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [commentChart, setCommentChart] = useState<number | null>(null);
+  const [focusComment, setFocusComment] = useState<number | null>(null);
   const chartsRef = useRef<HTMLDivElement>(null);
+
+  // Notification links land here as ?comment=ID — open the panel on that thread.
+  useEffect(() => {
+    const id = Number(new URLSearchParams(window.location.search).get("comment"));
+    if (id) {
+      Promise.resolve().then(() => {
+        setFocusComment(id);
+        setCommentsOpen(true);
+      });
+    }
+  }, []);
   const rootRef = useRef<HTMLDivElement>(null);
 
   const dashboardFilters = useMemo(() => selectionsToFilters(selections), [selections]);
@@ -1091,6 +1113,29 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
           {dashboard.charts && dashboard.charts.length > 0 && <ExportButton dashboard={dashboard} chartsRef={chartsRef} />}
           {dashboard.charts && dashboard.charts.length > 0 && <AiRecommendationsPanel dashboard={dashboard} />}
           {canEdit && <ReportSchedulesPanel dashboard={dashboard} />}
+          <button
+            onClick={() => {
+              setCommentChart(null);
+              setCommentsOpen((o) => !o);
+            }}
+            className={`relative flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[13px] font-medium shadow-sm transition-colors ${
+              commentsOpen
+                ? "border-[var(--accent)]/40 bg-[var(--accent-soft)] text-[var(--accent)]"
+                : "border-[var(--border)] bg-[var(--surface-1)] text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
+            }`}
+            aria-label={comments.openTotal ? `Comments, ${comments.openTotal} open` : "Comments"}
+            title="Comments"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" />
+            </svg>
+            <span className="hidden sm:inline">Comments</span>
+            {comments.openTotal > 0 && (
+              <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-semibold text-white">
+                {comments.openTotal}
+              </span>
+            )}
+          </button>
           {role === "owner" && <CollaboratorsPanel dashboard={dashboard} />}
           {role === "owner" && <ShareButton dashboard={dashboard} onChanged={load} />}
           {canEdit && datasets.length > 0 && (
@@ -1182,6 +1227,11 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
             onUpdated={load}
             onEdit={(chart) => setBuilder({ chart })}
             chartsRef={chartsRef}
+            commentCounts={comments.openByChart}
+            onComment={(chart) => {
+              setCommentChart(chart.id);
+              setCommentsOpen(true);
+            }}
           />
           </div>
         </div>
@@ -1230,6 +1280,19 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
         />
       )}
       {askAi && <AiPromptDialog dashboardId={dashboardId} datasets={datasets} onCreated={load} onClose={() => setAskAi(false)} />}
+      <CommentsPanel
+        dashboardId={dashboardId}
+        open={commentsOpen}
+        onClose={() => {
+          setCommentsOpen(false);
+          setFocusComment(null);
+        }}
+        charts={dashboard.charts ?? []}
+        chartFilter={commentChart}
+        onChartFilter={setCommentChart}
+        focusId={focusComment}
+        state={comments}
+      />
     </div>
   );
 }

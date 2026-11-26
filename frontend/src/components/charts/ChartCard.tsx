@@ -974,6 +974,8 @@ export default function ChartCard({
   onEdit,
   dashboardFilters,
   refreshKey = 0,
+  commentCount,
+  onComment,
 }: {
   chart: Chart;
   onDeleted?: () => void;
@@ -989,6 +991,9 @@ export default function ChartCard({
   dashboardFilters?: ChartFilter[];
   /** Bump to re-fetch data (dashboard "Refresh"). */
   refreshKey?: number;
+  /** Open comment threads on this chart; the comment button only shows when onComment is given. */
+  commentCount?: number;
+  onComment?: (chart: Chart) => void;
 }) {
   const [data, setData] = useState<ChartData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -1178,6 +1183,23 @@ export default function ChartCard({
                 );
               })}
             </div>
+          )}
+          {onComment && (
+            <button
+              onClick={() => onComment(chart)}
+              className={`${TOOL_BTN} relative ${commentCount ? "!text-[var(--accent)]" : ""}`}
+              title={commentCount ? `${commentCount} open comment${commentCount === 1 ? "" : "s"}` : "Comment on this chart"}
+              aria-label={commentCount ? `${commentCount} comment${commentCount === 1 ? "" : "s"}` : "Comment on this chart"}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" />
+              </svg>
+              {!!commentCount && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[9.5px] font-semibold leading-none text-white">
+                  {commentCount > 9 ? "9+" : commentCount}
+                </span>
+              )}
+            </button>
           )}
           {canFilter && (
             <button

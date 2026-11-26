@@ -67,6 +67,8 @@ export const api = {
     }),
   put: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: "PUT", body: JSON.stringify(body ?? {}) }),
+  patch: <T>(path: string, body?: unknown) =>
+    request<T>(path, { method: "PATCH", body: JSON.stringify(body ?? {}) }),
   del: <T>(path: string) => request<T>(path, { method: "DELETE" }),
   /**
    * One silent retry before giving up — for GETs on mount, where a rare
@@ -114,6 +116,43 @@ export type User = {
   current_organization_id?: number;
   /** The org is the paying account, not the individual user — see OrganizationBilling. */
   current_organization?: OrganizationBilling;
+};
+
+export type CommentReply = {
+  id: number;
+  body: string;
+  mentions: number[];
+  user: { id: number; name: string } | null;
+  created_at: string;
+  edited_at: string | null;
+  can_edit: boolean;
+  can_delete: boolean;
+};
+
+/** A top-level comment (thread) on a dashboard, optionally pinned to one chart. */
+export type CommentThread = CommentReply & {
+  chart_id: number | null;
+  resolved_at: string | null;
+  resolved_by: string | null;
+  can_resolve: boolean;
+  replies: CommentReply[];
+};
+
+export type Mentionable = { id: number; name: string; email: string };
+
+export type AppNotification = {
+  id: string;
+  read_at: string | null;
+  created_at: string;
+  data: {
+    kind: "mention" | "reply";
+    title: string;
+    excerpt: string;
+    dashboard_id: number;
+    chart_id: number | null;
+    comment_id: number;
+    actor: string;
+  };
 };
 
 /** An emailed invitation not yet accepted (the person has no account yet). */

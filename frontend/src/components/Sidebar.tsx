@@ -9,6 +9,7 @@ import { api, type Alert, type Organization } from "@/lib/api";
 import AdminShell from "./AdminShell";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { BrandMark } from "./BrandMark";
+import NotificationBell from "./NotificationBell";
 import { useEffect, useState, type ReactNode } from "react";
 
 function DashboardIcon() {
@@ -350,6 +351,9 @@ export default function Sidebar({ children }: { children: ReactNode }) {
         >
           <CloseIcon />
         </button>
+        <span className={`ml-auto mr-0.5 hidden md:block ${collapsed ? "md:hidden" : ""}`}>
+          <NotificationBell />
+        </span>
         <button
           onClick={toggleCollapsed}
           className={`hidden rounded-md p-1.5 text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)] md:block ${
@@ -371,6 +375,11 @@ export default function Sidebar({ children }: { children: ReactNode }) {
         >
           <CollapseIcon collapsed />
         </button>
+      )}
+      {collapsed && (
+        <div className="mb-2 hidden justify-center md:flex">
+          <NotificationBell />
+        </div>
       )}
 
       <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 pb-3 pt-1">
@@ -532,13 +541,16 @@ export default function Sidebar({ children }: { children: ReactNode }) {
           <BrandMark size={28} />
           <span className="font-semibold tracking-tight text-[var(--text-primary)]">Daha BI</span>
         </Link>
-        <button
-          onClick={() => setMobileOpen(true)}
-          className="rounded-md p-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-2)]"
-          aria-label="Open menu"
-        >
-          <MenuIcon />
-        </button>
+        <div className="flex items-center gap-1">
+          <NotificationBell compact />
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="rounded-md p-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-2)]"
+            aria-label="Open menu"
+          >
+            <MenuIcon />
+          </button>
+        </div>
       </div>
 
       {mobileOpen && (
