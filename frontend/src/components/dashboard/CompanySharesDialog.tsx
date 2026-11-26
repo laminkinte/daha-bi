@@ -4,7 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Modal, BTN_PRIMARY, BTN_SECONDARY, FIELD_INPUT, FIELD_LABEL } from "@/components/Modal";
 import { api, ApiError, type CompanyShare, type RowFilter } from "@/lib/api";
 
-type Column = { name: string; label: string };
+export type Column = { name: string; label: string };
 
 const OPS: { value: RowFilter["operator"]; label: string }[] = [
   { value: "=", label: "is" },
@@ -13,7 +13,7 @@ const OPS: { value: RowFilter["operator"]; label: string }[] = [
   { value: "contains", label: "contains" },
 ];
 
-function describe(filters: RowFilter[], columns: Column[]): string {
+export function describe(filters: RowFilter[], columns: Column[]): string {
   if (!filters.length) return "All rows";
   return filters
     .map((f) => {
@@ -26,7 +26,7 @@ function describe(filters: RowFilter[], columns: Column[]): string {
 }
 
 /** One editable "only rows where …" condition. Values are suggested from the data itself. */
-function FilterRow({
+export function FilterRow({
   dashboardId,
   columns,
   filter,

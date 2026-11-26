@@ -26,6 +26,7 @@ class PublicDashboardController extends Controller
 
         return $dashboard->only(['id', 'name', 'description']) + [
             'charts' => $dashboard->charts,
+            'branding' => $dashboard->organization?->branding(),
         ];
     }
 

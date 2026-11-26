@@ -27,6 +27,8 @@ import {
 import { InviteSentNotice, PendingInvites } from "@/components/PendingInvites";
 import CommentsPanel, { useComments } from "@/components/comments/CommentsPanel";
 import CompanySharesDialog from "@/components/dashboard/CompanySharesDialog";
+import EmbedDialog from "@/components/dashboard/EmbedDialog";
+import { BrandLogo } from "@/components/BrandStyle";
 import { downloadDashboardPdf } from "@/lib/dashboard-export";
 
 function ChartIcon() {
@@ -924,6 +926,7 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
   const [commentChart, setCommentChart] = useState<number | null>(null);
   const [focusComment, setFocusComment] = useState<number | null>(null);
   const [companiesOpen, setCompaniesOpen] = useState(false);
+  const [embedOpen, setEmbedOpen] = useState(false);
   const chartsRef = useRef<HTMLDivElement>(null);
 
   // Notification links land here as ?comment=ID — open the panel on that thread.
@@ -1061,8 +1064,9 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-[26px] font-semibold leading-tight tracking-tight">{dashboard.name}</h1>
             {dashboard.shared_by ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--accent)]">
-                Shared with you by {dashboard.shared_by} · view only
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-soft)] py-0.5 pl-1 pr-2 text-[11px] font-medium text-[var(--accent)]">
+                <BrandLogo branding={dashboard.shared_by_branding} size={16} />
+                Shared with you by {dashboard.shared_by_branding?.name ?? dashboard.shared_by} · view only
               </span>
             ) : (
               role !== "owner" && (
@@ -1145,6 +1149,19 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
             )}
           </button>
           {role === "owner" && <CollaboratorsPanel dashboard={dashboard} />}
+          {dashboard.can_embed && (
+            <button
+              onClick={() => setEmbedOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-[13px] font-medium text-[var(--text-secondary)] shadow-sm transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
+              title="Embed in a website or app"
+              aria-label="Embed in a website or app"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16" />
+              </svg>
+              <span className="hidden sm:inline">Embed</span>
+            </button>
+          )}
           {role === "owner" && (
             <button
               onClick={() => setCompaniesOpen(true)}
@@ -1315,6 +1332,16 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
         state={comments}
         sharedBy={dashboard.shared_by}
       />
+      {dashboard.can_embed && (
+        <EmbedDialog
+          dashboardId={dashboardId}
+          dashboardName={dashboard.name}
+          columns={slicerColumns}
+          sharedBy={dashboard.shared_by_branding?.name ?? dashboard.shared_by}
+          open={embedOpen}
+          onClose={() => setEmbedOpen(false)}
+        />
+      )}
       {role === "owner" && (
         <CompanySharesDialog
           dashboardId={dashboardId}

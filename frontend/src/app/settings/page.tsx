@@ -23,6 +23,7 @@ import BillingIntervalToggle, { yearlySavingsPercent } from "@/components/Billin
 import DataTable, { type Column } from "@/components/admin/DataTable";
 import { PageHeader, PAGE_CONTAINER } from "@/components/PageHeader";
 import { InviteSentNotice, PendingInvites } from "@/components/PendingInvites";
+import BrandingSection from "@/components/settings/BrandingSection";
 
 const PLAN_LABELS: Record<Plan, string> = { free: "Free", growth: "Growth", business: "Business" };
 
@@ -637,6 +638,7 @@ function Settings() {
 
       <div className="mt-6 flex flex-col gap-6">
         <OrganizationSection />
+        <BrandingSection />
         <ActivitySection />
         <PlanSection />
         <ProfileForm />

@@ -26,6 +26,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // Embedded dashboards follow the host page (?theme=), not this browser's app preference.
+    if (window.location.pathname.startsWith("/embed/")) return;
     const root = document.documentElement;
     if (theme === "system") {
       root.removeAttribute("data-theme");

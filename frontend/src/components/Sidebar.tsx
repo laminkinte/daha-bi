@@ -10,6 +10,7 @@ import AdminShell from "./AdminShell";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { BrandMark } from "./BrandMark";
 import NotificationBell from "./NotificationBell";
+import { BrandLogo, BrandStyle } from "./BrandStyle";
 import { useEffect, useState, type ReactNode } from "react";
 
 function DashboardIcon() {
@@ -324,9 +325,13 @@ export default function Sidebar({ children }: { children: ReactNode }) {
   }
 
   // The invitation landing page is a standalone screen even for signed-in users.
-  if (!user || pathname?.startsWith("/invite/") || pathname?.startsWith("/share/")) return <>{children}</>;
+  if (!user || ["/invite/", "/share/", "/embed/", "/public/"].some((p) => pathname?.startsWith(p))) return <>{children}</>;
 
   const notice = user.current_organization ? planNotice(user.current_organization) : null;
+  // White-label: a workspace with its own logo or colour sees its brand instead of Daha BI's.
+  const branding = user.current_organization?.branding;
+  const branded = !!(branding?.logo_url || branding?.color);
+  const mark = (size: number) => (branded ? <BrandLogo branding={branding} size={size} /> : <BrandMark size={size} />);
 
   if (pathname?.startsWith("/admin")) {
     return <AdminShell>{children}</AdminShell>;
@@ -335,12 +340,28 @@ export default function Sidebar({ children }: { children: ReactNode }) {
   const navContent = (
     <>
       <div className={`flex items-center px-4 pb-4 pt-5 ${collapsed ? "md:justify-center md:px-3" : "justify-between"}`}>
-        <Link href="/dashboards" className="flex items-center gap-2.5">
-          <BrandMark />
-          <span className={`leading-tight ${collapsed ? "md:hidden" : ""}`}>
-            <span className="block text-[15px] font-semibold tracking-tight text-[var(--text-primary)]">Daha BI</span>
+        <Link href="/dashboards" className="flex min-w-0 items-center gap-2.5">
+          {branded && branding?.logo_url ? (
+            // A logo usually carries the name — give it the room instead of squeezing both.
+            <span className={`min-w-0 ${collapsed ? "md:hidden" : ""}`}>
+              <BrandLogo branding={branding} size={30} />
+              {!branding.hide_powered_by && <span className="mt-0.5 block text-[10px] text-[var(--text-muted)]">Powered by Daha BI</span>}
+            </span>
+          ) : (
+            mark(32)
+          )}
+          {collapsed && branded && branding?.logo_url && (
+            // The 68px rail can't fit a wide logo: show the brand initial on the brand colour.
+            <span className="hidden md:block">
+              <BrandLogo branding={{ ...branding, logo_url: null }} size={32} />
+            </span>
+          )}
+          <span className={`min-w-0 leading-tight ${collapsed || (branded && branding?.logo_url) ? "md:hidden" : ""} ${branded && branding?.logo_url ? "hidden" : ""}`}>
+            <span className="block max-w-[9.5rem] truncate text-[15px] font-semibold tracking-tight text-[var(--text-primary)]">
+              {branded ? branding!.name : "Daha BI"}
+            </span>
             <span className="block max-w-[9.5rem] truncate text-[11px] text-[var(--text-muted)]">
-              {user.current_organization?.name ?? "Workspace"}
+              {branded ? (branding!.hide_powered_by ? "Analytics" : "Powered by Daha BI") : (user.current_organization?.name ?? "Workspace")}
             </span>
           </span>
         </Link>
@@ -536,10 +557,11 @@ export default function Sidebar({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
+      <BrandStyle color={branding?.color} />
       <div className="fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface-1)]/90 px-4 py-3 backdrop-blur md:hidden">
-        <Link href="/dashboards" className="flex items-center gap-2">
-          <BrandMark size={28} />
-          <span className="font-semibold tracking-tight text-[var(--text-primary)]">Daha BI</span>
+        <Link href="/dashboards" className="flex min-w-0 items-center gap-2">
+          {mark(28)}
+          <span className="truncate font-semibold tracking-tight text-[var(--text-primary)]">{branded ? branding!.name : "Daha BI"}</span>
         </Link>
         <div className="flex items-center gap-1">
           <NotificationBell compact />

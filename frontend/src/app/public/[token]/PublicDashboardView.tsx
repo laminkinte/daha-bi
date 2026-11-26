@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import ChartCard from "@/components/charts/ChartCard";
 import { CardSkeleton, Skeleton } from "@/components/Skeleton";
 import { api, ApiError, type Dashboard } from "@/lib/api";
+import { BrandLogo, BrandStyle, PoweredBy } from "@/components/BrandStyle";
 
 export default function PublicDashboardView({ token }: { token: string }) {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
@@ -20,19 +21,18 @@ export default function PublicDashboardView({ token }: { token: string }) {
 
   return (
     <div className="min-h-screen bg-[var(--page-plane)]">
+      <BrandStyle color={dashboard?.branding?.color} />
       <header className="border-b border-[var(--border)] bg-[var(--surface-1)]">
-        <div className="mx-auto flex max-w-6xl items-center gap-2 px-8 py-4">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--accent)] text-xs font-bold text-white">
-            D
-          </div>
-          <span className="font-semibold text-[var(--text-primary)]">Daha BI</span>
+        <div className="mx-auto flex max-w-6xl items-center gap-2.5 px-4 py-4 sm:px-8">
+          <BrandLogo branding={dashboard?.branding ?? { name: "Daha BI", color: null, logo_url: null, hide_powered_by: false }} size={28} />
+          <span className="font-semibold text-[var(--text-primary)]">{dashboard?.branding?.name ?? "Daha BI"}</span>
           <span className="ml-2 rounded-full bg-[var(--page-plane)] px-2 py-0.5 text-xs text-[var(--text-muted)]">
             Shared dashboard
           </span>
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-8 py-10">
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-8 sm:py-10">
         {notFound && (
           <p className="text-sm text-[var(--text-muted)]">
             This dashboard link is invalid or is no longer shared.
@@ -71,6 +71,11 @@ export default function PublicDashboardView({ token }: { token: string }) {
                 </div>
               ))}
             </div>
+            {!dashboard.branding?.hide_powered_by && (
+              <div className="mt-6 flex justify-end">
+                <PoweredBy />
+              </div>
+            )}
           </>
         )}
       </div>

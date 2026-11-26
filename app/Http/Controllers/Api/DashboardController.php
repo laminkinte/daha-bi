@@ -67,8 +67,15 @@ class DashboardController extends Controller
 
         $user = $request->user();
         $this->hidePublicLink($dashboard, $user);
+        $partnerSide = $user->roleInOrganization($dashboard->organization_id) === null;
 
         return $dashboard
+            // Managers embed their own dashboards; a partner's owner/admin may embed what was shared with them.
+            ->setAttribute('can_embed', $user->can('manage', $dashboard) || ($partnerSide
+                && in_array($user->roleInOrganization($user->current_organization_id), ['owner', 'admin'], true)
+                && $dashboard->shares()->active()->where('organization_id', $user->current_organization_id)->exists()))
+            // The owning company's look, shown next to "Shared with you by…".
+            ->setAttribute('shared_by_branding', $partnerSide ? \App\Models\Organization::find($dashboard->organization_id)?->branding() : null)
             ->setAttribute('role', $dashboard->roleFor($user))
             // Set when the viewer reaches this dashboard from another company (a company share or guest invite).
             ->setAttribute('shared_by', $user->roleInOrganization($dashboard->organization_id) === null ? \App\Models\Organization::whereKey($dashboard->organization_id)->value('name') : null)

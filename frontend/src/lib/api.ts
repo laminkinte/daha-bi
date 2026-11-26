@@ -154,6 +154,22 @@ export type CommentsResponse = {
 
 export type RowFilter = { field: string; operator: "=" | "!=" | "contains" | "in"; value: string | string[] };
 
+/** A dashboard placed in another website through an iframe. */
+export type DashboardEmbed = {
+  id: number;
+  name: string;
+  url: string;
+  snippet: string;
+  allowed_domains: string[];
+  row_filters: RowFilter[];
+  inherits_share_filters: boolean;
+  expires_at: string | null;
+  live: boolean;
+  view_count: number;
+  last_viewed_at: string | null;
+  created_at: string;
+};
+
 /** This dashboard shared with another company's workspace. */
 export type CompanyShare = {
   id: number;
@@ -210,9 +226,18 @@ export type OrgRole = "owner" | "admin" | "analyst" | "viewer";
 
 export type Organization = { id: number; name: string; role: OrgRole };
 
+/** A workspace's white-label settings (public: shown on embeds and shared dashboards). */
+export type Branding = {
+  name: string;
+  color: string | null;
+  logo_url: string | null;
+  hide_powered_by: boolean;
+};
+
 export type OrganizationBilling = {
   id: number;
   name: string;
+  branding?: Branding;
   billing_email: string | null;
   plan: Plan;
   plan_status: PlanStatus;
@@ -502,6 +527,12 @@ export type Dashboard = {
   data_refreshed_at?: string | null;
   /** Set when another company owns this dashboard and shared it with you: that company's name. */
   shared_by?: string | null;
+  /** That company's branding (logo shown beside "Shared with you by…"). */
+  shared_by_branding?: Branding | null;
+  /** Managers, or an admin of a partner company it was shared with, can embed it elsewhere. */
+  can_embed?: boolean;
+  /** Public pages: the owning company's look. */
+  branding?: Branding | null;
   created_at?: string;
   updated_at?: string;
 };

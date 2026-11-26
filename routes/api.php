@@ -8,6 +8,8 @@ use App\Http\Controllers\Api\GoalController;
 use App\Http\Controllers\Api\InvitationController;
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\DashboardShareController;
+use App\Http\Controllers\Api\BrandingController;
+use App\Http\Controllers\Api\EmbedController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillingController;
@@ -42,6 +44,11 @@ Route::get('/site-settings', [SiteSettingsController::class, 'show']);
 Route::get('/public/invitations/{token}', [InvitationController::class, 'preview'])->middleware('throttle:30,1');
 Route::get('/public/shares/{token}', [DashboardShareController::class, 'preview'])->middleware('throttle:30,1');
 
+Route::get('/public/brand-logo/{organization}', [BrandingController::class, 'logo']);
+Route::get('/public/embeds/{token}', [EmbedController::class, 'show'])->middleware('throttle:60,1');
+Route::get('/public/embeds/{token}/frame-policy', [EmbedController::class, 'framePolicy'])->middleware('throttle:120,1');
+Route::post('/public/embeds/{token}/charts/{chart}/data', [EmbedController::class, 'chartData'])->middleware('throttle:240,1');
+
 // Paystack calls this server-to-server — authenticated by HMAC signature, not Sanctum.
 Route::post('/webhooks/paystack', [BillingController::class, 'webhook']);
 
@@ -71,6 +78,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/invitations/{invitation}/resend', [InvitationController::class, 'resend'])->middleware('throttle:10,1');
     Route::delete('/invitations/{invitation}', [InvitationController::class, 'destroy']);
     Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept'])->middleware('throttle:10,1');
+
+    Route::get('/organizations/{organization}/branding', [BrandingController::class, 'show']);
+    Route::post('/organizations/{organization}/branding', [BrandingController::class, 'update']);
+    Route::get('/dashboards/{dashboard}/embeds', [EmbedController::class, 'index']);
+    Route::post('/dashboards/{dashboard}/embeds', [EmbedController::class, 'store'])->middleware('throttle:20,1');
+    Route::delete('/embeds/{embed}', [EmbedController::class, 'destroy']);
 
     Route::get('/dashboards/{dashboard}/company-shares', [DashboardShareController::class, 'index']);
     Route::post('/dashboards/{dashboard}/company-shares', [DashboardShareController::class, 'store'])->middleware('throttle:20,1');

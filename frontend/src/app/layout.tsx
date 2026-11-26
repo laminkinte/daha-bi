@@ -10,6 +10,7 @@ import Sidebar from "@/components/Sidebar";
 const THEME_INIT_SCRIPT = `
 (function () {
   try {
+    if (location.pathname.indexOf("/embed/") === 0) return;
     var theme = window.localStorage.getItem("daha_bi_theme");
     if (theme === "dark" || theme === "light") {
       document.documentElement.setAttribute("data-theme", theme);
