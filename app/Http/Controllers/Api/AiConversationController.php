@@ -75,11 +75,16 @@ class AiConversationController extends Controller
 
         // Read before the new user message is saved, so it naturally excludes it.
         $existingMessages = $conversation->messages()->get();
-        $history = $existingMessages
+        // Last 12 turns only (long chats would bloat every request). Chart/dashboard replies carry
+        // their computed analysis too, so a follow-up like "why is that one so low?" has context.
+        $history = $existingMessages->take(-12)
             ->map(fn (AiMessage $m) => [
                 'role' => $m->role === 'assistant' ? 'model' : 'user',
-                'content' => $m->content,
-            ])->all();
+                'content' => trim($m->content
+                    .($m->chart_title ? "\n[Chart shown: {$m->chart_title}]" : '')
+                    .($m->dashboard_title ? "\n[Dashboard proposed: {$m->dashboard_title}]" : '')
+                    .($m->analysis ? "\n[Analysis: {$m->analysis}]" : '')),
+            ])->values()->all();
         $conversationHasDashboard = $existingMessages->contains('response_type', 'dashboard');
 
         $userMessage = $conversation->messages()->create([
@@ -88,15 +93,25 @@ class AiConversationController extends Controller
         ]);
 
         try {
-            $result = $this->ai->respond($conversation->dataset, $validated['content'], $history, $conversationHasDashboard);
+            $result = $this->ai->respond($conversation->dataset, $validated['content'], $history, $conversationHasDashboard, $request->user());
         } catch (Throwable $e) {
+            // The question was saved; drop it so a retry doesn't leave a dangling unanswered turn.
+            $userMessage->delete();
+
             return response()->json([
-                'message' => 'AI request failed.',
+                'message' => $this->friendlyAiError($e->getMessage()),
                 'error' => $e->getMessage(),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         $assistantMessage = $this->recordAssistantReply($conversation, $result);
+        $followUps = array_values(array_filter(array_map(
+            fn ($q) => is_string($q) ? Str::limit(trim($q), 80) : null,
+            array_slice($result['follow_ups'] ?? [], 0, 3)
+        )));
+        if ($followUps) {
+            $assistantMessage->update(['follow_ups' => $followUps]);
+        }
 
         if (! $conversation->title) {
             $conversation->update(['title' => Str::limit($validated['content'], 60)]);
@@ -108,6 +123,19 @@ class AiConversationController extends Controller
             'user_message' => $userMessage,
             'assistant_message' => $assistantMessage,
         ], 201);
+    }
+
+    protected function friendlyAiError(string $raw): string
+    {
+        $lower = strtolower($raw);
+
+        return match (true) {
+            str_contains($lower, 'quota') || str_contains($lower, 'rate') || str_contains($lower, '429') => 'The AI service is busy right now (rate limit reached). Wait a minute and try again.',
+            str_contains($lower, 'timed out') || str_contains($lower, 'timeout') || str_contains($lower, 'curl error 28') => 'The AI took too long to answer. Try a shorter or more specific question.',
+            str_contains($lower, 'api key') || str_contains($lower, 'permission') => 'The AI service rejected the API key. Check GEMINI_API_KEY in the backend .env.',
+            str_contains($lower, 'unknown column') => 'The AI referred to a column that does not exist. Try rephrasing using the column names.',
+            default => 'The AI could not answer that. Try rephrasing your question.',
+        };
     }
 
     /**

@@ -513,6 +513,165 @@ class ChartDataService
             ->all();
     }
 
+    /**
+     * First $limit rows the viewer is allowed to see (row-level security applies).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function sampleRows(Dataset $dataset, ?User $user = null, int $limit = 30): array
+    {
+        return $this->baseQuery($dataset, $user)
+            ->orderBy('id')
+            ->limit($limit)
+            ->pluck('data')
+            ->map(fn ($d) => is_string($d) ? (json_decode($d, true) ?? []) : (array) $d)
+            ->all();
+    }
+
+    /**
+     * Exact whole-dataset facts for the AI assistant, computed in SQL over every row the viewer
+     * may see: per numeric column count/sum/avg/min/max, per date column the range, per
+     * categorical column its distinct count and top values (with the totals of the main
+     * measures), plus a monthly trend of the main measure. Lets the model answer "what's the
+     * total revenue?" with the real number instead of extrapolating from a 30-row sample.
+     *
+     * @return array<string, mixed>
+     */
+    public function profile(Dataset $dataset, ?User $user = null): array
+    {
+        $key = 'dataset-profile:'.$dataset->id.':'.optional($dataset->updated_at)->timestamp.':'.($user?->id ?? 'anon');
+
+        return Cache::remember($key, 600, function () use ($dataset, $user) {
+            // Column names are interpolated into JSON paths below — skip any that could break out.
+            $columns = array_slice(array_values(array_filter(
+                collect($dataset->columns ?? [])->pluck('name')->all(),
+                fn ($c) => is_string($c) && ! preg_match('/["\'\\\\]/', $c)
+            )), 0, 30);
+            $sample = $this->sampleRows($dataset, $user, 200);
+            $kinds = $this->inferKinds($columns, $sample);
+            $ex = fn (string $f) => "JSON_UNQUOTE(JSON_EXTRACT(data, '$.\"{$f}\"'))";
+            $num = fn (string $f) => "CAST(NULLIF({$ex($f)}, '') AS DECIMAL(20,4))";
+
+            $total = $this->baseQuery($dataset, $user)->count();
+            $numeric = array_keys(array_filter($kinds, fn ($k) => $k === 'number'));
+            $dates = array_keys(array_filter($kinds, fn ($k) => $k === 'date'));
+            $categories = array_keys(array_filter($kinds, fn ($k) => $k === 'category'));
+            // Identifier-ish numeric columns (id, *_id, phone) make meaningless sums.
+            $measures = array_values(array_filter($numeric, fn ($f) => ! preg_match('/(^id$|_id$|^id_|phone|zip|postal|year$)/i', $f)));
+
+            $profile = ['total_rows' => $total, 'columns' => []];
+
+            if ($numeric) {
+                $selects = [];
+                foreach ($numeric as $i => $f) {
+                    $selects[] = "COUNT({$num($f)}) as c{$i}, SUM({$num($f)}) as s{$i}, AVG({$num($f)}) as a{$i}, MIN({$num($f)}) as mn{$i}, MAX({$num($f)}) as mx{$i}";
+                }
+                $row = (array) $this->baseQuery($dataset, $user)->selectRaw(implode(', ', $selects))->first();
+                foreach ($numeric as $i => $f) {
+                    if (! in_array($f, $measures, true)) {
+                        $profile['columns'][$f] = ['type' => 'identifier', 'non_empty' => (int) $row["c{$i}"], 'min' => (float) $row["mn{$i}"], 'max' => (float) $row["mx{$i}"]];
+
+                        continue;
+                    }
+                    $profile['columns'][$f] = [
+                        'type' => 'number',
+                        'non_empty' => (int) $row["c{$i}"],
+                        'sum' => round((float) $row["s{$i}"], 2),
+                        'avg' => round((float) $row["a{$i}"], 2),
+                        'min' => (float) $row["mn{$i}"],
+                        'max' => (float) $row["mx{$i}"],
+                    ];
+                }
+            }
+
+            foreach ($dates as $f) {
+                $row = $this->baseQuery($dataset, $user)
+                    ->selectRaw("MIN({$ex($f)}) as lo, MAX({$ex($f)}) as hi")
+                    ->whereRaw("{$ex($f)} <> ''")
+                    ->first();
+                $profile['columns'][$f] = ['type' => 'date', 'from' => $row?->lo, 'to' => $row?->hi];
+            }
+
+            $mainMeasures = array_slice($measures, 0, 2);
+            foreach ($categories as $f) {
+                $distinct = (int) $this->baseQuery($dataset, $user)->selectRaw("COUNT(DISTINCT {$ex($f)}) as n")->value('n');
+                $entry = ['type' => 'category', 'distinct_values' => $distinct];
+
+                // High-cardinality text (names, emails, free text) — top values say nothing useful.
+                if ($distinct <= 60 || $distinct < $total * 0.5) {
+                    $select = ["{$ex($f)} as v", 'COUNT(*) as n'];
+                    foreach ($mainMeasures as $i => $m) {
+                        $select[] = "SUM({$num($m)}) as m{$i}";
+                    }
+                    $entry['top_values'] = $this->baseQuery($dataset, $user)
+                        ->selectRaw(implode(', ', $select))
+                        ->groupByRaw($ex($f))
+                        ->orderByDesc($mainMeasures ? 'm0' : 'n')
+                        ->limit(10)
+                        ->get()
+                        ->map(function ($r) use ($mainMeasures) {
+                            $out = ['value' => $r->v, 'rows' => (int) $r->n];
+                            foreach ($mainMeasures as $i => $m) {
+                                $out["total_{$m}"] = round((float) $r->{"m{$i}"}, 2);
+                            }
+
+                            return $out;
+                        })->all();
+                }
+                $profile['columns'][$f] = $entry;
+            }
+
+            if ($dates) {
+                $d = $dates[0];
+                $select = ["LEFT({$ex($d)}, 7) as period", 'COUNT(*) as n'];
+                if ($mainMeasures) {
+                    $select[] = "SUM({$num($mainMeasures[0])}) as m";
+                }
+                $profile['monthly_trend'] = [
+                    'date_field' => $d,
+                    'measure' => $mainMeasures ? "sum of {$mainMeasures[0]}" : 'row count',
+                    'periods' => $this->baseQuery($dataset, $user)
+                        ->selectRaw(implode(', ', $select))
+                        ->whereRaw("{$ex($d)} <> ''")
+                        ->groupBy('period')
+                        ->orderByDesc('period')
+                        ->limit(24)
+                        ->get()
+                        ->reverse()
+                        ->map(fn ($r) => ['period' => $r->period, 'rows' => (int) $r->n] + ($mainMeasures ? ['value' => round((float) $r->m, 2)] : []))
+                        ->values()
+                        ->all(),
+                ];
+            }
+
+            return $profile;
+        });
+    }
+
+    /**
+     * @param  string[]  $columns
+     * @param  array<int, array<string, mixed>>  $sample
+     * @return array<string, 'number'|'date'|'category'>
+     */
+    protected function inferKinds(array $columns, array $sample): array
+    {
+        $kinds = [];
+        foreach ($columns as $c) {
+            $values = array_values(array_filter(array_map(fn ($r) => $r[$c] ?? null, $sample), fn ($v) => $v !== null && $v !== ''));
+            if (! $values) {
+                $kinds[$c] = 'category';
+            } elseif (count(array_filter($values, fn ($v) => is_numeric($v))) === count($values)) {
+                $kinds[$c] = 'number';
+            } elseif (count(array_filter($values, fn ($v) => is_string($v) && preg_match('/^\d{4}-\d{2}(-\d{2})?([ T].*)?$/', $v))) === count($values)) {
+                $kinds[$c] = 'date';
+            } else {
+                $kinds[$c] = 'category';
+            }
+        }
+
+        return $kinds;
+    }
+
     protected function aggExpression(string $agg, ?string $field): string
     {
         if ($agg === 'count') {

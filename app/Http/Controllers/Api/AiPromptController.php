@@ -35,7 +35,7 @@ class AiPromptController extends Controller
         }
 
         try {
-            $result = $this->ai->respond($dataset, $validated['prompt']);
+            $result = $this->ai->respond($dataset, $validated['prompt'], user: $request->user());
         } catch (Throwable $e) {
             return response()->json([
                 'message' => 'AI request failed.',

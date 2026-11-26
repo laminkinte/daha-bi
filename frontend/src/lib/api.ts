@@ -440,6 +440,8 @@ export type AiMessage = {
   dashboard_title: string | null;
   dashboard_charts: AiDashboardChart[] | null;
   dashboard_id: number | null;
+  /** Suggested next questions the assistant offers under its reply. */
+  follow_ups?: string[] | null;
   created_at: string;
 };
 

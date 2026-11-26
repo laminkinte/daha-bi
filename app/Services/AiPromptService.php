@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Dataset;
+use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -12,6 +13,10 @@ class AiPromptService
     protected const SAMPLE_ROWS = 30;
 
     protected const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
+
+    public function __construct(protected ChartDataService $chartData)
+    {
+    }
 
     public function isConfigured(): bool
     {
@@ -58,15 +63,22 @@ class AiPromptService
      *         a time.
      * @return array{response_type: string, answer?: string, chart_title?: string, chart_type?: string, x_field?: string, y_field?: string, agg?: string, dashboard_title?: string, dashboard_explanation?: string, charts?: array}
      */
-    public function respond(Dataset $dataset, string $prompt, array $history = [], bool $conversationHasDashboard = false): array
+    public function respond(Dataset $dataset, string $prompt, array $history = [], bool $conversationHasDashboard = false, ?User $user = null): array
     {
         if (! $this->isConfigured()) {
             throw new RuntimeException('GEMINI_API_KEY is not configured.');
         }
 
         $columns = collect($dataset->columns ?? [])->pluck('name')->all();
-        // DatasetRow.data is already array-cast by Eloquent — no json_decode needed here.
-        $sample = $dataset->rows()->limit(self::SAMPLE_ROWS)->pluck('data')->all();
+        // Both go through row-level security: a restricted viewer's assistant only ever sees
+        // (and can only quote) the rows that viewer is allowed to see.
+        $sample = $this->chartData->sampleRows($dataset, $user, self::SAMPLE_ROWS);
+
+        try {
+            $profile = $this->chartData->profile($dataset, $user);
+        } catch (\Throwable) {
+            $profile = null;
+        }
 
         $chartRules = "chart_type must be one of bar/line/pie/table/kpi. For bar/line/pie you must set x_field and agg "
             . "(and y_field unless agg is \"count\"). For kpi you must set agg (and y_field unless agg is \"count\"). "
@@ -95,36 +107,39 @@ class AiPromptService
                     . "the whole dashboard a short, specific dashboard_title, and a dashboard_explanation (2-4 sentences) describing what it "
                     . "covers and why these particular charts were chosen together.\n"
                 : '')
-            . "- \"answer\": the user is asking a question. Answer directly and concisely using the sample rows. "
-            . "The sample is {$this->sampleCaveat($dataset)} — if asked for a precise total/average over the WHOLE dataset and the sample "
-            . "isn't the complete dataset, say your answer is based on a sample rather than inventing an exact number, and suggest they add "
-            . "a chart for an exact aggregate instead.\n\n"
+            . "- \"answer\": the user is asking a question. Answer like a senior data analyst briefing a business owner:\n"
+            . "  * Lead with the direct answer in the first sentence, with the actual number (formatted with thousands separators).\n"
+            . "  * Then give 2-4 short supporting points: comparisons, shares of total (%), the leader vs the rest, trends over time.\n"
+            . "  * End with one concrete, practical takeaway or next step when it is useful.\n"
+            . "  * Use light Markdown: **bold** for key numbers, '- ' bullet lists with EVERY bullet on its own line (a newline "
+            . "before each '- '), and a blank line before the closing takeaway. No headings, no tables, no code.\n"
+            . "  * Ground every number in the DATASET PROFILE below — it is computed exactly over ALL rows, so totals, averages, "
+            . "top values and monthly trends there are precise and should be quoted as facts. Use the sample rows only for "
+            . "row-level detail. If the question needs a figure that is in neither (e.g. a total broken down by two fields), "
+            . "say what you can answer exactly, and suggest the chart that would show the rest — never invent a number.\n"
+            . "  * If the question is ambiguous or not answerable from this data, say so plainly and suggest a better question.\n"
+            . "Whatever the response type, also fill follow_ups with 3 short, specific next questions the user could ask about THIS "
+            . "data (under 60 characters each, phrased as the user would type them).\n\n"
+            . 'Dataset name: ' . $dataset->name . "\n"
             . 'Dataset columns: ' . implode(', ', $columns) . "\n"
-            . 'Total row count: ' . $dataset->row_count . "\n"
-            . 'Sample rows (JSON): ' . json_encode($sample);
-
-        $model = config('services.gemini.model');
+            . ($profile ? 'DATASET PROFILE (exact, all rows, JSON): ' . json_encode($profile) . "\n" : 'Total row count: ' . $dataset->row_count . "\n")
+            . 'Sample rows (' . $this->sampleCaveat($dataset) . ', JSON): ' . json_encode($sample);
 
         $contents = collect($history)
             ->map(fn (array $turn) => ['role' => $turn['role'], 'parts' => [['text' => $turn['content']]]])
             ->push(['role' => 'user', 'parts' => [['text' => $prompt]]])
             ->all();
 
-        $response = Http::withHeaders(['x-goog-api-key' => config('services.gemini.key')])
-            ->post(self::BASE_URL."/models/{$model}:generateContent", [
-                'system_instruction' => ['parts' => [['text' => $system]]],
-                'contents' => $contents,
-                'generationConfig' => [
-                    'responseMimeType' => 'application/json',
-                    'responseSchema' => $this->responseSchema($columns, $wantsDashboard),
-                ],
-            ]);
+        $response = $this->generate([
+            'system_instruction' => ['parts' => [['text' => $system]]],
+            'contents' => $contents,
+            'generationConfig' => [
+                'responseMimeType' => 'application/json',
+                'responseSchema' => $this->responseSchema($columns, $wantsDashboard),
+            ],
+        ], 60);
 
-        if (! $response->successful()) {
-            throw new RuntimeException('Gemini request failed: '.($response->json('error.message') ?? $response->body()));
-        }
-
-        $text = $response->json('candidates.0.content.parts.0.text');
+        $text = $this->firstText($response->json());
 
         if (! $text) {
             throw new RuntimeException('AI did not return a response.');
@@ -295,28 +310,69 @@ class AiPromptService
             throw new RuntimeException('GEMINI_API_KEY is not configured.');
         }
 
-        $model = config('services.gemini.model');
         $body = ['contents' => [['role' => 'user', 'parts' => [['text' => $prompt]]]]];
 
         if ($systemPrompt) {
             $body['system_instruction'] = ['parts' => [['text' => $systemPrompt]]];
         }
 
-        $response = Http::withHeaders(['x-goog-api-key' => config('services.gemini.key')])
-            ->timeout(30)
-            ->post(self::BASE_URL."/models/{$model}:generateContent", $body);
-
-        if (! $response->successful()) {
-            throw new RuntimeException('Gemini request failed: '.($response->json('error.message') ?? $response->body()));
-        }
-
-        $text = trim((string) $response->json('candidates.0.content.parts.0.text'));
+        $text = trim((string) $this->firstText($this->generate($body, 30)->json()));
 
         if (! $text) {
             throw new RuntimeException('AI did not return a response.');
         }
 
         return $text;
+    }
+
+    /**
+     * One generateContent call on the configured model, falling back to the lighter
+     * GEMINI_FALLBACK_MODEL when the main one is overloaded (503) or rate-limited (429) —
+     * Gemini's bigger models hit demand spikes often enough that chat would otherwise just fail.
+     */
+    protected function generate(array $body, int $timeout): \Illuminate\Http\Client\Response
+    {
+        $models = array_values(array_unique(array_filter([
+            config('services.gemini.model'),
+            config('services.gemini.fallback_model'),
+        ])));
+
+        $response = null;
+        foreach ($models as $model) {
+            try {
+                $response = Http::withHeaders(['x-goog-api-key' => config('services.gemini.key')])
+                    ->timeout($timeout)
+                    ->post(self::BASE_URL."/models/{$model}:generateContent", $body);
+            } catch (\Illuminate\Http\Client\ConnectionException $e) {
+                if ($model === end($models)) {
+                    throw new RuntimeException('Gemini request timed out: '.$e->getMessage());
+                }
+
+                continue;
+            }
+
+            if ($response->successful() || ! in_array($response->status(), [429, 500, 503], true)) {
+                break;
+            }
+        }
+
+        if (! $response?->successful()) {
+            throw new RuntimeException('Gemini request failed: '.($response?->json('error.message') ?? $response?->body()));
+        }
+
+        return $response;
+    }
+
+    /** Thinking models may put a thought part first — take the first part that has real text. */
+    protected function firstText(?array $json): ?string
+    {
+        foreach ($json['candidates'][0]['content']['parts'] ?? [] as $part) {
+            if (! empty($part['text']) && empty($part['thought'])) {
+                return $part['text'];
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -353,6 +409,7 @@ class AiPromptService
         $properties = array_merge($chartProperties, [
             'response_type' => ['type' => 'STRING', 'enum' => $allowDashboard ? ['chart', 'answer', 'dashboard'] : ['chart', 'answer']],
             'answer' => ['type' => 'STRING'],
+            'follow_ups' => ['type' => 'ARRAY', 'maxItems' => 3, 'items' => ['type' => 'STRING']],
         ]);
         $required = ['response_type'];
 

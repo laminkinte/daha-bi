@@ -37,7 +37,9 @@ return [
 
     'gemini' => [
         'key' => env('GEMINI_API_KEY'),
-        'model' => env('GEMINI_MODEL', 'gemini-flash-lite-latest'),
+        'model' => env('GEMINI_MODEL', 'gemini-flash-latest'),
+        // Used automatically when the main model is overloaded or rate-limited.
+        'fallback_model' => env('GEMINI_FALLBACK_MODEL', 'gemini-flash-lite-latest'),
     ],
 
     'python' => [

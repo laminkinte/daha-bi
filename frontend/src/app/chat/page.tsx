@@ -5,6 +5,7 @@ import Link from "next/link";
 import RequireAuth from "@/components/RequireAuth";
 import { EmptyState } from "@/components/EmptyState";
 import ChartRenderer from "@/components/charts/ChartRenderer";
+import Markdown from "@/components/ai/Markdown";
 import {
   api,
   ApiError,
@@ -216,6 +217,10 @@ function ChatContent() {
   const [active, setActive] = useState<AiConversation | null>(null);
   const [loadingActive, setLoadingActive] = useState(false);
   const [newDatasetId, setNewDatasetId] = useState<number | "">("");
+  // New-chat composer: which dataset the first question goes to (null = sensible default).
+  const [draftDatasetId, setDraftDatasetId] = useState<number | null>(null);
+  const [draft, setDraft] = useState("");
+  const draftRef = useRef<HTMLTextAreaElement>(null);
   const [savedDashboardNames, setSavedDashboardNames] = useState<Record<number, string>>({});
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -259,10 +264,14 @@ function ChatContent() {
   }
 
   function startNewChat() {
+    // Keep chatting about the same data by default — the most common "new chat" intent.
+    if (active?.dataset_id) setDraftDatasetId(active.dataset_id);
     setActiveId(null);
     setActive(null);
     setError(null);
+    setDraft("");
     setComposing(true);
+    setTimeout(() => draftRef.current?.focus(), 50);
   }
 
   function backToList() {
@@ -271,7 +280,8 @@ function ChatContent() {
     setComposing(false);
   }
 
-  async function createConversation(datasetId: number) {
+  /** Creates the conversation and, if a first question was typed, sends it straight away. */
+  async function createConversation(datasetId: number, firstQuestion?: string) {
     setNewDatasetId(datasetId);
     setError(null);
     try {
@@ -280,6 +290,8 @@ function ChatContent() {
       setActive({ ...conv, messages: [] });
       setActiveId(conv.id);
       setComposing(false);
+      setDraft("");
+      if (firstQuestion?.trim()) void sendMessage(firstQuestion, conv.id);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to start conversation.");
     } finally {
@@ -302,7 +314,8 @@ function ChatContent() {
     }
   }
 
-  async function sendMessage(content: string) {
+  async function sendMessage(content: string, conversationId: number | null = activeId) {
+    const activeId = conversationId;
     if (!content.trim() || !activeId || sending) return;
     nextTempId.current -= 1;
     const tempId = nextTempId.current;
@@ -310,7 +323,7 @@ function ChatContent() {
     setSending(true);
     setError(null);
     setActive((prev) =>
-      prev
+      prev && prev.id === activeId
         ? {
             ...prev,
             messages: [
@@ -342,17 +355,23 @@ function ChatContent() {
         `/ai-conversations/${activeId}/messages`,
         { content }
       );
+      // The server titles a chat after its first question — mirror that here right away.
+      const firstTitle = content.length > 60 ? `${content.slice(0, 57)}...` : content;
       setActive((prev) => {
-        if (!prev) return prev;
+        if (!prev || prev.id !== activeId) return prev;
         const rest = (prev.messages ?? []).filter((m) => m.id !== tempId);
-        return { ...prev, messages: [...rest, res.user_message, res.assistant_message] };
+        return { ...prev, title: prev.title ?? firstTitle, messages: [...rest, res.user_message, res.assistant_message] };
       });
+      setConversations((prev) =>
+        (prev ?? []).map((c) => (c.id === activeId ? { ...c, title: c.title ?? firstTitle, updated_at: new Date().toISOString() } : c))
+      );
       loadConversations();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "AI request failed.");
-      // The user message may have been persisted server-side even though the AI reply failed —
-      // re-sync with the server instead of guessing.
-      openConversation(activeId);
+      // The server discards an unanswered question, so drop the optimistic bubble and give the
+      // text back to the input for a one-click retry.
+      setActive((prev) => (prev ? { ...prev, messages: (prev.messages ?? []).filter((m) => m.id !== tempId) } : prev));
+      setInput(content);
     } finally {
       setSending(false);
     }
@@ -434,6 +453,17 @@ function ChatContent() {
     </div>
   );
 
+  const draftDataset =
+    datasets?.find((d) => d.id === draftDatasetId) ??
+    datasets?.find((d) => d.id === conversations?.[0]?.dataset_id) ??
+    datasets?.[0] ??
+    null;
+
+  function onStart(e?: FormEvent) {
+    e?.preventDefault();
+    if (draftDataset && draft.trim() && newDatasetId === "") void createConversation(draftDataset.id, draft);
+  }
+
   const startPanel = (
     <div className="flex flex-1 flex-col items-center overflow-y-auto px-4 py-8 sm:justify-center sm:p-8">
       <div className="w-full max-w-2xl">
@@ -446,73 +476,114 @@ function ChatContent() {
           </div>
           <h2 className="mt-4 text-[22px] font-semibold tracking-tight text-[var(--text-primary)]">Ask your data anything</h2>
           <p className="mx-auto mt-1.5 max-w-md text-sm text-[var(--text-secondary)]">
-            Pick a dataset, then ask in plain language — &ldquo;Which region grew fastest?&rdquo; or &ldquo;Chart revenue by
-            month&rdquo;. Daha AI answers and builds charts you can save to a dashboard.
+            Daha AI reads every row of the dataset, answers with exact numbers and builds charts you can save to a dashboard.
           </p>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {datasets === null && !datasetsError &&
-            [0, 1, 2, 3].map((i) => <div key={i} className="h-[62px] animate-pulse rounded-xl bg-[var(--surface-2)]" />)}
-          {datasetsError && (
-            <div className="rounded-xl border border-[var(--status-critical)]/30 bg-[var(--status-critical)]/5 p-4 text-sm sm:col-span-2">
-              <span className="text-[var(--status-critical)]">Couldn&apos;t load your datasets.</span>{" "}
-              <button
-                onClick={() => {
-                  setDatasetsError(false);
-                  loadDatasets();
-                }}
-                className="font-medium text-[var(--accent)] hover:underline"
-              >
-                Try again
-              </button>
-            </div>
-          )}
-          {datasets?.length === 0 && (
-            <div className="sm:col-span-2">
-              <EmptyState
-                icon={<SparkleIcon />}
-                title="No datasets yet"
-                description="Connect a data source first — then you can chat with it here."
-                action={
-                  <Link href="/data-sources" className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white">
-                    Add a data source
-                  </Link>
-                }
-              />
-            </div>
-          )}
-          {datasets?.map((d) => (
+        {datasets === null && !datasetsError && <div className="mt-6 h-[150px] animate-pulse rounded-2xl bg-[var(--surface-2)]" />}
+        {datasetsError && (
+          <div className="mt-6 rounded-xl border border-[var(--status-critical)]/30 bg-[var(--status-critical)]/5 p-4 text-sm">
+            <span className="text-[var(--status-critical)]">Couldn&apos;t load your datasets.</span>{" "}
             <button
-              key={d.id}
-              onClick={() => createConversation(d.id)}
-              disabled={newDatasetId !== ""}
-              className="group flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-3 text-left transition-colors hover:border-[var(--accent)]/50 hover:bg-[var(--accent-soft)] disabled:opacity-60"
+              onClick={() => {
+                setDatasetsError(false);
+                loadDatasets();
+              }}
+              className="font-medium text-[var(--accent)] hover:underline"
             >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-2)] text-[var(--text-secondary)] group-hover:bg-[var(--surface-1)] group-hover:text-[var(--accent)]">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                  <rect x="3" y="4" width="18" height="16" rx="2" />
-                  <path d="M3 10h18M9 10v10" />
-                </svg>
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold text-[var(--text-primary)]">{d.name}</span>
-                <span className="block truncate text-xs text-[var(--text-muted)]">
-                  {d.row_count.toLocaleString()} rows · {d.columns.length} columns
-                </span>
-              </span>
-              <span className="shrink-0 text-xs font-medium text-[var(--accent)]">
-                {newDatasetId === d.id ? "Starting…" : "Chat →"}
-              </span>
+              Try again
             </button>
-          ))}
-        </div>
+          </div>
+        )}
+        {datasets?.length === 0 && (
+          <div className="mt-6">
+            <EmptyState
+              icon={<SparkleIcon />}
+              title="No datasets yet"
+              description="Connect a data source first — then you can chat with it here."
+              action={
+                <Link href="/data-sources" className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white">
+                  Add a data source
+                </Link>
+              }
+            />
+          </div>
+        )}
+
+        {draftDataset && (
+          <>
+            <form
+              onSubmit={onStart}
+              className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--surface-1)] p-3 shadow-[var(--shadow-card)] focus-within:border-[var(--accent)]"
+            >
+              <textarea
+                ref={draftRef}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    onStart();
+                  }
+                }}
+                rows={3}
+                autoFocus
+                placeholder={`Ask about ${draftDataset.name}… e.g. "Which product earns the most?"`}
+                className="w-full resize-none bg-transparent px-1 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus-visible:outline-none"
+                disabled={newDatasetId !== ""}
+              />
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <label className="flex min-w-0 flex-1 items-center gap-2 text-xs text-[var(--text-muted)]">
+                  <span className="shrink-0">Dataset</span>
+                  <select
+                    value={draftDataset.id}
+                    onChange={(e) => setDraftDatasetId(Number(e.target.value))}
+                    className="w-full min-w-0 max-w-[16rem] truncate rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1.5 text-xs font-medium text-[var(--text-primary)]"
+                    aria-label="Dataset to chat about"
+                  >
+                    {datasets?.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name} ({d.row_count.toLocaleString()} rows)
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="submit"
+                  disabled={!draft.trim() || newDatasetId !== ""}
+                  className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3.5 text-sm font-medium text-white disabled:opacity-40"
+                >
+                  {newDatasetId !== "" ? "Starting…" : "Ask"}
+                  <SendIcon />
+                </button>
+              </div>
+            </form>
+
+            <div className="mt-4">
+              <p className="mb-2 text-xs font-medium text-[var(--text-muted)]">Or start with one of these</p>
+              <div className="flex flex-wrap gap-2">
+                {SUGGESTED_PROMPTS.map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => createConversation(draftDataset.id, p)}
+                    disabled={newDatasetId !== ""}
+                    className="rounded-full border border-[var(--border)] bg-[var(--surface-1)] px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-60"
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
         {error && <p className="mt-3 text-center text-sm text-[var(--status-critical)]">{error}</p>}
       </div>
     </div>
   );
 
   const showConversation = activeId !== null || active !== null;
+  const lastMessage = active?.messages?.[active.messages.length - 1];
+  const lastFollowUps = lastMessage?.role === "assistant" ? (lastMessage.follow_ups ?? []) : [];
 
   return (
     <div className="flex h-[calc(100dvh-3.5rem)] md:h-screen">
@@ -521,7 +592,7 @@ function ChatContent() {
         {conversationList}
       </div>
 
-      <div className={showConversation || composing ? "flex h-full flex-1 flex-col" : "hidden md:flex md:flex-1 md:flex-col"}>
+      <div className={showConversation || composing ? "flex h-full min-w-0 flex-1 flex-col" : "hidden md:flex md:min-w-0 md:flex-1 md:flex-col"}>
         {!showConversation ? (
           <>
             <div className="flex items-center gap-2 border-b border-[var(--border)] px-4 py-3 md:hidden">
@@ -594,7 +665,7 @@ function ChatContent() {
                               <span className="mt-0.5 shrink-0 text-[var(--accent)]">
                                 <SparkleIcon />
                               </span>
-                              <p>{m.analysis}</p>
+                              <Markdown text={m.analysis} />
                             </div>
                           )}
                           <div className="mt-3 border-t border-[var(--border)] pt-3">
@@ -651,7 +722,7 @@ function ChatContent() {
                               <span className="mt-0.5 shrink-0 text-[var(--accent)]">
                                 <SparkleIcon />
                               </span>
-                              <p>{m.analysis}</p>
+                              <Markdown text={m.analysis} />
                             </div>
                           )}
                           <div className="mt-3">
@@ -690,11 +761,24 @@ function ChatContent() {
                             : "rounded-2xl rounded-bl-md border border-[var(--border)] bg-[var(--surface-1)] text-[var(--text-primary)] shadow-sm"
                         }`}
                       >
-                        <p className="whitespace-pre-wrap">{m.content}</p>
+                        {m.role === "user" ? <p className="whitespace-pre-wrap">{m.content}</p> : <Markdown text={m.content} />}
                       </div>
                     </div>
                   );
                 })}
+                {!sending && lastFollowUps.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pl-9" aria-label="Suggested follow-up questions">
+                    {lastFollowUps.map((q) => (
+                      <button
+                        key={q}
+                        onClick={() => sendMessage(q)}
+                        className="rounded-full border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-3 py-1.5 text-xs font-medium text-[var(--accent)] hover:border-[var(--accent)]"
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {sending && (
                   <div className="flex items-end gap-2">
                     <span

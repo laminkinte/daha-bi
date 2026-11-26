@@ -21,11 +21,12 @@ class AiMessage extends Model
         'dashboard_title',
         'dashboard_charts',
         'dashboard_id',
+        'follow_ups',
     ];
 
     protected function casts(): array
     {
-        return ['chart_config' => 'array', 'chart_data' => 'array', 'dashboard_charts' => 'array'];
+        return ['chart_config' => 'array', 'chart_data' => 'array', 'dashboard_charts' => 'array', 'follow_ups' => 'array'];
     }
 
     public function conversation(): BelongsTo
