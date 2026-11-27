@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Modal, BTN_PRIMARY, BTN_SECONDARY, FIELD_INPUT, FIELD_LABEL } from "@/components/Modal";
 import { api, ApiError, type CompanyShare, type RowFilter } from "@/lib/api";
+import { mailtoHref, SHARE_BTN } from "@/components/PendingInvites";
 
 export type Column = { name: string; label: string };
 
@@ -287,6 +288,17 @@ export default function CompanySharesDialog({
             <code className="min-w-0 basis-full truncate rounded-md bg-[var(--surface-1)] px-2 py-1 font-mono text-xs text-[var(--text-secondary)]">
               {created.share_url}
             </code>
+            <a
+              href={mailtoHref(
+                created.email ?? "",
+                `${dashboardName} — shared with your company on Daha BI`,
+                `Hi,\n\nI've shared the "${dashboardName}" dashboard with your company on Daha BI. Open it here (the link works for 14 days):\n${created.share_url}\n\nBest regards`
+              )}
+              className={SHARE_BTN}
+              title="Opens your email app with the message written for you"
+            >
+              Send from my email
+            </a>
             <button
               type="button"
               onClick={async () => {

@@ -25,11 +25,28 @@ function CopyButton({ text, label = "Copy link" }: { text: string; label?: strin
 }
 
 /**
+ * A link that opens the user's own email app (Gmail, Outlook, Mail…) with the message filled in,
+ * so they can send it from their own address instead of (or as well as) Daha BI's email.
+ */
+export function mailtoHref(to: string, subject: string, body: string): string {
+  return `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+export const SHARE_BTN =
+  "shrink-0 rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]";
+
+/**
  * Shown right after inviting someone without an account: confirms the email and hands over
- * the link, so it can also be shared on WhatsApp/Slack (or when email isn't configured).
+ * the link, so it can also be sent from the user's own email, WhatsApp/Slack (or when email
+ * isn't configured).
  */
 export function InviteSentNotice({ invite, onClose }: { invite: InviteSent; onClose: () => void }) {
   const whatsapp = `https://wa.me/?text=${encodeURIComponent(`You're invited to Daha BI: ${invite.invite_url}`)}`;
+  const ownEmail = mailtoHref(
+    invite.email,
+    "You're invited to Daha BI",
+    `Hi,\n\nI'd like you to join me on Daha BI. Accept the invitation here (the link works for 7 days):\n${invite.invite_url}\n\nSee you there!`
+  );
   return (
     <div className="rounded-xl border border-[var(--accent)]/30 bg-[var(--accent-soft)] p-3.5 text-sm" role="status">
       <div className="flex items-start justify-between gap-3">
@@ -54,15 +71,13 @@ export function InviteSentNotice({ invite, onClose }: { invite: InviteSent; onCl
         <code className="min-w-0 basis-full truncate rounded-md bg-[var(--surface-1)] px-2 py-1 font-mono text-xs text-[var(--text-secondary)]">
           {invite.invite_url}
         </code>
-        <CopyButton text={invite.invite_url} />
-        <a
-          href={whatsapp}
-          target="_blank"
-          rel="noreferrer"
-          className="shrink-0 rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-        >
+        <a href={ownEmail} className={SHARE_BTN} title="Opens your email app with the invitation written for you">
+          Send from my email
+        </a>
+        <a href={whatsapp} target="_blank" rel="noreferrer" className={SHARE_BTN}>
           Share on WhatsApp
         </a>
+        <CopyButton text={invite.invite_url} />
       </div>
     </div>
   );
