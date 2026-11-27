@@ -645,7 +645,17 @@ class ChartDataService
                 $profile['columns'][$f] = ['type' => 'date', 'from' => $row?->lo, 'to' => $row?->hi];
             }
 
-            $mainMeasures = array_slice($measures, 0, 2);
+            // The measures people ask about ("revenue by country") come first: money-like names,
+            // then quantities, then anything else. Up to three get totals per top value.
+            $rank = fn (string $f) => match (true) {
+                (bool) preg_match('/(^|_)(revenue|sales|turnover|income|amount|total|gmv|profit|value)(_|$)/i', $f) => 0,
+                (bool) preg_match('/(^|_)(cost|spend|price|fee)(_|$)/i', $f) => 2,
+                (bool) preg_match('/(^|_)(quantity|qty|units|count|orders|volume)(_|$)/i', $f) => 1,
+                default => 3,
+            };
+            $ranked = $measures;
+            usort($ranked, fn ($x, $y) => $rank($x) <=> $rank($y));
+            $mainMeasures = array_slice($ranked, 0, 3);
             foreach ($categories as $f) {
                 $distinct = (int) $this->baseQuery($dataset, $user)->selectRaw("COUNT(DISTINCT {$ex($f)}) as n")->value('n');
                 $entry = ['type' => 'category', 'distinct_values' => $distinct];
