@@ -14,7 +14,9 @@ return [
     |
     */
 
-    'default' => env('MAIL_MAILER', 'log'),
+    // SMTP without a password can only fail — until MAIL_PASSWORD is filled in, write emails to the
+    // log instead, so invitations and notifications keep working (their links are also shown in the app).
+    'default' => env('MAIL_MAILER', 'log') === 'smtp' && blank(env('MAIL_PASSWORD')) ? 'log' : env('MAIL_MAILER', 'log'),
 
     /*
     |--------------------------------------------------------------------------
