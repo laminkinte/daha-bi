@@ -132,12 +132,14 @@ def main():
             lines = [f"Line {evalue.lineno}: {(evalue.text or '').strip()}"]
         out["error"] = {"type": etype.__name__, "message": str(evalue), "where": lines}
 
-    if plt is not None:
+    # A failed cell's half-drawn figures are just noise (e.g. an empty axis).
+    if plt is not None and out["ok"]:
         for num in plt.get_fignums()[:MAX_FIGURES]:
             fig = plt.figure(num)
             png = io.BytesIO()
             fig.savefig(png, format="png", dpi=110, bbox_inches="tight")
             out["figures"].append(base64.b64encode(png.getvalue()).decode("ascii"))
+    if plt is not None:
         plt.close("all")
 
     text = buf.getvalue()

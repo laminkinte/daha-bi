@@ -768,9 +768,16 @@ result = df.describe(include="all").T`;
 
 /** One-click starters that adapt to the dataset's own numeric, text and date-like columns. */
 function pythonExamples(cols: string[]): { label: string; code: string }[] {
-  const num = cols.find((c) => /amount|revenue|total|price|sales|value|qty|quantity|count/i.test(c)) ?? cols[1] ?? cols[0] ?? "value";
-  const cat = cols.find((c) => /country|region|city|category|product|channel|status|type|name|method/i.test(c)) ?? cols[0] ?? "category";
-  const date = cols.find((c) => /date|time|day|month|created/i.test(c));
+  // Whole-word name matching ("count" must not match "country").
+  const word = (re: string) => new RegExp(`(^|_)(${re})(_|$)`, "i");
+  const isNum = word("revenue|sales|amount|total|price|value|quantity|qty|profit|cost|count|units|spend|income");
+  const isCat = word("country|region|city|state|category|product|channel|status|type|segment|method|name|brand|store");
+  const date = cols.find((c) => word("date|time|day|month|created|updated|at").test(c));
+  const num =
+    ["revenue", "sales", "amount", "total"].map((n) => cols.find((c) => word(n).test(c))).find(Boolean) ??
+    cols.find((c) => isNum.test(c) && !/(^|_)id$/i.test(c)) ??
+    "value";
+  const cat = cols.find((c) => isCat.test(c)) ?? cols.find((c) => c !== num && c !== date) ?? "category";
   const list: { label: string; code: string }[] = [
     { label: "Summary statistics", code: 'result = df.describe(include="all").T' },
     {
