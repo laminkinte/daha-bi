@@ -94,6 +94,17 @@ function relativeTime(iso: string): string {
   return `${Math.round(hours / 24)}d ago`;
 }
 
+/** Tells the user what's happening while the AI works, instead of bare dots. */
+function ThinkingLabel() {
+  const [secs, setSecs] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setSecs((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const text = secs < 2 ? "Reading your data…" : secs < 6 ? "Working out the answer…" : secs < 15 ? "Building the chart and analysis…" : "Almost there…";
+  return <span className="ml-2 text-xs text-[var(--text-muted)]">{text}</span>;
+}
+
 function SaveChartButton({
   message,
   dashboards,
@@ -842,6 +853,7 @@ function ChatContent() {
                           style={{ animationDelay: `${delay}ms` }}
                         />
                       ))}
+                      <ThinkingLabel />
                     </div>
                   </div>
                 )}

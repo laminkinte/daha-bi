@@ -74,6 +74,27 @@ class AiChatTest extends TestCase
         Http::assertSent(fn ($r) => str_contains($r->url(), 'main-model') && str_contains(json_encode($r->data()), 'DATASET PROFILE'));
     }
 
+    public function test_a_model_that_just_failed_is_skipped_on_the_next_request(): void
+    {
+        $ok = ['candidates' => [['content' => ['parts' => [['text' => json_encode(['response_type' => 'answer', 'answer' => 'fine'])]]]]]];
+        $mainAttempts = 0;
+        Http::fake([
+            '*main-model*' => function () use (&$mainAttempts) {
+                $mainAttempts++;
+                throw new \Illuminate\Http\Client\ConnectionException('timed out');
+            },
+            '*lite-model*' => Http::response($ok),
+        ]);
+
+        $conv = $this->asToken($this->token)->postJson('/api/ai-conversations', ['dataset_id' => $this->datasetId])->json('id');
+        $this->asToken($this->token)->postJson("/api/ai-conversations/{$conv}/messages", ['content' => 'one'])->assertCreated();
+        $this->asToken($this->token)->postJson("/api/ai-conversations/{$conv}/messages", ['content' => 'two'])->assertCreated();
+
+        // The main model was tried once (then remembered as down); the second question went straight to the fallback.
+        $this->assertSame(1, $mainAttempts);
+        $this->assertCount(2, collect(Http::recorded())->filter(fn ($pair) => str_contains($pair[0]->url(), 'lite-model')));
+    }
+
     public function test_failed_ai_reply_discards_the_question_and_explains(): void
     {
         Http::fake(['*' => Http::response(['error' => ['message' => 'Resource exhausted: quota']], 429)]);

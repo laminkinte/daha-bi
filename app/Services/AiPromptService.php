@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Dataset;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -13,6 +14,9 @@ class AiPromptService
     protected const SAMPLE_ROWS = 30;
 
     protected const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
+
+    /** Seconds a model gets before we fail over to the next one. */
+    protected const PER_MODEL_TIMEOUT = 15;
 
     public function __construct(protected ChartDataService $chartData)
     {
@@ -330,37 +334,56 @@ class AiPromptService
      * GEMINI_FALLBACK_MODEL when the main one is overloaded (503) or rate-limited (429) —
      * Gemini's bigger models hit demand spikes often enough that chat would otherwise just fail.
      */
+    /**
+     * One generateContent call with fast failover. Gemini models are regularly overloaded
+     * (503/429, or simply not answering), so: each model gets at most PER_MODEL_TIMEOUT seconds
+     * (the last one gets whatever time is left), and a model that just failed is skipped for
+     * two minutes, so later requests go straight to one that works instead of waiting again.
+     */
     protected function generate(array $body, int $timeout): \Illuminate\Http\Client\Response
     {
         $models = array_values(array_unique(array_filter([
             config('services.gemini.model'),
             config('services.gemini.fallback_model'),
         ])));
+        $healthy = array_values(array_filter($models, fn ($m) => ! Cache::has("gemini-down:{$m}")));
+        $order = $healthy ?: $models; // all marked down: still try them all
 
+        $deadline = microtime(true) + $timeout;
         $response = null;
-        foreach ($models as $model) {
+        $lastError = 'no model answered';
+        foreach ($order as $i => $model) {
+            $isLast = $i === count($order) - 1;
+            $remaining = max(5, (int) floor($deadline - microtime(true)));
+            $budget = $isLast ? $remaining : min(self::PER_MODEL_TIMEOUT, $remaining);
+
             try {
                 $response = Http::withHeaders(['x-goog-api-key' => config('services.gemini.key')])
-                    ->timeout($timeout)
+                    ->connectTimeout(5)
+                    ->timeout($budget)
                     ->post(self::BASE_URL."/models/{$model}:generateContent", $body);
             } catch (\Illuminate\Http\Client\ConnectionException $e) {
-                if ($model === end($models)) {
-                    throw new RuntimeException('Gemini request timed out: '.$e->getMessage());
-                }
+                Cache::put("gemini-down:{$model}", true, 120);
+                $lastError = "{$model} timed out";
+                $response = null;
 
                 continue;
             }
 
-            if ($response->successful() || ! in_array($response->status(), [429, 500, 503], true)) {
-                break;
+            if ($response->successful()) {
+                return $response;
             }
+            if (in_array($response->status(), [429, 500, 502, 503, 504], true)) {
+                Cache::put("gemini-down:{$model}", true, 120);
+                $lastError = "{$model}: ".($response->json('error.message') ?? $response->status());
+
+                continue;
+            }
+            // 4xx (bad request, bad key, unknown model): retrying another model won't help.
+            throw new RuntimeException('Gemini request failed: '.($response->json('error.message') ?? $response->body()));
         }
 
-        if (! $response?->successful()) {
-            throw new RuntimeException('Gemini request failed: '.($response?->json('error.message') ?? $response?->body()));
-        }
-
-        return $response;
+        throw new RuntimeException('Gemini request timed out: '.$lastError);
     }
 
     /** Thinking models may put a thought part first — take the first part that has real text. */
