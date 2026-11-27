@@ -1143,7 +1143,7 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" />
             </svg>
-            <span className="hidden sm:inline">Comments</span>
+            <span className="hidden 2xl:inline">Comments</span>
             {comments.openTotal > 0 && (
               <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-semibold text-white">
                 {comments.openTotal}
@@ -1161,7 +1161,7 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16" />
               </svg>
-              <span className="hidden sm:inline">Embed</span>
+              <span className="hidden 2xl:inline">Embed</span>
             </button>
           )}
           {role === "owner" && (
@@ -1174,13 +1174,14 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M14 9h1M9 13h1M14 13h1M9 17h1M14 17h1" />
               </svg>
-              <span className="hidden sm:inline">Companies</span>
+              <span className="hidden 2xl:inline">Companies</span>
             </button>
           )}
           {role === "owner" && <ShareButton dashboard={dashboard} onChanged={load} />}
           {canEdit && datasets.length > 0 && (
-            <>
-              <span className="mx-1 hidden h-6 w-px bg-[var(--border)] sm:block" aria-hidden />
+            // The two main actions sit at the end and wrap as one group, never split across lines.
+            <div className="flex items-center gap-2 sm:ml-auto 2xl:ml-0">
+              <span className="mx-1 hidden h-6 w-px bg-[var(--border)] 2xl:block" aria-hidden />
               <button
                 onClick={() => setAskAi(true)}
                 className="flex items-center gap-1.5 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-3 py-2 text-[13px] font-medium text-[var(--accent)] transition-colors hover:border-[var(--accent)]/60"
@@ -1197,7 +1198,7 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
                 </svg>
                 Add chart
               </button>
-            </>
+            </div>
           )}
         </div>
       </div>
