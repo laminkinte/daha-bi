@@ -20,7 +20,7 @@ class DashboardReportService
 
         $summaries = $this->buildSummaries($dashboard, $schedule->user);
 
-        Mail::to($schedule->recipients)->send(new DashboardReportMail($dashboard, $summaries));
+        Mail::to($schedule->recipients)->send(new DashboardReportMail($dashboard, $summaries, $schedule->user));
     }
 
     /**

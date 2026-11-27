@@ -39,6 +39,13 @@ class InvitationTest extends TestCase
             ->assertJsonPath('pending', true)
             ->assertJsonPath('email', 'partner@acme.com');
         Mail::assertSent(InvitationMail::class, fn ($m) => $m->hasTo('partner@acme.com'));
+        // Sent on behalf of the inviter: their name on the platform address, replies to them.
+        Mail::assertSent(InvitationMail::class, function ($m) {
+            $m->build();
+
+            return $m->hasFrom(config('mail.from.address'), "{$this->owner->name} via ".config('app.name'))
+                && $m->hasReplyTo($this->owner->email);
+        });
 
         $inviteToken = $this->tokenFrom($res->json('invite_url'));
         $this->assertNull(Invitation::where('token_hash', $inviteToken)->first(), 'raw token must not be stored');

@@ -40,7 +40,12 @@ class CommentActivity extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
+        $author = $this->comment->user;
+
         return (new MailMessage)
+            // From the person who commented (replies go to them); see App\Mail\SentOnBehalf.
+            ->from(config('mail.from.address'), \App\Mail\SentOnBehalf::senderName($author))
+            ->replyTo($author->email, $author->name)
             ->subject($this->headline())
             ->greeting('Hi '.$notifiable->name.',')
             ->line($this->headline().':')

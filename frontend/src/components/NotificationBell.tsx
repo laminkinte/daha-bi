@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
 import { api, type AppNotification } from "@/lib/api";
+
+/** Fired when a notification is opened: { dashboardId, commentId }. DashboardView listens. */
+export const OPEN_COMMENT_EVENT = "daha:open-comment";
 
 function timeAgo(iso: string): string {
   const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
@@ -82,6 +86,8 @@ export default function NotificationBell({ compact = false }: { compact?: boolea
       setItems((prev) => (prev ?? []).map((x) => (x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x)));
       api.post(`/notifications/${n.id}/read`).catch(() => {});
     }
+    // Already on that dashboard? It listens for this and jumps to the thread without a reload.
+    window.dispatchEvent(new CustomEvent(OPEN_COMMENT_EVENT, { detail: { dashboardId: n.data.dashboard_id, commentId: n.data.comment_id } }));
     router.push(`/dashboards/${n.data.dashboard_id}?comment=${n.data.comment_id}`);
   }
 
@@ -112,7 +118,9 @@ export default function NotificationBell({ compact = false }: { compact?: boolea
         )}
       </button>
 
-      {open && pos && (
+      {/* Rendered into <body>: the sidebar clips (and, with its transform, re-anchors) anything
+          positioned inside it, which cut the panel off on desktop. */}
+      {open && pos && typeof document !== "undefined" && createPortal(
         <div
           ref={panelRef}
           className="fixed z-[60] flex max-h-[70vh] flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-1)] shadow-[var(--shadow-pop)]"
@@ -152,7 +160,8 @@ export default function NotificationBell({ compact = false }: { compact?: boolea
               </button>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

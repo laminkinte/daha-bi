@@ -26,6 +26,7 @@ import {
 } from "@/lib/api";
 import { InviteSentNotice, PendingInvites } from "@/components/PendingInvites";
 import CommentsPanel, { useComments } from "@/components/comments/CommentsPanel";
+import { OPEN_COMMENT_EVENT } from "@/components/NotificationBell";
 import CompanySharesDialog from "@/components/dashboard/CompanySharesDialog";
 import EmbedDialog from "@/components/dashboard/EmbedDialog";
 import { BrandLogo } from "@/components/BrandStyle";
@@ -979,16 +980,28 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
   const [embedOpen, setEmbedOpen] = useState(false);
   const chartsRef = useRef<HTMLDivElement>(null);
 
-  // Notification links land here as ?comment=ID — open the panel on that thread.
+  // Notification links land here as ?comment=ID (email links, or arriving from another page);
+  // the bell also announces opens directly, for when this dashboard is already on screen.
+  // Either way: fetch the latest comments (the one linked to may be newer than what's loaded),
+  // clear any chart filter that would hide it, and open the panel on that thread.
+  const { reload: reloadComments } = comments;
   useEffect(() => {
-    const id = Number(new URLSearchParams(window.location.search).get("comment"));
-    if (id) {
-      Promise.resolve().then(() => {
-        setFocusComment(id);
-        setCommentsOpen(true);
-      });
-    }
-  }, []);
+    const focus = (id: number) => {
+      reloadComments();
+      setCommentChart(null);
+      setFocusComment(id);
+      setCommentsOpen(true);
+    };
+    const fromUrl = Number(new URLSearchParams(window.location.search).get("comment"));
+    if (fromUrl) Promise.resolve().then(() => focus(fromUrl));
+
+    const onOpen = (e: Event) => {
+      const { dashboardId: target, commentId } = (e as CustomEvent<{ dashboardId: number; commentId: number }>).detail;
+      if (target === dashboardId && commentId) focus(commentId);
+    };
+    window.addEventListener(OPEN_COMMENT_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_COMMENT_EVENT, onOpen);
+  }, [dashboardId, reloadComments]);
   const rootRef = useRef<HTMLDivElement>(null);
 
   const dashboardFilters = useMemo(() => selectionsToFilters(selections), [selections]);

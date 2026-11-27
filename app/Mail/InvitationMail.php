@@ -9,7 +9,7 @@ use Illuminate\Queue\SerializesModels;
 
 class InvitationMail extends Mailable
 {
-    use Queueable, SerializesModels;
+    use Queueable, SentOnBehalf, SerializesModels;
 
     public function __construct(public Invitation $invitation, public string $url)
     {
@@ -22,7 +22,7 @@ class InvitationMail extends Mailable
             ? "the \"{$this->invitation->dashboard->name}\" dashboard"
             : $this->invitation->organization->name;
 
-        return $this->subject("{$inviter} invited you to {$target} on Daha BI")
+        return $this->sentBy($this->invitation->invitedBy)->subject("{$inviter} invited you to {$target} on Daha BI")
             ->view('mail.invitation', [
                 'inviter' => $inviter,
                 'target' => $target,
