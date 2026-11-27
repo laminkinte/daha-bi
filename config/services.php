@@ -54,6 +54,9 @@ return [
         // A dedicated virtualenv with pandas/numpy/matplotlib, mounted read-only in the sandbox.
         'env_dir' => env('PYTHON_ENV_DIR'),
         'memory_mb' => (int) env('PYTHON_MEMORY_MB', 2048),
+        // 'process' = run in the web request; 'queue' = hand to the dedicated `python` queue worker
+        // (needed where PHP-FPM forbids namespaces, e.g. systemd RestrictNamespaces=yes).
+        'runner' => env('PYTHON_RUNNER', 'process'),
     ],
 
     'data_sources' => [

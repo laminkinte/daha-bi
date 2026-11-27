@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Jobs\RunPythonCell;
 use App\Models\Dataset;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -51,24 +53,57 @@ class PythonExecutionService
         File::put("{$dir}/cell.py", $code);
         File::copy(resource_path('python/runner.py'), "{$dir}/runner.py");
 
-        $process = new Process($this->command($dir));
-        $process->setTimeout(self::TIMEOUT_SECONDS);
+        $tooLong = 'Your code ran longer than '.self::TIMEOUT_SECONDS.' seconds and was stopped. Try working on fewer rows (e.g. df.head(1000)) or a simpler calculation.';
 
         try {
-            $process->run();
+            if (config('services.python.runner') === 'queue') {
+                $stderr = $this->runOnWorker($this->command($dir), $tooLong);
+            } else {
+                $process = new Process($this->command($dir));
+                $process->setTimeout(self::TIMEOUT_SECONDS);
+                try {
+                    $process->run();
+                } catch (ProcessTimedOutException) {
+                    throw new RuntimeException($tooLong);
+                }
+                $stderr = $process->getErrorOutput();
+            }
             $out = File::exists("{$dir}/out.json") ? json_decode(File::get("{$dir}/out.json"), true) : null;
-        } catch (ProcessTimedOutException) {
-            throw new RuntimeException('Your code ran longer than '.self::TIMEOUT_SECONDS.' seconds and was stopped. Try working on fewer rows (e.g. df.head(1000)) or a simpler calculation.');
         } finally {
             File::deleteDirectory($dir);
         }
 
         if (! is_array($out)) {
-            $err = trim($process->getErrorOutput());
-            throw new RuntimeException($this->friendlyCrash($err));
+            throw new RuntimeException($this->friendlyCrash(trim($stderr)));
         }
 
         return $out;
+    }
+
+    /**
+     * Hands the sandboxed command to the dedicated `python` queue worker and waits for it
+     * (see RunPythonCell for why). Returns the process's stderr.
+     *
+     * @param  string[]  $command
+     */
+    protected function runOnWorker(array $command, string $tooLong): string
+    {
+        $key = 'python-run:'.Str::random(32);
+        RunPythonCell::dispatch($command, $key, self::TIMEOUT_SECONDS)->onQueue('python');
+
+        $deadline = microtime(true) + self::TIMEOUT_SECONDS + 20;
+        while (microtime(true) < $deadline) {
+            if ($done = Cache::pull($key)) {
+                if ($done['timed_out']) {
+                    throw new RuntimeException($tooLong);
+                }
+
+                return (string) $done['stderr'];
+            }
+            usleep(150_000);
+        }
+
+        throw new RuntimeException('The Python service is busy right now. Please try again in a moment.');
     }
 
     /** @return string[] */
