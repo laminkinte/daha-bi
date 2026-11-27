@@ -51,6 +51,11 @@ class AuthController extends Controller
 
         $organization->members()->attach($user->id, ['role' => 'owner']);
 
+        // Early access: the first users get Business free (see config/plans.php).
+        if (User::count() <= config('plans.early_access_users')) {
+            $organization->forceFill(['plan' => 'business', 'plan_status' => 'active'])->save();
+        }
+
         // Signing up from an invitation link: join the inviting workspace/dashboard right away.
         // A bad or mismatched link must not block the signup itself, so failures are reported, not thrown.
         $inviteError = null;

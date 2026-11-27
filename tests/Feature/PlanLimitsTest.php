@@ -91,6 +91,20 @@ class PlanLimitsTest extends TestCase
         $this->asToken($token)->postJson('/api/dashboards', ['name' => '16th'])->assertCreated();
     }
 
+    public function test_early_users_get_business_free_until_the_threshold(): void
+    {
+        config(['plans.early_access_users' => 2]);
+        $plan = fn (string $email) => $this->postJson('/api/register', ['name' => 'U', 'email' => $email, 'password' => 'password123'])
+            ->assertCreated()->json('user.current_organization.plan');
+
+        $this->assertSame('business', $plan('one@example.com'));
+        $this->assertSame('business', $plan('two@example.com'));
+        $this->assertSame('free', $plan('three@example.com'));
+
+        config(['plans.early_access_users' => 0]);
+        $this->assertSame('free', $plan('four@example.com'));
+    }
+
     public function test_signup_can_be_a_personal_or_an_organization_account(): void
     {
         $this->postJson('/api/register', ['name' => 'Ada', 'email' => 'ada@example.com', 'password' => 'password123'])

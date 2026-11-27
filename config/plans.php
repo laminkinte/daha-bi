@@ -18,6 +18,11 @@ $everything = [
 ];
 
 return [
+    // Early access: until the platform has this many users, every new sign-up's workspace
+    // starts on Business at no charge (and keeps it; an admin can change it in the console).
+    // 0 turns the programme off.
+    'early_access_users' => (int) env('EARLY_ACCESS_USERS', 100),
+
     'free' => ['dashboards' => 15] + $everything,
     'growth' => ['dashboards' => 20] + $everything,
     'business' => ['dashboards' => null] + $everything,
