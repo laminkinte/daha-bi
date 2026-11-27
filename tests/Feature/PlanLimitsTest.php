@@ -105,6 +105,30 @@ class PlanLimitsTest extends TestCase
         $this->assertSame('free', $plan('four@example.com'));
     }
 
+    public function test_every_signup_notifies_the_platform_team(): void
+    {
+        config(['services.signup_notify_email' => 'team@example.com']);
+
+        $this->postJson('/api/register', [
+            'name' => 'Bo', 'email' => 'bo@example.com', 'password' => 'password123',
+            'account_type' => 'organization', 'organization_name' => 'Acme Ltd',
+        ])->assertCreated();
+
+        Mail::assertQueued(\App\Mail\NewAccountMail::class, function ($mail) {
+            $mail->build();
+
+            return $mail->hasTo('team@example.com')
+                && $mail->hasReplyTo('bo@example.com')
+                && str_contains($mail->subject, 'Bo (organization)')
+                && $mail->organization->name === 'Acme Ltd';
+        });
+
+        // Turned off: nothing is sent.
+        config(['services.signup_notify_email' => '']);
+        $this->postJson('/api/register', ['name' => 'Cy', 'email' => 'cy@example.com', 'password' => 'password123'])->assertCreated();
+        Mail::assertQueuedCount(1);
+    }
+
     public function test_signup_can_be_a_personal_or_an_organization_account(): void
     {
         $this->postJson('/api/register', ['name' => 'Ada', 'email' => 'ada@example.com', 'password' => 'password123'])

@@ -69,6 +69,9 @@ return [
 
     'frontend_url' => env('FRONTEND_URL', 'http://localhost:3000'),
 
+    // Who hears about every new sign-up (empty = nobody).
+    'signup_notify_email' => env('SIGNUP_NOTIFY_EMAIL', 'dahabidahatech@gmail.com'),
+
     'paystack' => [
         'secret_key' => env('PAYSTACK_SECRET_KEY'),
         'public_key' => env('PAYSTACK_PUBLIC_KEY'),

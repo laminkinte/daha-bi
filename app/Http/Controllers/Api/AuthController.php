@@ -72,6 +72,8 @@ class AuthController extends Controller
 
         $token = $user->createToken('api')->plainTextToken;
 
+        $this->notifyTeamOfSignup($user, $organization, empty($validated['invite_token']) || $inviteError ? ($referredBy ? "Referral from {$referredBy->name}" : null) : 'An invitation');
+
         if ($inviteError) {
             return response()->json([
                 'user' => $user->load('currentOrganization'),
@@ -84,6 +86,24 @@ class AuthController extends Controller
             'user' => $user->load('currentOrganization'),
             'token' => $token,
         ], 201);
+    }
+
+    /**
+     * Emails the platform team about every new account (config services.signup_notify_email).
+     * Queued; a mail problem is logged and never fails the sign-up.
+     */
+    protected function notifyTeamOfSignup(User $user, Organization $organization, ?string $joinedVia): void
+    {
+        $to = config('services.signup_notify_email');
+        if (! $to) {
+            return;
+        }
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($to)->queue(new \App\Mail\NewAccountMail($user, $organization->fresh(), User::count(), $joinedVia));
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     public function login(Request $request)
