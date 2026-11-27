@@ -57,7 +57,7 @@ class PythonExecutionService
 
         try {
             if (config('services.python.runner') === 'queue') {
-                $stderr = $this->runOnWorker($this->command($dir), $tooLong);
+                $stderr = $this->runOnWorker($this->command($dir), $tooLong, "{$dir}/out.json");
             } else {
                 $process = new Process($this->command($dir));
                 $process->setTimeout(self::TIMEOUT_SECONDS);
@@ -86,7 +86,7 @@ class PythonExecutionService
      *
      * @param  string[]  $command
      */
-    protected function runOnWorker(array $command, string $tooLong): string
+    protected function runOnWorker(array $command, string $tooLong, string $outFile): string
     {
         $key = 'python-run:'.Str::random(32);
         RunPythonCell::dispatch($command, $key, self::TIMEOUT_SECONDS)->onQueue('python');
@@ -99,6 +99,12 @@ class PythonExecutionService
                 }
 
                 return (string) $done['stderr'];
+            }
+            // Belt and braces: a finished, complete result file is enough even if the worker's
+            // completion note hasn't arrived (it's the same machine and folder).
+            clearstatcache(true, $outFile);
+            if (is_file($outFile) && is_array(json_decode((string) @file_get_contents($outFile), true))) {
+                return '';
             }
             usleep(150_000);
         }
