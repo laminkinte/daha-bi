@@ -46,7 +46,9 @@ class DashboardExportController extends Controller
             }
 
             try {
-                $data = $this->chartData->run($chart->dataset, $chart->type, $chart->config ?? [], [], $request->user());
+                // The chart's own saved filters apply, exactly as on screen (e.g. a "Cancelled /
+                // Returned" tile counts only those statuses).
+                $data = $this->chartData->run($chart->dataset, $chart->type, $chart->config ?? [], $chart->filters ?? [], $request->user());
             } catch (Throwable $e) {
                 // One broken chart shouldn't sink the export, but it must not fail silently either.
                 report($e);

@@ -112,6 +112,10 @@ class ChartTypesTest extends TestCase
         $add('Total cost', 'kpi', ['agg' => 'sum', 'y_field' => 'cost']);
         $add('By status', 'bar', ['x_field' => 'status', 'agg' => 'count']);
         $add('Activity', 'feed', ['x_field' => 'serviced', 'label_field' => 'asset', 'series_field' => 'status']);
+        $this->asToken($this->token)->postJson("/api/dashboards/{$this->dashboardId}/charts", [
+            'dataset_id' => $this->datasetId, 'title' => 'Critical', 'type' => 'kpi', 'config' => ['agg' => 'count'],
+            'filters' => [['field' => 'status', 'operator' => '=', 'value' => 'Critical']],
+        ])->assertCreated();
 
         $response = $this->asToken($this->token)->get("/api/dashboards/{$this->dashboardId}/export/excel")->assertOk();
         $path = tempnam(sys_get_temp_dir(), 'xl').'.xlsx';
@@ -119,7 +123,8 @@ class ChartTypesTest extends TestCase
         $book = \PhpOffice\PhpSpreadsheet\IOFactory::load($path);
         unlink($path);
 
-        $this->assertSame(['Total cost', 'By status', 'Activity'], $book->getSheetNames());
+        $this->assertSame(['Total cost', 'By status', 'Activity', 'Critical'], $book->getSheetNames());
+        $this->assertEquals(1, $book->getSheetByName('Critical')->getCell('B3')->getValue(), "the chart's own filter applies");
         $this->assertEquals(185, $book->getSheetByName('Total cost')->getCell('B3')->getValue());
         $this->assertSame('Active', $book->getSheetByName('By status')->getCell('A4')->getValue());
         $this->assertEquals(2, $book->getSheetByName('By status')->getCell('B4')->getValue());
