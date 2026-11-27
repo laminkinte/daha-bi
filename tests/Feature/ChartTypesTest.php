@@ -104,6 +104,28 @@ class ChartTypesTest extends TestCase
         }
     }
 
+    public function test_excel_export_has_a_sheet_of_real_data_per_chart(): void
+    {
+        $add = fn (string $title, string $type, array $config) => $this->asToken($this->token)
+            ->postJson("/api/dashboards/{$this->dashboardId}/charts", ['dataset_id' => $this->datasetId, 'title' => $title, 'type' => $type, 'config' => $config])
+            ->assertCreated();
+        $add('Total cost', 'kpi', ['agg' => 'sum', 'y_field' => 'cost']);
+        $add('By status', 'bar', ['x_field' => 'status', 'agg' => 'count']);
+        $add('Activity', 'feed', ['x_field' => 'serviced', 'label_field' => 'asset', 'series_field' => 'status']);
+
+        $response = $this->asToken($this->token)->get("/api/dashboards/{$this->dashboardId}/export/excel")->assertOk();
+        $path = tempnam(sys_get_temp_dir(), 'xl').'.xlsx';
+        file_put_contents($path, $response->streamedContent());
+        $book = \PhpOffice\PhpSpreadsheet\IOFactory::load($path);
+        unlink($path);
+
+        $this->assertSame(['Total cost', 'By status', 'Activity'], $book->getSheetNames());
+        $this->assertEquals(185, $book->getSheetByName('Total cost')->getCell('B3')->getValue());
+        $this->assertSame('Active', $book->getSheetByName('By status')->getCell('A4')->getValue());
+        $this->assertEquals(2, $book->getSheetByName('By status')->getCell('B4')->getValue());
+        $this->assertSame('Conveyor Belt', $book->getSheetByName('Activity')->getCell('B4')->getValue());
+    }
+
     public function test_table_shows_only_picked_columns_sorted(): void
     {
         $this->preview('table', ['columns' => ['asset', 'status'], 'sort_field' => 'cost', 'sort_dir' => 'desc'])

@@ -30,7 +30,10 @@ class DashboardExportController extends Controller
     {
         $this->authorize('view', $dashboard);
 
-        $dashboard->load('charts.dataset:id,name,columns');
+        // The whole dataset row: computing a chart needs data_source_id (row-level security, via
+        // dataSource) and updated_at (cache key). Loading only id/name/columns made every chart
+        // fail and the workbook come out empty.
+        $dashboard->load('charts.dataset.dataSource');
 
         $spreadsheet = new Spreadsheet();
         $spreadsheet->removeSheetByIndex(0);
@@ -44,7 +47,9 @@ class DashboardExportController extends Controller
 
             try {
                 $data = $this->chartData->run($chart->dataset, $chart->type, $chart->config ?? [], [], $request->user());
-            } catch (Throwable) {
+            } catch (Throwable $e) {
+                // One broken chart shouldn't sink the export, but it must not fail silently either.
+                report($e);
                 continue;
             }
 
@@ -118,6 +123,18 @@ class DashboardExportController extends Controller
             $this->writeSingleSeries($sheet, $headerRow, $config, $data['labels'], $data['values']);
         } elseif (isset($data['points'])) {
             $this->writePoints($sheet, $headerRow, $config, $data['points']);
+        } elseif (isset($data['cells'])) {
+            // Heatmap: one row per (column, row) cell.
+            $this->writeTable($sheet, $headerRow, [$config['x_field'] ?? 'x', $config['y_field'] ?? 'y', 'value'], array_map(
+                fn ($c) => [($config['x_field'] ?? 'x') => $c['x'], ($config['y_field'] ?? 'y') => $c['y'], 'value' => $c['value']],
+                $data['cells']
+            ));
+        } elseif (isset($data['items'])) {
+            // Activity feed: newest first.
+            $this->writeTable($sheet, $headerRow, ['when', 'what', 'status', 'amount'], array_map(
+                fn ($i) => ['when' => $i['at'] ?? null, 'what' => $i['title'] ?? null, 'status' => $i['tag'] ?? null, 'amount' => $i['value'] ?? null],
+                $data['items']
+            ));
         }
 
         foreach (range('A', 'H') as $col) {
