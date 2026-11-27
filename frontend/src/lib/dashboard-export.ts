@@ -1,10 +1,14 @@
-import html2canvas from "html2canvas";
+import { toCanvas } from "html-to-image";
 import jsPDF from "jspdf";
 
 /**
  * Page 1 is a real text cover (title/description/date — selectable, not rasterized). The charts
  * grid is captured once as a single tall image and sliced across as many following pages as it
  * needs, using the same margins on every page so the slicing math never has to special-case page 1.
+ *
+ * The capture uses html-to-image, which has the browser itself render the DOM (via SVG
+ * foreignObject). html2canvas re-implemented CSS and choked on modern colour functions
+ * (oklch(), color-mix()) that Tailwind v4 and the chart tiles use, so every export failed.
  */
 export async function downloadDashboardPdf(
   chartsContainer: HTMLElement,
@@ -13,10 +17,17 @@ export async function downloadDashboardPdf(
   filename: string,
   lowBandwidth = false
 ) {
-  const canvas = await html2canvas(chartsContainer, {
-    scale: lowBandwidth ? 1 : 2,
-    backgroundColor: getComputedStyle(document.body).backgroundColor || "#ffffff",
-    useCORS: true,
+  const background = getComputedStyle(document.body).backgroundColor || "#ffffff";
+  // Browsers cap canvas size (~16k px a side in Chrome); keep a very long dashboard under it.
+  const height = chartsContainer.scrollHeight;
+  const ratio = Math.min(lowBandwidth ? 1 : 2, 14000 / Math.max(1, height));
+
+  const canvas = await toCanvas(chartsContainer, {
+    pixelRatio: ratio,
+    backgroundColor: background,
+    cacheBust: true,
+    // On-card controls (drag grips, menus) are for the screen, not the page.
+    filter: (node) => !(node instanceof HTMLElement && node.dataset.exportIgnore === "true"),
   });
 
   const pdf = new jsPDF("p", "pt", "a4");

@@ -280,8 +280,10 @@ function ExportButton({ dashboard, chartsRef }: { dashboard: Dashboard; chartsRe
         user?.low_bandwidth_mode ?? false
       );
       setOpen(false);
-    } catch {
-      setError("Failed to export PDF.");
+    } catch (err) {
+      // Keep the real reason in the console for support; tell the user what to try.
+      console.error("PDF export failed", err);
+      setError("Couldn't create the PDF. Wait for every chart to finish loading, then try again.");
     } finally {
       setBusy(null);
     }

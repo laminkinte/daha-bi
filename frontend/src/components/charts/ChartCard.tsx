@@ -1161,7 +1161,7 @@ export default function ChartCard({
           title={editable ? "Drag to move" : undefined}
         >
           {editable && (
-            <span className="-ml-1.5 mt-[3px] shrink-0 text-[var(--text-muted)] opacity-50">
+            <span data-export-ignore="true" className="-ml-1.5 mt-[3px] shrink-0 text-[var(--text-muted)] opacity-50">
               <GripIcon />
             </span>
           )}
@@ -1177,7 +1177,7 @@ export default function ChartCard({
           </div>
         </div>
 
-        <div ref={toolsRef} className="relative -mr-2 -mt-0.5 flex shrink-0 items-center">
+        <div ref={toolsRef} data-export-ignore="true" className="relative -mr-2 -mt-0.5 flex shrink-0 items-center">
           {canSwitchView && (
             <div className="mr-1 hidden items-center rounded-lg border border-[var(--border)] p-0.5 sm:flex" role="group" aria-label="Show as">
               {(["line", "bar"] as const).map((v) => {
