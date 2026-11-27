@@ -194,9 +194,59 @@ function slug(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "dashboard";
 }
 
+/**
+ * Toolbar popovers: a sheet across the screen on phones (never cut off at the edge), anchored
+ * under its button from `sm` up.
+ */
+const POPOVER =
+  "fixed inset-x-3 top-20 z-40 max-h-[75vh] overflow-y-auto sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:z-30 sm:mt-2 sm:max-h-[70vh]";
+
+const POPOVER_OPEN_EVENT = "daha:toolbar-popover-open";
+let popoverSeq = 0;
+
+/**
+ * One toolbar popover open at a time: opening one closes the others, and a click/tap outside
+ * or Escape closes it. Spread popoverProps on the popover's wrapper (button + panel).
+ */
+function usePopover() {
+  const [id] = useState(() => `p${++popoverSeq}`);
+  const [open, setOpenState] = useState(false);
+
+  const setOpen = (next: boolean | ((o: boolean) => boolean)) => {
+    const value = typeof next === "function" ? next(open) : next;
+    if (value && !open) window.dispatchEvent(new CustomEvent(POPOVER_OPEN_EVENT, { detail: id }));
+    setOpenState(value);
+  };
+
+  useEffect(() => {
+    const onOther = (e: Event) => (e as CustomEvent<string>).detail !== id && setOpenState(false);
+    window.addEventListener(POPOVER_OPEN_EVENT, onOther);
+    return () => window.removeEventListener(POPOVER_OPEN_EVENT, onOther);
+  }, [id]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      const target = e.target as Element | null;
+      // Inside this popover, or inside a dialog it opened (e.g. a confirm modal): keep it open.
+      if (target?.closest(`[data-popover="${id}"]`) || target?.closest('[role="dialog"]')) return;
+      setOpenState(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpenState(false);
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open, id]);
+
+  return { open, setOpen, popoverProps: { "data-popover": id } };
+}
+
 function ExportButton({ dashboard, chartsRef }: { dashboard: Dashboard; chartsRef: RefObject<HTMLDivElement | null> }) {
   const { user } = useAuth();
-  const [open, setOpen] = useState(false);
+  const { open, setOpen, popoverProps } = usePopover();
   const [busy, setBusy] = useState<"excel" | "pdf" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -237,7 +287,7 @@ function ExportButton({ dashboard, chartsRef }: { dashboard: Dashboard; chartsRe
   }
 
   return (
-    <div className="relative">
+    <div className="relative" {...popoverProps}>
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label={"Export"}
@@ -248,7 +298,7 @@ function ExportButton({ dashboard, chartsRef }: { dashboard: Dashboard; chartsRe
         <span className="hidden sm:inline">Export</span>
       </button>
       {open && (
-        <div className="absolute right-0 z-10 mt-2 w-52 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-2 text-sm shadow-lg">
+        <div className={`${POPOVER} sm:w-52 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-2 text-sm shadow-lg`}>
           <button
             onClick={exportExcel}
             disabled={busy !== null}
@@ -277,7 +327,7 @@ function ShareButton({
   dashboard: Dashboard;
   onChanged: () => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const { open, setOpen, popoverProps } = usePopover();
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -321,7 +371,7 @@ function ShareButton({
   }
 
   return (
-    <div className="relative">
+    <div className="relative" {...popoverProps}>
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label={dashboard.is_shared ? "Shared" : "Share"}
@@ -333,7 +383,7 @@ function ShareButton({
       </button>
 
       {open && (
-        <div className="absolute right-0 z-30 mt-2 max-h-[70vh] w-[min(24rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-4 text-sm shadow-lg">
+        <div className={`${POPOVER} sm:w-[min(24rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-4 text-sm shadow-lg`}>
           {!dashboard.is_shared ? (
             <>
               <p className="text-[var(--text-secondary)]">
@@ -391,7 +441,7 @@ function TeamIcon() {
 }
 
 function CollaboratorsPanel({ dashboard }: { dashboard: Dashboard }) {
-  const [open, setOpen] = useState(false);
+  const { open, setOpen, popoverProps } = usePopover();
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"viewer" | "editor">("viewer");
@@ -444,7 +494,7 @@ function CollaboratorsPanel({ dashboard }: { dashboard: Dashboard }) {
   }
 
   return (
-    <div className="relative">
+    <div className="relative" {...popoverProps}>
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label={"Team"}
@@ -456,7 +506,7 @@ function CollaboratorsPanel({ dashboard }: { dashboard: Dashboard }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 z-10 mt-2 w-80 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-4 text-sm shadow-lg">
+        <div className={`${POPOVER} sm:w-80 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-4 text-sm shadow-lg`}>
           <p className="font-medium text-[var(--text-primary)]">Share this dashboard</p>
           <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
             Invite anyone by email — teammates or people at partner companies. They only see this dashboard.
@@ -519,7 +569,7 @@ function CollaboratorsPanel({ dashboard }: { dashboard: Dashboard }) {
 }
 
 function AiRecommendationsPanel({ dashboard }: { dashboard: Dashboard }) {
-  const [open, setOpen] = useState(false);
+  const { open, setOpen, popoverProps } = usePopover();
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -540,7 +590,7 @@ function AiRecommendationsPanel({ dashboard }: { dashboard: Dashboard }) {
   }
 
   return (
-    <div className="relative">
+    <div className="relative" {...popoverProps}>
       <button
         onClick={() => (open ? setOpen(false) : onOpen())}
         aria-label={"AI insights"}
@@ -551,7 +601,7 @@ function AiRecommendationsPanel({ dashboard }: { dashboard: Dashboard }) {
         <span className="hidden sm:inline">AI insights</span>
       </button>
       {open && (
-        <div className="absolute right-0 z-10 mt-2 w-80 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-3 text-sm shadow-lg">
+        <div className={`${POPOVER} sm:w-80 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-3 text-sm shadow-lg`}>
           {loading && <p className="text-[var(--text-muted)]">Analyzing this dashboard...</p>}
           {error && <p className="text-[var(--status-critical)]">{error}</p>}
           {analysis && <p className="whitespace-pre-line text-[var(--text-primary)]">{analysis}</p>}
@@ -573,7 +623,7 @@ function ReportIcon() {
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function ReportSchedulesPanel({ dashboard }: { dashboard: Dashboard }) {
-  const [open, setOpen] = useState(false);
+  const { open, setOpen, popoverProps } = usePopover();
   const [schedules, setSchedules] = useState<ReportSchedule[]>([]);
   const [recipients, setRecipients] = useState("");
   const [frequency, setFrequency] = useState<"daily" | "weekly">("daily");
@@ -625,7 +675,7 @@ function ReportSchedulesPanel({ dashboard }: { dashboard: Dashboard }) {
     setError(null);
     try {
       await api.post(`/report-schedules/${id}/send-now`);
-      setNotice("Sent. Locally this goes to storage/logs/laravel.log unless real SMTP is configured.");
+      setNotice("Sent. The summary is on its way to the recipients' inboxes.");
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to send.");
@@ -642,7 +692,7 @@ function ReportSchedulesPanel({ dashboard }: { dashboard: Dashboard }) {
   }
 
   return (
-    <div className="relative">
+    <div className="relative" {...popoverProps}>
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label={"Reports"}
@@ -654,7 +704,7 @@ function ReportSchedulesPanel({ dashboard }: { dashboard: Dashboard }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 z-10 mt-2 w-96 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-4 text-sm shadow-lg">
+        <div className={`${POPOVER} sm:w-96 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-4 text-sm shadow-lg`}>
           <p className="text-[var(--text-secondary)]">Email a summary of this dashboard on a schedule.</p>
 
           {schedules.length > 0 && (

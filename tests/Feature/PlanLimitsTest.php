@@ -5,12 +5,14 @@ namespace Tests\Feature;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
-/** The pricing page's limits are enforced on the server; nothing is deleted when over a limit. */
+/**
+ * Every plan includes every feature; plans differ only in dashboards (Free 15, Growth 20,
+ * Business unlimited). Nothing is deleted when over a limit.
+ */
 class PlanLimitsTest extends TestCase
 {
     use RefreshDatabase;
@@ -22,70 +24,55 @@ class PlanLimitsTest extends TestCase
         Mail::fake();
     }
 
-    protected function csv(string $token): int
+    protected function fill(User $user, int $count): void
     {
-        $this->asToken($token)->post('/api/data-sources', [
-            'type' => 'csv', 'name' => 'Sales',
-            'file' => UploadedFile::fake()->createWithContent('s.csv', "city,revenue\nLagos,10\nAccra,5\n"),
-        ], ['Accept' => 'application/json'])->assertCreated();
-
-        return $this->asToken($token)->getJson('/api/datasets')->json('0.id');
-    }
-
-    public function test_free_workspace_gets_three_dashboards_one_share_link_and_one_user(): void
-    {
-        [, $token] = $this->registerUser('Free', null, 'free');
-
-        $ids = [];
-        foreach ([1, 2, 3] as $i) {
-            $ids[] = $this->asToken($token)->postJson('/api/dashboards', ['name' => "D{$i}"])->assertCreated()->json('id');
+        for ($i = 0; $i < $count; $i++) {
+            $user->dashboards()->create(['name' => "D{$i}", 'organization_id' => $user->current_organization_id]);
         }
-        $this->asToken($token)->postJson('/api/dashboards', ['name' => 'D4'])
-            ->assertStatus(402)
-            ->assertJsonPath('message', fn ($m) => str_contains($m, 'Free plan includes 3 dashboards'));
-
-        $this->asToken($token)->postJson("/api/dashboards/{$ids[0]}/share")->assertOk();
-        $this->asToken($token)->postJson("/api/dashboards/{$ids[0]}/share")->assertOk(); // re-sharing the same one is fine
-        $this->asToken($token)->postJson("/api/dashboards/{$ids[1]}/share")->assertStatus(402);
-
-        $orgId = User::where('name', 'Free')->first()->current_organization_id;
-        $this->asToken($token)->postJson("/api/organizations/{$orgId}/members", ['email' => 'mate@example.com', 'role' => 'viewer'])->assertStatus(402);
-        $this->asToken($token)->postJson("/api/dashboards/{$ids[0]}/collaborators", ['email' => 'guest@example.com', 'role' => 'viewer'])->assertStatus(402);
     }
 
-    public function test_free_workspace_cannot_use_paid_features_but_csv_works(): void
+    public function test_free_workspace_gets_fifteen_dashboards(): void
     {
         [$user, $token] = $this->registerUser('Free', null, 'free');
-        $datasetId = $this->csv($token);
-        $dashboardId = $this->asToken($token)->postJson('/api/dashboards', ['name' => 'D'])->json('id');
+        $this->fill($user, 14);
 
-        $this->asToken($token)->postJson('/api/data-sources', ['type' => 'mysql', 'name' => 'DB'])->assertStatus(402);
-        $this->asToken($token)->postJson("/api/datasets/{$datasetId}/notebook/python", ['code' => 'print(1)'])->assertStatus(402);
-        $this->asToken($token)->postJson("/api/dashboards/{$dashboardId}/ai-prompt", ['prompt' => 'hi'])->assertStatus(402);
-        $conv = $this->asToken($token)->postJson('/api/ai-conversations', ['dataset_id' => $datasetId])->json('id');
-        $this->asToken($token)->postJson("/api/ai-conversations/{$conv}/messages", ['content' => 'hi'])
+        $this->asToken($token)->postJson('/api/dashboards', ['name' => 'Fifteenth'])->assertCreated();
+        $this->asToken($token)->postJson('/api/dashboards', ['name' => 'Sixteenth'])
             ->assertStatus(402)
-            ->assertJsonPath('message', fn ($m) => str_contains($m, 'Business plan'));
-        $this->asToken($token)->postJson("/api/organizations/{$user->current_organization_id}/branding", ['brand_color' => '#112233'])->assertStatus(402);
+            ->assertJsonPath('message', fn ($m) => str_contains($m, 'Free plan includes 15 dashboards'));
 
-        $this->asToken($token)->getJson('/api/user')
-            ->assertJsonPath('current_organization.plan_usage.plan', 'free')
-            ->assertJsonPath('current_organization.plan_usage.limits.dashboards', 3)
-            ->assertJsonPath('current_organization.plan_usage.usage.dashboards', 1);
+        // Duplicating counts too.
+        $id = $user->dashboards()->first()->id;
+        $this->asToken($token)->postJson("/api/dashboards/{$id}/duplicate")->assertStatus(402);
     }
 
-    public function test_growth_unlocks_notebook_and_databases_but_not_ai(): void
+    public function test_growth_gets_twenty_and_business_is_unlimited(): void
     {
-        [$user, $token] = $this->registerUser('Grow', null, 'growth');
+        [$grow, $growToken] = $this->registerUser('Grow', null, 'growth');
+        $this->fill($grow, 19);
+        $this->asToken($growToken)->postJson('/api/dashboards', ['name' => '20th'])->assertCreated();
+        $this->asToken($growToken)->postJson('/api/dashboards', ['name' => '21st'])->assertStatus(402);
+
+        [$biz, $bizToken] = $this->registerUser('Biz', null, 'business');
+        $this->fill($biz, 40);
+        $this->asToken($bizToken)->postJson('/api/dashboards', ['name' => '41st'])->assertCreated();
+    }
+
+    public function test_every_feature_is_on_for_free(): void
+    {
+        [$user, $token] = $this->registerUser('Free', null, 'free');
         $org = $user->currentOrganization;
 
-        $this->assertTrue($org->planAllows('notebook'));
-        $this->assertTrue($org->planAllows('database_sources'));
-        $this->assertFalse($org->planAllows('ai'));
-        $this->assertSame(5, $org->planLimit('users'));
-        foreach ([1, 2, 3, 4] as $i) {
-            $this->asToken($token)->postJson('/api/dashboards', ['name' => "D{$i}"])->assertCreated();
+        foreach (['ai', 'notebook', 'database_sources', 'branding'] as $feature) {
+            $this->assertTrue($org->planAllows($feature), $feature);
         }
+        $this->assertNull($org->planLimit('users'));
+        $this->assertNull($org->planLimit('share_links'));
+
+        $this->asToken($token)->postJson("/api/organizations/{$org->id}/members", ['email' => 'mate@example.com', 'role' => 'viewer'])->assertStatus(202);
+        $this->asToken($token)->getJson('/api/user')
+            ->assertJsonPath('current_organization.plan_usage.plan', 'free')
+            ->assertJsonPath('current_organization.plan_usage.limits.dashboards', 15);
     }
 
     public function test_lapsed_plans_fall_back_to_free_and_admins_are_never_limited(): void
@@ -100,9 +87,8 @@ class PlanLimitsTest extends TestCase
 
         [$admin, $token] = $this->registerUser('Admin', null, 'free');
         $admin->forceFill(['is_admin' => true])->save();
-        foreach ([1, 2, 3, 4] as $i) {
-            $this->asToken($token)->postJson('/api/dashboards', ['name' => "D{$i}"])->assertCreated();
-        }
+        $this->fill($admin, 15);
+        $this->asToken($token)->postJson('/api/dashboards', ['name' => '16th'])->assertCreated();
     }
 
     public function test_signup_can_be_a_personal_or_an_organization_account(): void
