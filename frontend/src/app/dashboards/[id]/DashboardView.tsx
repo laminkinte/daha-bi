@@ -744,7 +744,7 @@ const GRID_COLS = 12;
  * h values of 2–4 from before the drag grid existed, which rendered charts ~100px tall; this
  * floor keeps every chart legible regardless of what was saved. 4 rows ≈ 176px, 9 ≈ 416px.
  */
-const MIN_ROWS: Partial<Record<Chart["type"], number>> = { kpi: 4, table: 9 };
+const MIN_ROWS: Partial<Record<Chart["type"], number>> = { kpi: 4, gauge: 6, list: 7, feed: 8, table: 9 };
 const DEFAULT_MIN_ROWS = 8;
 
 /** Same positions and sizes, regardless of array identity or item order. */
@@ -1059,8 +1059,10 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
         <span aria-hidden>/</span>
         <span className="truncate text-[var(--text-secondary)]">{dashboard.name}</span>
       </nav>
-      <div className="mt-2 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <div className="min-w-0">
+      {/* The toolbar has a dozen actions: it sits beside the title only on very wide screens, so it
+          never squeezes the dashboard's name into a narrow column. */}
+      <div className="mt-2 flex flex-col gap-4 2xl:flex-row 2xl:items-end 2xl:justify-between">
+        <div className="min-w-0 2xl:flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-[26px] font-semibold leading-tight tracking-tight">{dashboard.name}</h1>
             {dashboard.shared_by ? (
@@ -1233,7 +1235,7 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
       {slicerError && <p className="mt-3 text-sm text-[var(--status-critical)]">{slicerError}</p>}
 
       {dashboard.charts && dashboard.charts.length > 0 ? (
-        <div className="mt-6 flex flex-col gap-4 xl:flex-row">
+        <div className="mt-6 flex flex-col gap-4">
           {showSlicers && (
             <SlicerPanel
               dashboardId={dashboard.id}

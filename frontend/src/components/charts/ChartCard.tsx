@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   api,
   ApiError,
@@ -16,7 +16,8 @@ import {
   type LineVariant,
   type PieVariant,
 } from "@/lib/api";
-import ChartRenderer from "./ChartRenderer";
+import ChartRenderer, { kpiTileColor } from "./ChartRenderer";
+import { readableInk } from "./extra-views";
 import { Skeleton } from "@/components/Skeleton";
 import { downloadChartCsv } from "@/lib/csv-export";
 import { downloadChartPng } from "@/lib/chart-export";
@@ -190,6 +191,7 @@ const BAR_VARIANTS: { value: BarVariant; label: string }[] = [
   { value: "horizontal", label: "Horizontal bars" },
   { value: "grouped", label: "Grouped (needs a series field)" },
   { value: "stacked", label: "Stacked (needs a series field)" },
+  { value: "percent", label: "100% stacked (needs a series field)" },
 ];
 
 const LINE_VARIANTS: { value: LineVariant; label: string }[] = [
@@ -207,6 +209,7 @@ const KPI_VARIANTS: { value: KpiVariant; label: string }[] = [
   { value: "number", label: "Number" },
   { value: "sparkline", label: "Number + trend (needs a trend field)" },
   { value: "progress", label: "Progress toward a target" },
+  { value: "tile", label: "Coloured tile" },
 ];
 
 function defaultVariant(chart: Chart, style: ChartStyle): string {
@@ -253,11 +256,15 @@ function ChartStylePanel({
   const isCategorical = chart.type === "bar" || chart.type === "pie";
   const isLine = chart.type === "line";
   const isKpi = chart.type === "kpi";
+  const isGauge = chart.type === "gauge";
   const isScatter = chart.type === "scatter";
   const isSingleSeriesBar = chart.type === "bar" && !chart.config.series_field;
-  const canTrendline = chart.type === "bar" || isLine || isScatter;
+  const canTrendline = chart.type === "bar" || (isLine && !chart.config.series_field) || isScatter;
   const canTransform = (chart.type === "bar" || isLine) && !chart.config.series_field;
-  const canColorRules = isSingleSeriesBar || isKpi;
+  const canColorRules = isSingleSeriesBar || isKpi || isGauge;
+  // One colour per category: bar/pie slices and treemap blocks. Line series and radar outlines too.
+  const perCategoryColors = isCategorical || chart.type === "treemap" || chart.type === "radar" || (isLine && !!chart.config.series_field);
+  const canSort = isCategorical || chart.type === "list" || chart.type === "funnel";
 
   function addColorRule() {
     setColorRules((prev) => [...prev, { operator: "gte", value: 0, color: theme.categorical[0] }]);
@@ -303,7 +310,7 @@ function ChartStylePanel({
     const config = {
       ...chart.config,
       style,
-      target: isKpi && target ? Number(target) : undefined,
+      target: (isKpi || isGauge) && target ? Number(target) : undefined,
       forecast_periods: isLine && forecastPeriods ? Number(forecastPeriods) : undefined,
     };
     try {
@@ -456,9 +463,9 @@ function ChartStylePanel({
               </div>
             )}
 
-            {isKpi && variant === "progress" && (
+            {((isKpi && variant === "progress") || isGauge) && (
               <div>
-                <label className={labelClass}>Target</label>
+                <label className={labelClass}>{isGauge ? "Target (the end of the dial)" : "Target"}</label>
                 <input
                   type="number"
                   value={target}
@@ -469,7 +476,7 @@ function ChartStylePanel({
               </div>
             )}
 
-            {isCategorical && (
+            {canSort && (
               <div>
                 <label className={labelClass}>Sort</label>
                 <select value={sort} onChange={(e) => setSort(e.target.value as NonNullable<ChartStyle["sort"]>)} className={inputClass}>
@@ -505,7 +512,7 @@ function ChartStylePanel({
               )}
             </div>
 
-            {(isCategorical && categoryLabels.length > 0) && (
+            {(perCategoryColors && categoryLabels.length > 0) && (
               <div>
                 <label className={labelClass}>Colors</label>
                 <div className="flex flex-col gap-1">
@@ -524,9 +531,9 @@ function ChartStylePanel({
               </div>
             )}
 
-            {!isCategorical && chart.type !== "table" && (
+            {!perCategoryColors && chart.type !== "table" && (
               <div>
-                <label className={labelClass}>Color</label>
+                <label className={labelClass}>{isKpi && variant === "tile" ? "Tile color" : "Color"}</label>
                 <input
                   type="color"
                   value={colorFor(0)}
@@ -995,11 +1002,12 @@ export default function ChartCard({
   commentCount?: number;
   onComment?: (chart: Chart) => void;
 }) {
+  const theme = useChartTheme();
   const [data, setData] = useState<ChartData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showFilter, setShowFilter] = useState(false);
   const chartAreaRef = useRef<HTMLDivElement>(null);
-  const canExportImage = chart.type === "bar" || chart.type === "line" || chart.type === "pie" || chart.type === "scatter";
+  const canExportImage = ["bar", "line", "pie", "scatter", "radar", "treemap", "gauge"].includes(chart.type);
   const [field, setField] = useState(chart.dataset?.columns[0]?.name ?? "");
   const [operator, setOperator] = useState("=");
   const [value, setValue] = useState("");
@@ -1120,15 +1128,29 @@ export default function ChartCard({
   const canDrillDown = !!onDrillDown && !!chart.config.x_field;
 
   const scenarioData =
-    data && "labels" in data && "values" in data && !chart.config.series_field && (chart.type === "bar" || chart.type === "pie" || chart.type === "geo_map")
+    data && "labels" in data && "values" in data && !chart.config.series_field && ["bar", "pie", "geo_map", "list", "funnel", "treemap"].includes(chart.type)
       ? data
       : null;
   const editable = !readOnly && canEdit;
-  const canFilter = chart.type !== "table" && chart.type !== "kpi";
+  const canFilter = chart.type !== "table" && chart.type !== "kpi" && chart.type !== "gauge";
   const filtersOn = manualFilters.length > 0;
+
+  // A "tile" KPI paints its whole card; the text tokens are re-pointed at an ink that reads on it,
+  // so the title, icons and numbers all follow without each needing its own colour.
+  const tile = kpiTileColor(chart, data, theme);
+  const tileStyle = tile
+    ? ({
+        background: `linear-gradient(145deg, ${tile}, color-mix(in srgb, ${tile} 82%, #000))`,
+        borderColor: "transparent",
+        "--text-primary": readableInk(tile),
+        "--text-secondary": `color-mix(in srgb, ${readableInk(tile)} 85%, transparent)`,
+        "--text-muted": `color-mix(in srgb, ${readableInk(tile)} 72%, transparent)`,
+      } as CSSProperties)
+    : undefined;
 
   return (
     <div
+      style={tileStyle}
       className={`flex h-full flex-col rounded-xl border border-[var(--border)] bg-[var(--surface-1)] shadow-[var(--shadow-card)] transition-colors hover:border-[var(--baseline)] ${
         menuOpen || panel ? "chart-popover-open" : ""
       }`}
@@ -1147,7 +1169,7 @@ export default function ChartCard({
             <h3 className="truncate text-[15px] font-semibold leading-snug tracking-tight text-[var(--text-primary)]" title={chart.title}>
               {chart.title}
             </h3>
-            {chart.type !== "kpi" && (
+            {chart.type !== "kpi" && chart.type !== "gauge" && (
               <p className="truncate text-xs text-[var(--text-muted)]" title={describeChart(chart)}>
                 {describeChart(chart)}
               </p>
@@ -1212,7 +1234,7 @@ export default function ChartCard({
               {filtersOn && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />}
             </button>
           )}
-          {editable && chart.type !== "table" && (
+          {editable && chart.type !== "table" && chart.type !== "feed" && (
             <button
               onClick={() => openPanel("style")}
               className={`${TOOL_BTN} ${panel === "style" ? TOOL_BTN_ON : ""}`}

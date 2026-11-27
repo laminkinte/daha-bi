@@ -7,6 +7,7 @@ use App\Models\Chart;
 use App\Models\Dashboard;
 use App\Services\ChartDataService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Response;
@@ -24,7 +25,7 @@ class ChartController extends Controller
         $validated = $request->validate([
             'dataset_id' => ['required', 'exists:datasets,id'],
             'title' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'in:bar,line,pie,table,kpi,scatter,heatmap,geo_map'],
+            'type' => ['required', Rule::in(Chart::TYPES)],
             'config' => ['nullable', 'array'],
             'filters' => ['nullable', 'array'],
             'position' => ['nullable', 'array'],
@@ -49,7 +50,7 @@ class ChartController extends Controller
 
         $validated = $request->validate([
             'dataset_id' => ['required', 'exists:datasets,id'],
-            'type' => ['required', 'in:bar,line,pie,table,kpi,scatter,heatmap,geo_map'],
+            'type' => ['required', Rule::in(Chart::TYPES)],
             'config' => ['nullable', 'array'],
         ]);
 
@@ -78,7 +79,7 @@ class ChartController extends Controller
 
         $validated = $request->validate([
             'title' => ['sometimes', 'string', 'max:255'],
-            'type' => ['sometimes', 'in:bar,line,pie,table,kpi,scatter,heatmap,geo_map'],
+            'type' => ['sometimes', Rule::in(Chart::TYPES)],
             'config' => ['sometimes', 'array'],
             'filters' => ['nullable', 'array'],
             'position' => ['nullable', 'array'],

@@ -44,11 +44,16 @@ class ChartDataService
             $columnNames = collect($dataset->columns ?? [])->pluck('name')->all();
 
             if ($chartType === 'table') {
-                return $this->tableData($dataset, $columnNames, $filters, $user);
+                return $this->tableData($dataset, $columnNames, $filters, $user, $config);
             }
 
-            if ($chartType === 'kpi') {
+            // A gauge is a KPI drawn as a dial against its target.
+            if ($chartType === 'kpi' || $chartType === 'gauge') {
                 return $this->kpiData($dataset, $columnNames, $config, $filters, $user);
+            }
+
+            if ($chartType === 'feed') {
+                return $this->feedData($dataset, $columnNames, $config, $filters, $user);
             }
 
             if ($chartType === 'scatter') {
@@ -185,14 +190,75 @@ class ChartDataService
         return ['x_labels' => $xLabels, 'y_labels' => $yLabels, 'cells' => $cells];
     }
 
-    protected function tableData(Dataset $dataset, array $columnNames, array $filters, ?User $user): array
+    /**
+     * Raw rows. config.columns picks (and orders) the columns shown; config.sort_field/sort_dir
+     * orders rows server-side so "latest 500" really is the latest, not the first 500 inserted.
+     */
+    protected function tableData(Dataset $dataset, array $columnNames, array $filters, ?User $user, array $config = []): array
     {
         $query = $this->baseQuery($dataset, $user);
         $this->applyFilters($query, $columnNames, $filters);
 
+        if (! empty($config['sort_field'])) {
+            $sortField = $this->validateField($columnNames, $config['sort_field']);
+            $dir = ($config['sort_dir'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
+            $value = "JSON_UNQUOTE(JSON_EXTRACT(data, '$.\"{$sortField}\"'))";
+            // Numbers sort by value (100 after 50); text and ISO dates fall through to the string order.
+            $query->orderByRaw("CAST({$value} AS DECIMAL(20,4)) {$dir}, {$value} {$dir}");
+        }
+
         $rows = $query->limit($this->rowLimit(500, $user))->pluck('data')->map(fn ($json) => json_decode($json, true));
 
-        return ['columns' => $columnNames, 'rows' => $rows->values()->all()];
+        $columns = $columnNames;
+        if (! empty($config['columns']) && is_array($config['columns'])) {
+            $picked = array_values(array_filter($config['columns'], fn ($c) => is_string($c) && in_array($c, $columnNames, true)));
+            if ($picked !== []) {
+                $columns = $picked;
+                $keep = array_flip($picked);
+                $rows = $rows->map(fn ($row) => array_intersect_key((array) $row, $keep));
+            }
+        }
+
+        return ['columns' => $columns, 'rows' => $rows->values()->all()];
+    }
+
+    /**
+     * Activity feed: the newest rows by a date field, each reduced to a headline (label_field),
+     * an optional tag (series_field, e.g. a status) and an optional value (y_field).
+     */
+    protected function feedData(Dataset $dataset, array $columnNames, array $config, array $filters, ?User $user): array
+    {
+        $dateField = $this->validateField($columnNames, $config['x_field'] ?? null);
+        $titleField = $this->validateField($columnNames, $config['label_field'] ?? null);
+        $tagField = ! empty($config['series_field']) ? $this->validateField($columnNames, $config['series_field']) : null;
+        $valueField = ! empty($config['y_field']) ? $this->validateField($columnNames, $config['y_field']) : null;
+        $limit = $this->rowLimit(min(50, max(3, (int) ($config['limit'] ?? 8))), $user);
+
+        $extract = fn (string $f) => "JSON_UNQUOTE(JSON_EXTRACT(data, '$.\"{$f}\"'))";
+        $select = ["{$extract($dateField)} as at", "{$extract($titleField)} as title"];
+        if ($tagField) {
+            $select[] = "{$extract($tagField)} as tag";
+        }
+        if ($valueField) {
+            $select[] = "{$extract($valueField)} as value";
+        }
+
+        $query = $this->baseQuery($dataset, $user);
+        $this->applyFilters($query, $columnNames, $filters);
+        $rows = $query->selectRaw(implode(', ', $select))
+            ->whereRaw("{$extract($dateField)} IS NOT NULL")
+            ->orderByRaw("{$extract($dateField)} DESC")
+            ->limit($limit)
+            ->get();
+
+        return [
+            'items' => $rows->map(fn ($r) => array_filter([
+                'at' => (string) $r->at,
+                'title' => (string) $r->title,
+                'tag' => $tagField ? (string) ($r->tag ?? '') : null,
+                'value' => $valueField && is_numeric($r->value ?? null) ? (float) $r->value : null,
+            ], fn ($v) => $v !== null && $v !== ''))->values()->all(),
+        ];
     }
 
     protected function kpiData(Dataset $dataset, array $columnNames, array $config, array $filters, ?User $user): array
@@ -239,7 +305,7 @@ class ChartDataService
         $this->applyFilters($query, $columnNames, $filters);
 
         if ($seriesField) {
-            return $this->multiSeriesData($query, $columnNames, $xField, $this->validateField($columnNames, $seriesField), $agg, $yField, $user);
+            return $this->multiSeriesData($query, $columnNames, $xField, $this->validateField($columnNames, $seriesField), $agg, $yField, $user, $config['x_grain'] ?? null);
         }
 
         $result = $this->seriesFor($query, $xField, $agg, $yField, $this->rowLimit(200, $user), $config['x_grain'] ?? null);
@@ -398,9 +464,9 @@ class ChartDataService
      * by product) — pivoted from (label, series, value) rows into one value array per series,
      * aligned to a shared label axis. Capped at 50 categories x 8 series to keep charts readable.
      */
-    protected function multiSeriesData(Builder $query, array $columnNames, string $xField, string $seriesField, string $agg, ?string $yField, ?User $user = null): array
+    protected function multiSeriesData(Builder $query, array $columnNames, string $xField, string $seriesField, string $agg, ?string $yField, ?User $user = null, ?string $grain = null): array
     {
-        $labelExpr = "JSON_UNQUOTE(JSON_EXTRACT(data, '$.\"{$xField}\"'))";
+        $labelExpr = $this->grainExpression("JSON_UNQUOTE(JSON_EXTRACT(data, '$.\"{$xField}\"'))", $grain);
         $seriesExpr = "JSON_UNQUOTE(JSON_EXTRACT(data, '$.\"{$seriesField}\"'))";
         $valueExpr = $this->aggExpression($agg, $yField);
 

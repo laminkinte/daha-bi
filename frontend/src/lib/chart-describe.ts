@@ -64,7 +64,10 @@ export function suggestTitle(type: ChartType, config: Chart["config"], columns?:
         ? `${measurePhrase(config, columns, type)} by ${label(columns, config.y_field).toLowerCase()} and ${x}`
         : "Heatmap";
     case "kpi":
+    case "gauge":
       return measurePhrase(config, columns, type);
+    case "feed":
+      return config.label_field ? `Latest ${label(columns, config.label_field).toLowerCase()} activity` : "Recent activity";
     case "line":
       return x ? `${measurePhrase(config, columns, type)} over ${x}` : measurePhrase(config, columns, type);
     default: {
@@ -86,7 +89,11 @@ export function describeChart(chart: Chart): string {
       what = `${label(cols, chart.config.y_field)} vs ${label(cols, chart.config.x_field)}`;
       break;
     case "kpi":
+    case "gauge":
       what = measurePhrase(chart.config, cols, chart.type);
+      break;
+    case "feed":
+      what = `Newest ${label(cols, chart.config.label_field).toLowerCase()} by ${label(cols, chart.config.x_field).toLowerCase()}`;
       break;
     default: {
       const x = label(cols, chart.config.x_field).toLowerCase();

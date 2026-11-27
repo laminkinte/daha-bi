@@ -509,15 +509,29 @@ export type DataModel = {
   output_dataset: { id: number; name: string; row_count: number; columns: DatasetColumn[] } | null;
 };
 
-export type ChartType = "bar" | "line" | "pie" | "table" | "kpi" | "scatter" | "heatmap" | "geo_map";
+export type ChartType =
+  | "bar"
+  | "line"
+  | "pie"
+  | "table"
+  | "kpi"
+  | "scatter"
+  | "heatmap"
+  | "geo_map"
+  | "gauge"
+  | "list"
+  | "funnel"
+  | "treemap"
+  | "radar"
+  | "feed";
 
 /** `in` takes a list (multi-select slicer); every other operator takes a single value. */
 export type ChartFilter = { field: string; operator: string; value: string | string[] };
 
-export type BarVariant = "vertical" | "horizontal" | "stacked" | "grouped";
+export type BarVariant = "vertical" | "horizontal" | "stacked" | "grouped" | "percent";
 export type LineVariant = "straight" | "smooth" | "area";
 export type PieVariant = "pie" | "donut";
-export type KpiVariant = "number" | "sparkline" | "progress";
+export type KpiVariant = "number" | "sparkline" | "progress" | "tile";
 
 export type ColorRule = { operator: "gte" | "lte"; value: number; color: string };
 
@@ -553,8 +567,15 @@ export type Chart = {
     x_field?: string;
     y_field?: string;
     agg?: string;
-    /** Bar only: splits each x_field category into multiple series (grouped/stacked variants). */
+    /** Bar/line/radar: splits each x_field category into several series. Feed: the status shown on each item. */
     series_field?: string;
+    /** Table only: which columns to show, in order (absent = all). */
+    columns?: string[];
+    /** Table only: server-side row order. */
+    sort_field?: string;
+    sort_dir?: "asc" | "desc";
+    /** Feed only: how many items to show. */
+    limit?: number;
     /** Buckets a date x_field (or a KPI's trend field) by day/month/quarter/year. */
     x_grain?: "day" | "month" | "quarter" | "year";
     /** Heatmap only: the measured field (y_field is the row dimension there). */
@@ -699,4 +720,8 @@ export type ChartData =
   | { value: number; trend?: { labels: string[]; values: number[] } }
   | { columns: string[]; rows: Record<string, unknown>[] }
   | { points: ScatterPoint[] }
-  | { x_labels: string[]; y_labels: string[]; cells: HeatmapCell[] };
+  | { x_labels: string[]; y_labels: string[]; cells: HeatmapCell[] }
+  | { items: FeedItem[] };
+
+/** One row of an activity feed: newest first. */
+export type FeedItem = { at: string; title: string; tag?: string; value?: number };

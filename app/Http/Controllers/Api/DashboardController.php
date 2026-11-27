@@ -210,6 +210,14 @@ class DashboardController extends Controller
      */
     protected function condense(string $chartType, array $result): mixed
     {
+        if ($chartType === 'gauge') {
+            return $result;
+        }
+
+        if ($chartType === 'feed') {
+            return ['latest' => array_slice($result['items'] ?? [], 0, 5)];
+        }
+
         if ($chartType === 'kpi' || $chartType === 'table' || $chartType === 'scatter') {
             if ($chartType === 'table') {
                 return ['row_count' => count($result['rows'] ?? [])];

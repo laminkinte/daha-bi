@@ -72,7 +72,14 @@ class DashboardTemplateService
             'organization_id' => $dataset->dataSource->organization_id,
             'name' => $name,
             'description' => "Started from the {$definition['name']} template.",
+            // A ready-made filter bar: date, the main grouping and the status, when the data has them.
+            'settings' => ['slicers' => array_map(
+                fn ($field) => ['field' => $field],
+                array_values(array_unique(array_filter([$roles['timeColumn'], $roles['category'], $roles['status']])))
+            )],
         ]);
+
+        $roles['statusValues'] = $roles['status'] ? $this->chartData->distinctValues($dataset, $roles['status'], null, 12) : [];
 
         foreach ($this->chartSlots($roles) as $slot) {
             $dashboard->charts()->create([
@@ -80,44 +87,121 @@ class DashboardTemplateService
                 'title' => $slot['title'],
                 'type' => $slot['type'],
                 'config' => $slot['config'],
+                'filters' => $slot['filters'] ?? null,
+                'position' => $slot['position'],
             ]);
         }
 
         return $dashboard;
     }
 
+    public function __construct(protected ChartDataService $chartData)
+    {
+    }
+
+    /** Words that mean something went wrong — a status column's "problem" values. */
+    protected const PROBLEM = '/^(critical|failed|fail|failure|poor|cancell?ed|overdue|offline|error|rejected|lost|down|out of stock|refunded|disconnected|expired|blocked|urgent|declined|returned|churned)$/i';
+
+    protected static function nice(string $field): string
+    {
+        return ucfirst(str_replace('_', ' ', $field));
+    }
+
     /**
-     * @return array<int, array{title: string, type: string, config: array<string, mixed>}>
+     * An operations-overview layout: a row of coloured KPI tiles, then the records table beside a
+     * status donut, a trend (one line per status when there is one) beside the latest activity,
+     * and two breakdowns. Every slot is skipped when the data has nothing to put in it.
+     *
+     * @return array<int, array{title: string, type: string, config: array<string, mixed>, position: array<string, int>, filters?: array}>
      */
     protected function chartSlots(array $roles): array
     {
+        ['value' => $value, 'category' => $category, 'timeColumn' => $time, 'status' => $status] = $roles;
+        $measure = fn (array $extra = []) => ($value ? ['y_field' => $value, 'agg' => 'sum'] : ['agg' => 'count']) + $extra;
+        $tile = fn (string $color) => ['style' => ['variant' => 'tile', 'colors' => [$color]]];
+        $trend = $time ? ['x_field' => $time, 'x_grain' => 'month'] : [];
+
+        // Row 1 — KPI tiles.
+        $kpis = [];
+        $kpis[] = ['title' => $value ? 'Total '.str_replace('_', ' ', $value) : 'Total records', 'type' => 'kpi', 'config' => $measure($trend + $tile('#2a78d6'))];
+        $kpis[] = ['title' => 'Records', 'type' => 'kpi', 'config' => ['agg' => 'count'] + $trend + $tile('#1baf7a')];
+        if ($category) {
+            $kpis[] = ['title' => self::nice($category).' count', 'type' => 'kpi', 'config' => ['agg' => 'count_distinct', 'y_field' => $category] + $tile('#eb6834')];
+        }
+        $problems = array_values(array_filter($roles['statusValues'] ?? [], fn ($v) => preg_match(self::PROBLEM, (string) $v)));
+        if ($status && $problems) {
+            $kpis[] = [
+                'title' => implode(' / ', array_map('ucfirst', array_slice($problems, 0, 2))),
+                'type' => 'kpi',
+                'config' => ['agg' => 'count'] + $trend + $tile('#d03b3b'),
+                'filters' => [['field' => $status, 'operator' => 'in', 'value' => $problems]],
+            ];
+        } elseif ($value) {
+            $kpis[] = ['title' => 'Average '.str_replace('_', ' ', $value), 'type' => 'kpi', 'config' => ['y_field' => $value, 'agg' => 'avg'] + $tile('#4a3aa7')];
+        }
+        $w = intdiv(12, max(1, count($kpis)));
         $slots = [];
+        foreach ($kpis as $i => $kpi) {
+            $slots[] = $kpi + ['position' => ['x' => $i * $w, 'y' => 0, 'w' => $w, 'h' => 4]];
+        }
 
-        $slots[] = $roles['value']
-            ? ['title' => "Total {$roles['value']}", 'type' => 'kpi', 'config' => ['y_field' => $roles['value'], 'agg' => 'sum']]
-            : ['title' => 'Total records', 'type' => 'kpi', 'config' => ['agg' => 'count']];
-
-        if ($roles['category']) {
+        // Row 2 — the records, newest first, beside a share-of-whole donut.
+        $columns = array_values(array_unique(array_filter([
+            $roles['identifier'], $roles['label'], $category, $time, $value, $status,
+        ])));
+        $slots[] = [
+            'title' => 'Latest records',
+            'type' => 'table',
+            'config' => array_filter(['columns' => count($columns) >= 3 ? $columns : null, 'sort_field' => $time, 'sort_dir' => $time ? 'desc' : null]),
+            'position' => ['x' => 0, 'y' => 4, 'w' => 8, 'h' => 10],
+        ];
+        $donutField = $status ?? $category;
+        if ($donutField) {
             $slots[] = [
-                'title' => $roles['value'] ? "{$roles['value']} by {$roles['category']}" : "Count by {$roles['category']}",
-                'type' => 'bar',
-                'config' => $roles['value']
-                    ? ['x_field' => $roles['category'], 'y_field' => $roles['value'], 'agg' => 'sum']
-                    : ['x_field' => $roles['category'], 'agg' => 'count'],
+                'title' => self::nice($donutField).' breakdown',
+                'type' => 'pie',
+                'config' => ['x_field' => $donutField, 'agg' => 'count', 'style' => ['variant' => 'donut', 'show_legend' => true, 'show_data_labels' => true]],
+                'position' => ['x' => 8, 'y' => 4, 'w' => 4, 'h' => 10],
             ];
         }
 
-        if ($roles['timeColumn']) {
+        // Row 3 — the trend and the latest activity.
+        if ($time) {
+            $split = $status && count($roles['statusValues']) >= 2 && count($roles['statusValues']) <= 5;
             $slots[] = [
-                'title' => $roles['value'] ? "{$roles['value']} over time" : 'Activity over time',
+                'title' => ($value ? self::nice($value) : 'Records').' over time'.($split ? ' by '.str_replace('_', ' ', $status) : ''),
                 'type' => 'line',
-                'config' => $roles['value']
-                    ? ['x_field' => $roles['timeColumn'], 'y_field' => $roles['value'], 'agg' => 'sum']
-                    : ['x_field' => $roles['timeColumn'], 'agg' => 'count'],
+                'config' => $measure(['x_field' => $time, 'x_grain' => 'month'] + ($split ? ['series_field' => $status] : [])),
+                'position' => ['x' => 0, 'y' => 14, 'w' => $roles['label'] ? 7 : 12, 'h' => 9],
             ];
+            if ($roles['label']) {
+                $slots[] = [
+                    'title' => 'Recent activity',
+                    'type' => 'feed',
+                    'config' => array_filter(['x_field' => $time, 'label_field' => $roles['label'], 'series_field' => $status, 'y_field' => $value, 'limit' => 6]),
+                    'position' => ['x' => 7, 'y' => 14, 'w' => 5, 'h' => 9],
+                ];
+            }
         }
 
-        $slots[] = ['title' => 'Underlying records', 'type' => 'table', 'config' => []];
+        // Row 4 — breakdowns.
+        if ($category) {
+            $slots[] = [
+                'title' => ($value ? self::nice($value) : 'Records').' by '.str_replace('_', ' ', $category),
+                'type' => 'bar',
+                'config' => $measure(['x_field' => $category, 'style' => ['sort' => 'desc']]),
+                'position' => ['x' => 0, 'y' => 23, 'w' => 7, 'h' => 9],
+            ];
+        }
+        $second = $roles['secondCategory'];
+        if ($second) {
+            $slots[] = [
+                'title' => 'Top '.str_replace('_', ' ', $second),
+                'type' => 'list',
+                'config' => $measure(['x_field' => $second]),
+                'position' => ['x' => $category ? 7 : 0, 'y' => 23, 'w' => $category ? 5 : 12, 'h' => 9],
+            ];
+        }
 
         return $slots;
     }
@@ -156,22 +240,54 @@ class DashboardTemplateService
         $timeKeywords = ['date', 'month', 'year', 'day', 'time', 'period', 'week'];
         $looksTimeLike = fn (string $c) => collect($timeKeywords)->contains(fn ($k) => str_contains(strtolower($c), $k));
 
-        $timeColumn = collect($categorical)->first($looksTimeLike) ?? collect($numeric)->first($looksTimeLike);
-        $category = collect($categorical)->first(fn ($c) => $c !== $timeColumn) ?? ($categorical[0] ?? null);
+        $timeColumn = collect($categorical)->first($looksTimeLike)
+            // …or whose values are ISO dates, whatever it's called ("serviced", "joined").
+            ?? collect($categorical)->first(fn ($c) => ($v = $sample->pluck($c)->filter())->isNotEmpty() && $v->every(fn ($x) => preg_match('/^\d{4}-\d{2}-\d{2}/', (string) $x)))
+            ?? collect($numeric)->first($looksTimeLike);
+
+        // A status column: named like one, or whose sampled values are mostly state words.
+        $status = collect($categorical)->first(fn ($c) => $c !== $timeColumn && preg_match('/status|state|stage|condition|health/i', $c))
+            ?? collect($categorical)->first(function ($c) use ($sample, $timeColumn) {
+                if ($c === $timeColumn) {
+                    return false;
+                }
+                $values = $sample->pluck($c)->filter()->map(fn ($v) => (string) $v)->unique();
+
+                return $values->count() >= 2 && $values->count() <= 8
+                    && $values->filter(fn ($v) => preg_match(self::PROBLEM, $v) || preg_match('/^(active|completed?|paid|delivered|ok|good|pending|inactive|open|closed)$/i', $v))->count() >= ceil($values->count() / 2);
+            });
+        $identifier = collect($columnNames)->first(fn ($c) => preg_match('/(^|_)(id|code|number|no|ref)$/i', $c));
+        // What a record is called (for the activity feed): a name/title-like column, never an id.
+        $label = collect($categorical)->first(fn ($c) => $c !== $identifier && preg_match('/name|title|product|asset|item|customer|description|subject/i', $c));
+
+        $groupable = collect($categorical)
+            ->reject(fn ($c) => in_array($c, [$timeColumn, $status, $identifier, $label], true))
+            // Few distinct values in the sample → a real grouping, not free text.
+            ->filter(fn ($c) => $sample->pluck($c)->filter()->unique()->count() <= 15)
+            ->values();
+        $category = $groupable[0] ?? collect($categorical)->first(fn ($c) => $c !== $timeColumn && $c !== $identifier) ?? ($categorical[0] ?? null);
+        $secondCategory = $groupable->first(fn ($c) => $c !== $category) ?? ($label !== $category ? $label : null);
 
         // Prefer a numeric column that reads as the headline metric (e.g. "revenue" over
         // "units") when the dataset has more than one — falls back to column order otherwise,
         // since there's no real way to know which number matters most without this hint.
         $metricKeywords = ['revenue', 'sales', 'amount', 'total', 'price', 'cost', 'value', 'income', 'spend'];
-        $value = collect($numeric)->first(
-            fn ($c) => collect($metricKeywords)->contains(fn ($k) => str_contains(strtolower($c), $k))
-        ) ?? ($numeric[0] ?? null);
+        $measures = collect($numeric)->reject(fn ($c) => $c === $identifier || $c === $timeColumn || preg_match('/(^|_)(id|year|code)$/i', $c));
+        // Keywords are in priority order: "revenue" beats "unit_price" whatever the column order.
+        $value = collect($metricKeywords)
+            ->map(fn ($k) => $measures->first(fn ($c) => str_contains(strtolower($c), $k)))
+            ->filter()
+            ->first() ?? $measures->first();
 
         return [
             'numeric' => $numeric,
             'categorical' => $categorical,
             'timeColumn' => $timeColumn,
             'category' => $category,
+            'secondCategory' => $secondCategory,
+            'status' => $status,
+            'identifier' => $identifier,
+            'label' => $label,
             'value' => $value,
         ];
     }

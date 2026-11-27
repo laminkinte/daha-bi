@@ -305,8 +305,9 @@ export default function SlicerPanel({
   const activeCount = slicers.filter((f) => isActive(selections[f])).length;
 
   return (
-    <aside className="rounded-xl border border-[var(--border)] bg-[var(--surface-1)] shadow-[var(--shadow-card)] xl:sticky xl:top-4 xl:w-64 xl:shrink-0 xl:self-start">
-      <div className="flex items-center justify-between gap-2 border-b border-[var(--border)] px-4 py-3">
+    // A filter bar across the top of the dashboard: the charts keep the full width below it.
+    <aside className="flex flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-1)] px-4 py-3 shadow-[var(--shadow-card)] lg:flex-row lg:items-start">
+      <div className="flex shrink-0 items-center justify-between gap-3 lg:w-28 lg:flex-col lg:items-start lg:gap-1 lg:pt-1">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
           <span className="text-[var(--accent)]">
             <FilterIcon />
@@ -323,7 +324,7 @@ export default function SlicerPanel({
         )}
       </div>
 
-      <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
+      <div className="grid min-w-0 flex-1 gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
         {slicers.map((field) => {
           const column = columns.find((c) => c.name === field) ?? { name: field, label: field.replace(/_/g, " ") };
           return (
@@ -339,7 +340,7 @@ export default function SlicerPanel({
         })}
 
         {slicers.length === 0 && (
-          <p className="text-xs leading-5 text-[var(--text-muted)] sm:col-span-2 lg:col-span-4 xl:col-span-1">
+          <p className="text-xs leading-5 text-[var(--text-muted)] sm:col-span-2 lg:col-span-2">
             {canEdit
               ? "Add a filter to slice every chart on this dashboard at once — by region, product, date…"
               : "No filters have been set up for this dashboard."}
@@ -347,7 +348,8 @@ export default function SlicerPanel({
         )}
 
         {canEdit && slicers.length < 8 && available.length > 0 && (
-          <div className="sm:col-span-2 lg:col-span-4 xl:col-span-1">
+          // Lines up with the controls beside it (below their labels).
+          <div className={slicers.length ? "sm:pt-[22px]" : "sm:col-span-2"}>
             {adding ? (
               <select
                 autoFocus

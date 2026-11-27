@@ -52,6 +52,12 @@ function toCsv(data: ChartData, chart: Chart): string {
     return [header, ...rows].join("\n");
   }
 
+  if ("items" in data) {
+    const header = ["when", "what", "status", "amount"].join(",");
+    const rows = data.items.map((it) => [escapeCsvCell(it.at), escapeCsvCell(it.title), escapeCsvCell(it.tag ?? ""), it.value ?? ""].join(","));
+    return [header, ...rows].join("\n");
+  }
+
   if ("cells" in data) {
     const header = `${chart.config.x_field ?? "x"},${chart.config.y_field ?? "y"},value`;
     const rows = data.cells.map((c) => `${escapeCsvCell(c.x)},${escapeCsvCell(c.y)},${c.value}`);

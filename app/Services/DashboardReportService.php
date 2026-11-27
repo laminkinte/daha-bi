@@ -43,7 +43,11 @@ class DashboardReportService
             return 'Unable to compute.';
         }
 
-        if ($chart->type === 'kpi') {
+        if ($chart->type === 'feed') {
+            return collect($result['items'] ?? [])->take(3)->map(fn ($i) => $i['title'])->implode(', ') ?: 'No data';
+        }
+
+        if ($chart->type === 'kpi' || $chart->type === 'gauge') {
             $value = $result['value'] ?? null;
 
             return is_numeric($value) ? number_format((float) $value, 2) : 'No data';

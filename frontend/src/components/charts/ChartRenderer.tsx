@@ -25,6 +25,7 @@ import {
 } from "recharts";
 import { useChartTheme, foldToOther } from "@/lib/chart-theme";
 import { formatCompact, formatPeriod, formatValue } from "@/lib/format-value";
+import { FeedView, FunnelView, GaugeView, ListView, RadarView, SmartTable, TreemapView, readableInk, statusColors } from "./extra-views";
 import type {
   BarVariant,
   Chart,
@@ -82,6 +83,17 @@ function matchColorRule(value: number, rules: ColorRule[] | undefined, fallback:
     if (rule.operator === "lte" && value <= rule.value) return rule.color;
   }
   return fallback;
+}
+
+/**
+ * The fill of a "tile" KPI card, or null for any other chart. Colour rules apply, so a tile can
+ * turn red when its number crosses a threshold (as a "Critical assets" tile would).
+ */
+export function kpiTileColor(chart: Chart, data: ChartData | null, theme: ReturnType<typeof useChartTheme>): string | null {
+  const style = chart.config.style ?? {};
+  if (chart.type !== "kpi" || style.variant !== "tile") return null;
+  const base = style.colors?.[0] || theme.categorical[0];
+  return data && "value" in data && typeof data.value === "number" ? matchColorRule(data.value, style.color_rules, base) : base;
 }
 
 /** Rounds an axis maximum up to a clean 1/2/2.5/5 × 10ⁿ step so ticks read 0, 100K, 200K… not 85K, 170K. */
@@ -270,8 +282,12 @@ function periodWord(label: string | undefined): string {
 function KpiView({ chart, data, theme }: { chart: Chart; data: Extract<ChartData, { value: number }>; theme: ReturnType<typeof useChartTheme> }) {
   const style: ChartStyle = chart.config.style ?? {};
   const variant = kpiVariant(style);
-  const kpiColor = matchColorRule(data.value, style.color_rules, style.colors?.[0] || theme.primaryInk);
-  const lineColor = style.colors?.[0] || theme.categorical[0];
+  // A "tile" paints the whole card (see kpiTileColor); everything on it switches to an ink that reads on that fill.
+  const tile = variant === "tile" ? kpiTileColor(chart, data, theme) : null;
+  const tileInk = tile ? readableInk(tile) : null;
+  const kpiColor = tileInk ?? matchColorRule(data.value, style.color_rules, style.colors?.[0] || theme.primaryInk);
+  const lineColor = tileInk ?? (style.colors?.[0] || theme.categorical[0]);
+  const muted = tileInk ? `color-mix(in srgb, ${tileInk} 78%, transparent)` : theme.mutedInk;
   const target = chart.config.target;
   const trend = data.trend && data.trend.values.length > 1 ? data.trend : null;
   const fmt = (v: number) => formatValue(v, chart.config.format, chart.config.currency);
@@ -289,7 +305,7 @@ function KpiView({ chart, data, theme }: { chart: Chart; data: Extract<ChartData
 
   return (
     <div className="flex h-full flex-col justify-end gap-2 px-1">
-      <div className="truncate text-[30px] font-semibold leading-none tracking-tight tabular-nums" style={{ color: kpiColor }} title={full}>
+      <div className={`truncate ${tile ? "text-[34px]" : "text-[30px]"} font-semibold leading-none tracking-tight tabular-nums`} style={{ color: kpiColor }} title={full}>
         {headline}
       </div>
       <div className="flex min-h-0 items-end justify-between gap-3">
@@ -298,17 +314,24 @@ function KpiView({ chart, data, theme }: { chart: Chart; data: Extract<ChartData
           <div className="flex items-center gap-1.5 whitespace-nowrap text-xs">
             <span
               className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 font-semibold tabular-nums"
-              style={{
-                color: delta.pct >= 0 ? "var(--status-good)" : "var(--status-critical)",
-                background: delta.pct >= 0 ? "color-mix(in srgb, var(--status-good) 12%, transparent)" : "color-mix(in srgb, var(--status-critical) 12%, transparent)",
-              }}
+              style={
+                tileInk
+                  ? { color: tileInk, background: `color-mix(in srgb, ${tileInk} 18%, transparent)` }
+                  : {
+                      color: delta.pct >= 0 ? "var(--status-good)" : "var(--status-critical)",
+                      background:
+                        delta.pct >= 0
+                          ? "color-mix(in srgb, var(--status-good) 12%, transparent)"
+                          : "color-mix(in srgb, var(--status-critical) 12%, transparent)",
+                    }
+              }
             >
               {delta.pct >= 0 ? "▲" : "▼"} {Math.abs(delta.pct).toFixed(1)}%
             </span>
-            <span className="truncate" style={{ color: theme.mutedInk }}>vs prev. {delta.word}</span>
+            <span className="truncate" style={{ color: muted }}>vs prev. {delta.word}</span>
           </div>
         ) : (
-          <div className="text-xs" style={{ color: theme.mutedInk }}>
+          <div className="text-xs" style={{ color: muted }}>
             {(chart.config.agg ?? "count").replace("_", " ")} of {chart.config.y_field ?? "records"}
           </div>
         )}
@@ -389,8 +412,25 @@ function PieView({
             strokeWidth={2}
             onClick={onPick ? (_, i) => onPick(rows[i].name) : undefined}
             cursor={onPick ? "pointer" : undefined}
-            label={showDataLabels ? ({ value }) => fmt(Number(value)) : undefined}
-            labelLine={showDataLabels}
+            // Data labels on a donut are each slice's share, written on the slice itself.
+            label={
+              showDataLabels
+                ? (p: { cx?: number; cy?: number; midAngle?: number; innerRadius?: number; outerRadius?: number; value?: number; fill?: string }) => {
+                    const share = total ? (Number(p.value) / total) * 100 : 0;
+                    if (share < 4) return null;
+                    const RAD = Math.PI / 180;
+                    const radius = Number(p.innerRadius ?? 0) + (Number(p.outerRadius ?? 0) - Number(p.innerRadius ?? 0)) * (isDonut ? 0.5 : 0.62);
+                    const x = Number(p.cx) + radius * Math.cos(-Number(p.midAngle) * RAD);
+                    const y = Number(p.cy) + radius * Math.sin(-Number(p.midAngle) * RAD);
+                    return (
+                      <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fontSize={11.5} fontWeight={600} fill={readableInk(p.fill ?? "#000000")}>
+                        {Math.round(share)}%
+                      </text>
+                    );
+                  }
+                : undefined
+            }
+            labelLine={false}
             isAnimationActive={false}
           >
             {rows.map((r, i) => (
@@ -490,6 +530,12 @@ export default function ChartRenderer({
     return style.colors?.[i] || theme.categorical[i % theme.categorical.length];
   }
 
+  /** Colours for named categories/series: the author's picks, else status colours when they're all states, else the palette. */
+  function colorsFor(names: string[]): (i: number) => string {
+    const status = style.colors?.some(Boolean) ? null : statusColors(names);
+    return (i) => status?.[i] ?? color(i);
+  }
+
   function handlePointClick(name: string) {
     if (!onDrillDown || name === "Other") return;
     onDrillDown(name);
@@ -511,36 +557,32 @@ export default function ChartRenderer({
   }
 
   if (chart.type === "table" && "columns" in data) {
-    return (
-      <div className="h-full min-h-[12rem] overflow-auto">
-        <table className="w-full text-left text-sm tabular-nums">
-          <thead>
-            <tr style={{ borderBottom: `1px solid ${theme.baseline}` }}>
-              {data.columns.map((col) => (
-                <th
-                  key={col}
-                  className="px-2 py-1 font-medium"
-                  style={{ color: theme.secondaryInk }}
-                >
-                  {col}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {data.rows.map((row, i) => (
-              <tr key={i} style={{ borderBottom: `1px solid ${theme.gridline}` }}>
-                {data.columns.map((col) => (
-                  <td key={col} className="px-2 py-1" style={{ color: theme.primaryInk }}>
-                    {String(row[col] ?? "")}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
+    return <SmartTable columns={data.columns} rows={data.rows} theme={theme} />;
+  }
+
+  if (chart.type === "gauge" && "value" in data) {
+    return <GaugeView chart={chart} value={Number(data.value) || 0} color={matchColorRule(Number(data.value) || 0, style.color_rules, color(0))} theme={theme} />;
+  }
+
+  if (chart.type === "feed" && "items" in data) {
+    return <FeedView chart={chart} items={data.items} theme={theme} />;
+  }
+
+  if (chart.type === "radar" && "labels" in data) {
+    const series = "series" in data ? data.series : [{ name: seriesName, values: data.values }];
+    return <RadarView chart={chart} labels={data.labels.slice(0, 12)} series={series} colorAt={color} theme={theme} showLegend={showLegend} />;
+  }
+
+  if ((chart.type === "list" || chart.type === "funnel" || chart.type === "treemap") && "labels" in data && "values" in data) {
+    let rows = data.labels.map((label, i) => ({ name: label, value: data.values[i] ?? 0 }));
+    // Lists and funnels read largest-first unless the author picked an order; a treemap lays itself out by size.
+    const sort = style.sort && style.sort !== "none" ? style.sort : "desc";
+    rows = [...rows].sort((a, b) => (sort === "asc" ? a.value - b.value : b.value - a.value));
+    const pick = onDrillDown ? handlePointClick : undefined;
+    if (chart.type === "list") return <ListView chart={chart} rows={rows.slice(0, 50)} color={color(0)} theme={theme} selected={selected} onPick={pick} />;
+    if (chart.type === "funnel") return <FunnelView chart={chart} rows={rows.slice(0, 12)} color={color(0)} theme={theme} />;
+    const folded = foldToOther(rows.map((r) => r.name), rows.map((r) => r.value));
+    return <TreemapView chart={chart} rows={folded.labels.map((name, i) => ({ name, value: folded.values[i] }))} colorAt={(i) => style.colors?.[i] || theme.categorical[i % theme.categorical.length]} theme={theme} onPick={pick} />;
   }
 
   if (chart.type === "scatter" && "points" in data) {
@@ -585,13 +627,73 @@ export default function ChartRenderer({
         chart={chart}
         rows={rows}
         isDonut={pieVariant(style) === "donut"}
-        colorAt={color}
+        colorAt={colorsFor(rows.map((r) => r.name))}
         theme={theme}
         showLegend={showLegend}
         showDataLabels={showDataLabels}
         selected={selected}
         onPick={onDrillDown ? handlePointClick : undefined}
       />
+    );
+  }
+
+  // Several lines on one axis ("Added / Retired / Overdue" by month): one per series_field value.
+  if (chart.type === "line" && "labels" in data && "series" in data) {
+    const rows = data.labels.map((label, i) => {
+      const row: Record<string, string | number> = { name: label };
+      data.series.forEach((s) => (row[s.name] = s.values[i] ?? 0));
+      return row;
+    });
+    const variant = lineVariant(style);
+    const interpolation = variant === "straight" ? "linear" : "monotone";
+    const showDots = style.show_points ?? rows.length <= 24;
+    const seriesColor = colorsFor(data.series.map((s) => s.name));
+    const margin = { top: 8, right: 12, left: 0, bottom: style.x_axis_label ? 20 : 0 };
+    const common = (
+      <>
+        {showGridlines && <CartesianGrid vertical={false} stroke={theme.gridline} />}
+        <XAxis dataKey="name" tick={tick} tickFormatter={formatPeriod} axisLine={{ stroke: theme.baseline }} tickLine={false} minTickGap={24} interval="preserveStartEnd">
+          {style.x_axis_label && <Label value={style.x_axis_label} position="insideBottom" offset={-15} fill={theme.mutedInk} fontSize={11} />}
+        </XAxis>
+        <YAxis tick={tick} tickFormatter={tickFormatter} axisLine={false} tickLine={false} width={style.y_axis_label ? 64 : 52}>
+          {style.y_axis_label && <Label value={style.y_axis_label} angle={-90} position="insideLeft" fill={theme.mutedInk} fontSize={11} />}
+        </YAxis>
+        <Tooltip content={<TooltipCard theme={theme} chart={chart} />} cursor={{ stroke: theme.baseline, strokeDasharray: "3 3" }} />
+        {/* Several series always get a legend, so no line is told apart by colour alone. */}
+        <Legend verticalAlign="top" align="right" height={28} wrapperStyle={{ fontSize: 12, color: theme.secondaryInk }} iconType="plainline" />
+      </>
+    );
+    if (variant === "area") {
+      return (
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={rows} margin={margin}>
+            {common}
+            {data.series.map((s, i) => (
+              <Area key={s.name} type={interpolation} dataKey={s.name} name={s.name} stackId="all" stroke={seriesColor(i)} strokeWidth={2} fill={seriesColor(i)} fillOpacity={0.18} isAnimationActive={false} />
+            ))}
+          </AreaChart>
+        </ResponsiveContainer>
+      );
+    }
+    return (
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={rows} margin={margin}>
+          {common}
+          {data.series.map((s, i) => (
+            <Line
+              key={s.name}
+              type={interpolation}
+              dataKey={s.name}
+              name={s.name}
+              stroke={seriesColor(i)}
+              strokeWidth={2}
+              dot={showDots ? { r: 4, fill: seriesColor(i), stroke: theme.surface, strokeWidth: 2 } : false}
+              activeDot={{ r: 5, strokeWidth: 2, stroke: theme.surface }}
+              isAnimationActive={false}
+            />
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
     );
   }
 
@@ -775,7 +877,9 @@ export default function ChartRenderer({
   if (chart.type === "bar" && "labels" in data) {
     const variant = barVariant(style);
     const isHorizontal = variant === "horizontal";
-    const isStacked = variant === "stacked";
+    // "percent" = 100% stacked: every bar is the same height and shows each series' share of it.
+    const isPercent = variant === "percent";
+    const isStacked = variant === "stacked" || isPercent;
 
     let rows: Record<string, unknown>[];
     let barKeys: string[];
@@ -805,7 +909,12 @@ export default function ChartRenderer({
 
     const isMultiSeries = barKeys.length > 1;
     // Clean 0-based ticks only when nothing is negative; otherwise let Recharts fit both signs.
-    const valueDomain = rows.every((r) => barKeys.every((k) => Number(r[k] ?? 0) >= 0)) ? BAR_DOMAIN : undefined;
+    const valueDomain: typeof BAR_DOMAIN | [number, number] | undefined = isPercent && barKeys.length > 1
+      ? [0, 1]
+      : rows.every((r) => barKeys.every((k) => Number(r[k] ?? 0) >= 0))
+        ? BAR_DOMAIN
+        : undefined;
+    const valueTicks = isPercent && barKeys.length > 1 ? (v: number) => `${Math.round(v * 100)}%` : tickFormatter;
     const showTrend = style.show_trendline && !isMultiSeries && !isHorizontal && displayValues && displayValues.length > 1;
     if (showTrend && displayValues) {
       const trend = regressionValues(displayValues);
@@ -815,11 +924,11 @@ export default function ChartRenderer({
 
     return (
       <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={rows} layout={isHorizontal ? "vertical" : "horizontal"} margin={margin}>
+        <ComposedChart data={rows} layout={isHorizontal ? "vertical" : "horizontal"} margin={margin} stackOffset={isPercent && barKeys.length > 1 ? "expand" : undefined}>
           {showGridlines && <CartesianGrid vertical={isHorizontal} horizontal={!isHorizontal} stroke={theme.gridline} />}
           {isHorizontal ? (
             <>
-              <XAxis type="number" tick={tick} tickFormatter={tickFormatter} axisLine={false} tickLine={false} domain={valueDomain} tickCount={5} />
+              <XAxis type="number" tick={tick} tickFormatter={valueTicks} axisLine={false} tickLine={false} domain={valueDomain} tickCount={5} />
               <YAxis
                 type="category"
                 dataKey="name"
@@ -837,7 +946,7 @@ export default function ChartRenderer({
                   <Label value={style.x_axis_label} position="insideBottom" offset={-15} fill={theme.mutedInk} fontSize={11} />
                 )}
               </XAxis>
-              <YAxis tick={tick} tickFormatter={tickFormatter} axisLine={false} tickLine={false} width={style.y_axis_label ? 64 : 52} domain={valueDomain} tickCount={5}>
+              <YAxis tick={tick} tickFormatter={valueTicks} axisLine={false} tickLine={false} width={style.y_axis_label ? 64 : 52} domain={valueDomain} tickCount={5}>
                 {style.y_axis_label && (
                   <Label value={style.y_axis_label} angle={-90} position="insideLeft" fill={theme.mutedInk} fontSize={11} />
                 )}
@@ -857,7 +966,7 @@ export default function ChartRenderer({
               maxBarSize={44}
               name={isMultiSeries ? key : seriesName}
               stackId={isStacked ? "series" : undefined}
-              fill={color(isMultiSeries ? idx : 0)}
+              fill={isMultiSeries ? colorsFor(barKeys)(idx) : color(0)}
               onClick={!isMultiSeries && onDrillDown ? (_, i) => handlePointClick(rows[i].name as string) : undefined}
               cursor={!isMultiSeries && onDrillDown ? "pointer" : undefined}
             >

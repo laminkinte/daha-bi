@@ -11,6 +11,12 @@ class Chart extends Model
 {
     use HasFactory;
 
+    /** Every visual a chart can be. The data shape each one gets is decided in ChartDataService::run(). */
+    public const TYPES = [
+        'bar', 'line', 'pie', 'table', 'kpi', 'scatter', 'heatmap', 'geo_map',
+        'gauge', 'list', 'funnel', 'treemap', 'radar', 'feed',
+    ];
+
     protected $fillable = [
         'dashboard_id',
         'dataset_id',

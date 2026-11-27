@@ -68,18 +68,68 @@ const TYPE_ICONS: Record<ChartType, ReactNode> = {
       <path d="M11 5v19M21 8v19" opacity=".5" />
     </svg>
   ),
+  gauge: (
+    <svg {...ICON_PROPS} stroke="currentColor">
+      <path d="M5 22a11 11 0 0 1 22 0" opacity=".45" strokeWidth="3" />
+      <path d="M5 22a11 11 0 0 1 15.5-10" strokeWidth="3" />
+      <path d="M16 22l4-6" />
+    </svg>
+  ),
+  list: (
+    <svg {...ICON_PROPS} stroke="currentColor">
+      <path d="M5 9h13M5 16h9M5 23h6" />
+      <path d="M23 9h4M23 16h4M23 23h4" opacity=".6" />
+    </svg>
+  ),
+  funnel: (
+    <svg {...ICON_PROPS} stroke="none">
+      <rect x="4" y="6" width="24" height="5" rx="1.5" fill="currentColor" />
+      <rect x="8" y="13.5" width="16" height="5" rx="1.5" fill="currentColor" opacity=".75" />
+      <rect x="12" y="21" width="8" height="5" rx="1.5" fill="currentColor" opacity=".5" />
+    </svg>
+  ),
+  treemap: (
+    <svg {...ICON_PROPS} stroke="none">
+      <rect x="4" y="5" width="14" height="22" rx="1.5" fill="currentColor" />
+      <rect x="19.5" y="5" width="8.5" height="12" rx="1.5" fill="currentColor" opacity=".7" />
+      <rect x="19.5" y="18.5" width="8.5" height="8.5" rx="1.5" fill="currentColor" opacity=".45" />
+    </svg>
+  ),
+  radar: (
+    <svg {...ICON_PROPS} stroke="currentColor">
+      <path d="M16 4l11 8-4 13H9L5 12l11-8Z" opacity=".45" />
+      <path d="M16 9l7 5-3 8h-8l-2-8 6-5Z" />
+    </svg>
+  ),
+  feed: (
+    <svg {...ICON_PROPS} stroke="currentColor">
+      <circle cx="7" cy="9" r="2" fill="currentColor" stroke="none" />
+      <circle cx="7" cy="16" r="2" fill="currentColor" stroke="none" opacity=".7" />
+      <circle cx="7" cy="23" r="2" fill="currentColor" stroke="none" opacity=".45" />
+      <path d="M12 9h15M12 16h12M12 23h14" />
+    </svg>
+  ),
 };
 
 const TYPES: { value: ChartType; label: string; hint: string }[] = [
   { value: "bar", label: "Bar", hint: "Compare values across categories." },
-  { value: "line", label: "Line", hint: "Show how a value changes over time." },
+  { value: "line", label: "Line", hint: "Show how a value changes over time — split it to draw several lines." },
   { value: "pie", label: "Donut", hint: "Show each part's share of a whole (best with ≤ 6 parts)." },
-  { value: "kpi", label: "KPI", hint: "One headline number, optionally with its trend." },
-  { value: "table", label: "Table", hint: "The underlying rows, as a table." },
+  { value: "kpi", label: "KPI", hint: "One headline number — as a card or a coloured tile, optionally with its trend." },
+  { value: "table", label: "Table", hint: "Rows with sortable columns; status words show as coloured badges." },
+  { value: "list", label: "List", hint: "A ranked list of categories with their values — a compact leaderboard." },
+  { value: "gauge", label: "Gauge", hint: "One number on a dial against its target." },
+  { value: "funnel", label: "Funnel", hint: "Stages from largest to smallest, with the share kept at each step." },
+  { value: "treemap", label: "Treemap", hint: "Each category as a block sized by its value." },
+  { value: "radar", label: "Radar", hint: "Compare categories across one or more series on a spider chart." },
+  { value: "feed", label: "Activity", hint: "The latest records as an activity feed: what, its status, and when." },
   { value: "scatter", label: "Scatter", hint: "Relationship between two numeric fields." },
   { value: "heatmap", label: "Heatmap", hint: "A value across two categories at once." },
   { value: "geo_map", label: "Map", hint: "Values by country or region on a map." },
 ];
+
+/** Tile colours offered in the builder: the chart palette plus the status red for "critical" tiles. */
+const TILE_SWATCHES = ["#2a78d6", "#1baf7a", "#eb6834", "#4a3aa7", "#0b7a5e", "#d03b3b", "#1f2a44"];
 
 const AGGS: { value: string; label: string }[] = [
   { value: "sum", label: "Sum" },
@@ -157,12 +207,36 @@ type Fields = {
   rows: string; // heatmap row dimension
   series: string;
   trend: string; // kpi trend-over field
-  label: string; // scatter point label
+  label: string; // scatter point label / feed headline
   agg: string;
   grain: "" | "day" | "month" | "quarter" | "year"; // date bucketing for x (or the KPI trend)
+  columns: string[]; // table: shown columns (empty = all)
+  sortField: string; // table: row order
+  sortDir: "asc" | "desc";
+  target: string; // gauge: end of the dial
+  limit: number; // feed: items shown
 };
 
-const EMPTY_FIELDS: Fields = { x: "", y: "", rows: "", series: "", trend: "", label: "", agg: "sum", grain: "" };
+const EMPTY_FIELDS: Fields = {
+  x: "",
+  y: "",
+  rows: "",
+  series: "",
+  trend: "",
+  label: "",
+  agg: "sum",
+  grain: "",
+  columns: [],
+  sortField: "",
+  sortDir: "desc",
+  target: "",
+  limit: 8,
+};
+
+/** Types that group by one field and measure it, like a bar chart. */
+const GROUPED: ChartType[] = ["bar", "line", "pie", "geo_map", "list", "funnel", "treemap", "radar"];
+/** Types that can split into several series. */
+const SPLITTABLE: ChartType[] = ["bar", "line", "radar"];
 
 const GRAINS: { value: Fields["grain"]; label: string }[] = [
   { value: "day", label: "Day" },
@@ -175,6 +249,10 @@ function fieldsFromChart(chart: Chart): Fields {
   const c = chart.config;
   if (chart.type === "heatmap") return { ...EMPTY_FIELDS, x: c.x_field ?? "", rows: c.y_field ?? "", y: c.value_field ?? "", agg: c.agg ?? "sum" };
   if (chart.type === "kpi") return { ...EMPTY_FIELDS, y: c.y_field ?? "", trend: c.x_field ?? "", agg: c.agg ?? "count", grain: c.x_grain ?? "" };
+  if (chart.type === "gauge") return { ...EMPTY_FIELDS, y: c.y_field ?? "", agg: c.agg ?? "count", target: c.target != null ? String(c.target) : "" };
+  if (chart.type === "table") return { ...EMPTY_FIELDS, columns: c.columns ?? [], sortField: c.sort_field ?? "", sortDir: c.sort_dir ?? "desc" };
+  if (chart.type === "feed")
+    return { ...EMPTY_FIELDS, x: c.x_field ?? "", label: c.label_field ?? "", series: c.series_field ?? "", y: c.y_field ?? "", limit: c.limit ?? 8 };
   return {
     ...EMPTY_FIELDS,
     x: c.x_field ?? "",
@@ -200,7 +278,11 @@ function withDefaults(type: ChartType, f: Fields, dataset: Dataset, kinds: Recor
 
   if (type === "line") {
     if (!next.x || kinds[next.x] !== "date") next.x = dates[0] ?? next.x ?? texts[0] ?? "";
-  } else if (type === "bar" || type === "pie" || type === "geo_map") {
+  } else if (type === "feed") {
+    if (!next.x || kinds[next.x] !== "date") next.x = dates[0] ?? "";
+    if (!next.label || kinds[next.label] !== "text") next.label = texts.find((n) => /name|title|asset|product|customer|item|description/i.test(n)) ?? texts[0] ?? "";
+    if (!next.series) next.series = texts.find((n) => /status|state|stage|priority/i.test(n)) ?? "";
+  } else if (GROUPED.includes(type)) {
     if (!next.x) next.x = (type === "geo_map" ? texts.find((n) => /country|region|state|city/i.test(n)) : undefined) ?? texts[0] ?? dates[0] ?? "";
   } else if (type === "heatmap") {
     if (!next.x) next.x = dates[0] ?? texts[1] ?? texts[0] ?? "";
@@ -210,13 +292,14 @@ function withDefaults(type: ChartType, f: Fields, dataset: Dataset, kinds: Recor
     if (!next.y || next.y === next.x) next.y = numbers.find((n) => n !== next.x) ?? "";
   }
 
-  if (type !== "scatter" && type !== "table") {
+  if (type !== "scatter" && type !== "table" && type !== "feed") {
     if (!next.y || kinds[next.y] !== "number") next.y = numbers[0] ?? "";
     if (!next.y && next.agg !== "count") next.agg = "count";
   }
+  if (type === "feed" && next.y && kinds[next.y] !== "number") next.y = "";
   // Dates default to monthly buckets: daily points make trends noisy and "vs previous" meaningless.
   const dateField = type === "kpi" ? next.trend : next.x;
-  if (dateField && kinds[dateField] === "date" && type !== "heatmap") {
+  if (dateField && kinds[dateField] === "date" && type !== "heatmap" && type !== "feed" && type !== "gauge" && type !== "table") {
     if (!next.grain) next.grain = "month";
   } else {
     next.grain = "";
@@ -240,12 +323,28 @@ function buildConfig(type: ChartType, f: Fields, format: ValueFormat, currency: 
     if (f.agg !== "count" && f.y) config.y_field = f.y;
     if (f.trend) config.x_field = f.trend;
     if (f.trend && f.grain) config.x_grain = f.grain;
-  } else if (type !== "table") {
+  } else if (type === "gauge") {
+    config.agg = f.agg;
+    if (f.agg !== "count" && f.y) config.y_field = f.y;
+    if (Number(f.target) > 0) config.target = Number(f.target);
+  } else if (type === "table") {
+    if (f.columns.length) config.columns = f.columns;
+    if (f.sortField) {
+      config.sort_field = f.sortField;
+      config.sort_dir = f.sortDir;
+    }
+  } else if (type === "feed") {
+    config.x_field = f.x;
+    config.label_field = f.label;
+    if (f.series) config.series_field = f.series;
+    if (f.y) config.y_field = f.y;
+    config.limit = f.limit;
+  } else {
     if (f.x) config.x_field = f.x;
     config.agg = f.agg;
     if (f.agg !== "count" && f.y) config.y_field = f.y;
-    if (type === "bar" && f.series) config.series_field = f.series;
-    if (f.x && f.grain && !(type === "bar" && f.series)) config.x_grain = f.grain;
+    if (SPLITTABLE.includes(type) && f.series) config.series_field = f.series;
+    if (f.x && f.grain) config.x_grain = f.grain;
   }
   if (type !== "table" && format !== "number") {
     config.format = format;
@@ -266,14 +365,32 @@ function missing(type: ChartType, f: Fields): string | null {
       if (!f.x || !f.rows) return "Pick the column and row categories.";
       return needsMeasure ? "Pick the value to measure." : null;
     case "kpi":
+    case "gauge":
       return needsMeasure ? "Pick the value to measure." : null;
+    case "feed":
+      if (!f.x) return "Pick the date that orders the activity (newest first).";
+      return !f.label ? "Pick what each item is called." : null;
     default:
       if (!f.x) return type === "line" ? "Pick what the line runs over (usually a date)." : "Pick a field to group by.";
       return needsMeasure ? "Pick the value to measure." : null;
   }
 }
 
-const CONFIG_FIELDS = ["x_field", "y_field", "agg", "series_field", "label_field", "value_field", "format", "currency", "x_grain"] as const;
+const CONFIG_FIELDS = [
+  "x_field",
+  "y_field",
+  "agg",
+  "series_field",
+  "label_field",
+  "value_field",
+  "format",
+  "currency",
+  "x_grain",
+  "columns",
+  "sort_field",
+  "sort_dir",
+  "limit",
+] as const;
 
 export default function ChartBuilder({
   dashboardId,
@@ -296,6 +413,9 @@ export default function ChartBuilder({
   const [format, setFormat] = useState<ValueFormat>(chart?.config.format ?? "number");
   const [currency, setCurrency] = useState(chart?.config.currency ?? "NGN");
   const [title, setTitle] = useState(chart?.title ?? "");
+  // New KPIs start as coloured tiles; an existing KPI keeps whatever look it has.
+  const [kpiLook, setKpiLook] = useState<"card" | "tile">(chart ? (chart.config.style?.variant === "tile" ? "tile" : "card") : "tile");
+  const [tileColor, setTileColor] = useState(chart?.config.style?.variant === "tile" ? chart.config.style.colors?.[0] ?? TILE_SWATCHES[0] : TILE_SWATCHES[0]);
   const [kindsByDataset, setKindsByDataset] = useState<Record<number, Record<string, ColumnKind>>>({});
 
   const [preview, setPreview] = useState<{ key: string; data?: ChartData; error?: string } | null>(null);
@@ -371,8 +491,14 @@ export default function ChartBuilder({
   }
 
   const grainField = type === "kpi" ? fields.trend : fields.x;
-  const showGrain =
-    !!grainField && kinds[grainField] === "date" && ["bar", "line", "pie", "kpi"].includes(type) && !(type === "bar" && fields.series);
+  const showGrain = !!grainField && kinds[grainField] === "date" && (GROUPED.includes(type) || type === "kpi") && type !== "geo_map";
+
+  /** The look a brand-new chart of this type starts with. */
+  function startingStyle(t: ChartType): Chart["config"]["style"] {
+    if (t === "pie") return { variant: "donut", show_legend: true };
+    if (t === "kpi" && kpiLook === "tile") return { variant: "tile", colors: [tileColor] };
+    return undefined;
+  }
 
   async function save() {
     if (!datasetId || gap) return;
@@ -384,15 +510,23 @@ export default function ChartBuilder({
         // Keep presentation settings (style, target, forecast) — only the data definition changes.
         const kept = { ...chart.config };
         CONFIG_FIELDS.forEach((k) => delete kept[k]);
+        if (type === "gauge") delete kept.target;
         // A variant belongs to its chart type ("horizontal" means nothing to a line), so drop it on a type change.
         if (chart.type !== type && kept.style) kept.style = { ...kept.style, variant: type === "pie" ? "donut" : undefined };
+        if (type === "kpi") {
+          kept.style =
+            kpiLook === "tile"
+              ? { ...kept.style, variant: "tile", colors: [tileColor] }
+              : { ...kept.style, variant: kept.style?.variant === "tile" ? undefined : kept.style?.variant, colors: kept.style?.variant === "tile" ? undefined : kept.style?.colors };
+        }
         await api.put(`/charts/${chart.id}`, { title: finalTitle, type, config: { ...kept, ...config } });
       } else {
+        const style = startingStyle(type);
         await api.post(`/dashboards/${dashboardId}/charts`, {
           dataset_id: datasetId,
           title: finalTitle,
           type,
-          config: type === "pie" ? { ...config, style: { variant: "donut", show_legend: true } } : config,
+          config: style ? { ...config, style } : config,
         });
       }
       onSaved();
@@ -409,15 +543,37 @@ export default function ChartBuilder({
     dataset_id: Number(datasetId) || 0,
     title: title.trim() || autoTitle,
     type,
-    config: { ...config, style: chart?.type === type ? chart.config.style : type === "pie" ? { variant: "donut", show_legend: true } : undefined },
+    config: {
+      ...config,
+      style:
+        type === "kpi"
+          ? kpiLook === "tile"
+            ? { ...chart?.config.style, variant: "tile", colors: [tileColor] }
+            : chart?.type === "kpi" && chart.config.style?.variant !== "tile"
+              ? chart.config.style
+              : undefined
+          : chart?.type === type
+            ? chart.config.style
+            : startingStyle(type),
+    },
     filters: null,
     position: null,
     dataset,
   };
 
-  const showMeasure = type !== "table" && type !== "scatter";
-  const xLabel =
-    type === "line" ? "Over" : type === "geo_map" ? "Region" : type === "heatmap" ? "Columns" : type === "pie" ? "Slices" : "Group by";
+  const showMeasure = type !== "table" && type !== "scatter" && type !== "feed";
+  const xLabel = (
+    {
+      line: "Over",
+      geo_map: "Region",
+      heatmap: "Columns",
+      pie: "Slices",
+      list: "Rows",
+      funnel: "Stages",
+      treemap: "Blocks",
+      radar: "Spokes",
+    } as Partial<Record<ChartType, string>>
+  )[type] ?? "Group by";
 
   return (
     <Modal
@@ -493,7 +649,83 @@ export default function ChartBuilder({
             {!dataset ? (
               <p className="text-sm text-[var(--text-muted)]">Choose a dataset first.</p>
             ) : type === "table" ? (
-              <p className="text-sm text-[var(--text-secondary)]">Shows the dataset&apos;s rows as they are — nothing to configure.</p>
+              <div className="space-y-3">
+                <div>
+                  <label className={FIELD_LABEL}>Columns</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {dataset.columns.map((c) => {
+                      const on = fields.columns.length === 0 || fields.columns.includes(c.name);
+                      return (
+                        <button
+                          key={c.name}
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() =>
+                            setFields((f) => {
+                              const current = f.columns.length ? f.columns : dataset.columns.map((d) => d.name);
+                              const next = current.includes(c.name) ? current.filter((n) => n !== c.name) : [...current, c.name];
+                              // Keep the dataset's column order; all selected is stored as "all".
+                              const ordered = dataset.columns.map((d) => d.name).filter((n) => next.includes(n));
+                              return { ...f, columns: ordered.length === dataset.columns.length || ordered.length === 0 ? [] : ordered };
+                            })
+                          }
+                          className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
+                            on
+                              ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                              : "border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                          }`}
+                        >
+                          {c.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-1.5 text-xs text-[var(--text-muted)]">Status columns (Active, Overdue, Paid…) show as coloured badges.</p>
+                </div>
+                <div>
+                  <label className={FIELD_LABEL}>Order rows by</label>
+                  <div className="grid grid-cols-[minmax(0,1fr)_8rem] gap-2">
+                    <FieldSelect value={fields.sortField} onChange={(v) => set("sortField", v)} dataset={dataset} kinds={kinds} prefer={["date", "number"]} optional="As loaded" />
+                    <select value={fields.sortDir} onChange={(e) => set("sortDir", e.target.value as Fields["sortDir"])} disabled={!fields.sortField} className={`${FIELD_INPUT} disabled:opacity-50`}>
+                      <option value="desc">Newest / largest first</option>
+                      <option value="asc">Oldest / smallest first</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            ) : type === "feed" ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className={FIELD_LABEL}>When</label>
+                    <FieldSelect value={fields.x} onChange={(v) => set("x", v)} dataset={dataset} kinds={kinds} prefer={["date"]} />
+                  </div>
+                  <div>
+                    <label className={FIELD_LABEL}>What (headline)</label>
+                    <FieldSelect value={fields.label} onChange={(v) => set("label", v)} dataset={dataset} kinds={kinds} prefer={["text"]} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className={FIELD_LABEL}>Status</label>
+                    <FieldSelect value={fields.series} onChange={(v) => set("series", v)} dataset={dataset} kinds={kinds} prefer={["text"]} optional="None" />
+                  </div>
+                  <div>
+                    <label className={FIELD_LABEL}>Amount</label>
+                    <FieldSelect value={fields.y} onChange={(v) => set("y", v)} dataset={dataset} kinds={kinds} prefer={["number"]} optional="None" />
+                  </div>
+                </div>
+                <div>
+                  <label className={FIELD_LABEL}>Show</label>
+                  <select value={fields.limit} onChange={(e) => set("limit", Number(e.target.value))} className={FIELD_INPUT}>
+                    {[5, 8, 10, 15, 25].map((n) => (
+                      <option key={n} value={n}>
+                        Latest {n}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             ) : (
               <div className="space-y-3">
                 {type === "scatter" ? (
@@ -515,7 +747,7 @@ export default function ChartBuilder({
                   </>
                 ) : (
                   <>
-                    {type !== "kpi" && (
+                    {type !== "kpi" && type !== "gauge" && (
                       <div>
                         <label className={FIELD_LABEL}>{xLabel}</label>
                         <FieldSelect
@@ -560,10 +792,24 @@ export default function ChartBuilder({
                         </div>
                       </div>
                     )}
-                    {type === "bar" && (
+                    {SPLITTABLE.includes(type) && (
                       <div>
-                        <label className={FIELD_LABEL}>Split by</label>
-                        <FieldSelect value={fields.series} onChange={(v) => set("series", v)} dataset={dataset} kinds={kinds} prefer={["text"]} optional="Nothing — one series" />
+                        <label className={FIELD_LABEL}>{type === "line" ? "One line per" : "Split by"}</label>
+                        <FieldSelect value={fields.series} onChange={(v) => set("series", v)} dataset={dataset} kinds={kinds} prefer={["text"]} optional={type === "line" ? "Nothing — one line" : "Nothing — one series"} />
+                      </div>
+                    )}
+                    {type === "gauge" && (
+                      <div>
+                        <label className={FIELD_LABEL}>Target</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={fields.target}
+                          onChange={(e) => set("target", e.target.value)}
+                          placeholder="End of the dial, e.g. 100000"
+                          className={FIELD_INPUT}
+                        />
+                        <p className="mt-1 text-xs text-[var(--text-muted)]">Leave empty to scale the dial to the value.</p>
                       </div>
                     )}
                     {showGrain && (
@@ -601,6 +847,50 @@ export default function ChartBuilder({
             <label className={FIELD_LABEL}>Title</label>
             <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={autoTitle} className={FIELD_INPUT} />
             {!title && <p className="mt-1 text-xs text-[var(--text-muted)]">Leave empty to use the suggested title.</p>}
+            {type === "kpi" && (
+              <div className="mt-3">
+                <label className={FIELD_LABEL}>Look</label>
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="inline-flex rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-0.5">
+                    {(["tile", "card"] as const).map((look) => (
+                      <button
+                        key={look}
+                        type="button"
+                        onClick={() => setKpiLook(look)}
+                        className={`rounded-md px-3 py-1.5 text-xs font-medium ${
+                          kpiLook === look ? "bg-[var(--surface-1)] text-[var(--text-primary)] shadow-sm" : "text-[var(--text-secondary)]"
+                        }`}
+                      >
+                        {look === "tile" ? "Coloured tile" : "Plain card"}
+                      </button>
+                    ))}
+                  </div>
+                  {kpiLook === "tile" && (
+                    <div className="flex items-center gap-1.5" role="radiogroup" aria-label="Tile colour">
+                      {TILE_SWATCHES.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          role="radio"
+                          aria-checked={tileColor === c}
+                          aria-label={`Colour ${c}`}
+                          onClick={() => setTileColor(c)}
+                          className={`h-6 w-6 rounded-full ring-offset-2 ring-offset-[var(--surface-1)] ${tileColor === c ? "ring-2 ring-[var(--text-primary)]" : ""}`}
+                          style={{ background: c }}
+                        />
+                      ))}
+                      <input
+                        type="color"
+                        value={tileColor}
+                        onChange={(e) => setTileColor(e.target.value)}
+                        aria-label="Custom tile colour"
+                        className="h-6 w-7 cursor-pointer rounded border border-[var(--border)] bg-transparent p-0"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             {type !== "table" && (
               <div className="mt-3">
                 <label className={FIELD_LABEL}>Values shown as</label>
@@ -659,7 +949,10 @@ export default function ChartBuilder({
                   {preview.error}
                 </div>
               ) : preview?.data && (previewReady || preview.key.startsWith(JSON.stringify([datasetId, type]).slice(0, -1))) ? (
-                <div className={`h-full transition-opacity ${previewReady ? "" : "opacity-50"}`}>
+                <div
+                  className={`h-full transition-opacity ${previewReady ? "" : "opacity-50"} ${type === "kpi" && kpiLook === "tile" ? "rounded-lg p-4" : ""}`}
+                  style={type === "kpi" && kpiLook === "tile" ? { background: `linear-gradient(145deg, ${tileColor}, color-mix(in srgb, ${tileColor} 82%, #000))`, maxHeight: 180 } : undefined}
+                >
                   <ChartRenderer chart={previewChart} data={preview.data} />
                 </div>
               ) : (
