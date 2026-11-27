@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class Organization extends Model
 {
@@ -76,5 +77,70 @@ class Organization extends Model
     public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'organization_members')->withPivot('role')->withTimestamps();
+    }
+
+    /* ───────────────────────────── plan limits ───────────────────────────── */
+
+    /**
+     * The plan the workspace actually gets right now. A paid plan counts while it's active or in
+     * its payment grace period (past_due), during an unexpired trial, or — once cancelled — until
+     * the end of the period already paid for. Anything else is "free".
+     */
+    public function effectivePlan(): string
+    {
+        if (! in_array($this->plan, ['growth', 'business'], true)) {
+            return 'free';
+        }
+
+        return match ($this->plan_status) {
+            'active', 'past_due' => $this->plan,
+            'trialing' => $this->trial_ends_at?->isFuture() ? $this->plan : 'free',
+            'canceled' => $this->current_period_end?->isFuture() ? $this->plan : 'free',
+            default => 'free',
+        };
+    }
+
+    /** A limit from config/plans.php: an int (null = unlimited) or a feature flag. */
+    public function planLimit(string $key): int|bool|null
+    {
+        return config('plans.'.$this->effectivePlan().'.'.$key);
+    }
+
+    public function planAllows(string $feature): bool
+    {
+        return (bool) $this->planLimit($feature);
+    }
+
+    /** People using the workspace: members, guests on its dashboards, and invitations still pending. */
+    public function seatsUsed(): int
+    {
+        $userIds = $this->members()->pluck('users.id')
+            ->merge(DB::table('dashboard_collaborators')
+                ->join('dashboards', 'dashboards.id', '=', 'dashboard_collaborators.dashboard_id')
+                ->where('dashboards.organization_id', $this->id)
+                ->pluck('dashboard_collaborators.user_id'))
+            ->unique();
+        $pending = Invitation::pending()->where('organization_id', $this->id)->distinct()->count('email');
+
+        return $userIds->count() + $pending;
+    }
+
+    public function shareLinksUsed(): int
+    {
+        return $this->dashboards()->where('is_shared', true)->count();
+    }
+
+    /** Usage next to each limit, for the settings page and upgrade prompts. */
+    public function planUsage(): array
+    {
+        return [
+            'plan' => $this->effectivePlan(),
+            'limits' => config('plans.'.$this->effectivePlan()),
+            'usage' => [
+                'users' => $this->seatsUsed(),
+                'dashboards' => $this->dashboards()->count(),
+                'share_links' => $this->shareLinksUsed(),
+            ],
+        ];
     }
 }

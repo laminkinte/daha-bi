@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\PlanGate;
 use App\Models\AiConversation;
 use App\Models\AiMessage;
 use App\Models\Dashboard;
@@ -316,6 +317,7 @@ class AiConversationController extends Controller
         abort_if($message->dashboard_id, Response::HTTP_UNPROCESSABLE_ENTITY, 'This dashboard has already been created.');
 
         $validated = $request->validate(['name' => ['nullable', 'string', 'max:255']]);
+        PlanGate::newDashboard($request->user()->current_organization_id, $request->user());
 
         $dashboard = $request->user()->dashboards()->create([
             'organization_id' => $request->user()->current_organization_id,

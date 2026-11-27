@@ -1,5 +1,8 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8899/api";
 
+/** Fired on window when the server answers 402 (the workspace's plan doesn't include something). */
+export const PLAN_LIMIT_EVENT = "daha:plan-limit";
+
 export class ApiError extends Error {
   status: number;
   errors?: Record<string, string[]>;
@@ -46,6 +49,11 @@ async function request<T>(
   }
 
   const data = await res.json().catch(() => null);
+
+  // A plan limit: let the app-wide upgrade prompt know (see PlanLimitPrompt).
+  if (res.status === 402 && typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(PLAN_LIMIT_EVENT, { detail: data?.message ?? "Your plan doesn't include this." }));
+  }
 
   if (!res.ok) {
     throw new ApiError(
@@ -245,6 +253,23 @@ export type OrganizationBilling = {
   subscribed_at: string | null;
   current_period_end: string | null;
   billing_interval: BillingInterval;
+  account_type?: "personal" | "organization";
+  /** What the plan in effect includes (null = unlimited) and what's used — only on /user. */
+  plan_usage?: PlanUsage;
+};
+
+export type PlanUsage = {
+  plan: Plan;
+  limits: {
+    users: number | null;
+    dashboards: number | null;
+    share_links: number | null;
+    database_sources: boolean;
+    notebook: boolean;
+    ai: boolean;
+    branding: boolean;
+  };
+  usage: { users: number; dashboards: number; share_links: number };
 };
 
 export type OrganizationMember = { id: number; name: string; email: string; role: OrgRole };

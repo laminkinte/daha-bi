@@ -20,7 +20,12 @@ class AuthController extends Controller
             'password' => ['required', 'string', 'min:8'],
             'referral_code' => ['nullable', 'string', 'max:12'],
             'invite_token' => ['nullable', 'string', 'max:100'],
+            // A personal account works alone; an organization account is named after the company
+            // and is where teammates get invited. Both are workspaces underneath.
+            'account_type' => ['nullable', 'in:personal,organization'],
+            'organization_name' => ['required_if:account_type,organization', 'nullable', 'string', 'max:255'],
         ]);
+        $accountType = $validated['account_type'] ?? 'personal';
 
         $referredBy = ! empty($validated['referral_code'])
             ? User::where('referral_code', strtoupper($validated['referral_code']))->first()
@@ -30,7 +35,10 @@ class AuthController extends Controller
         // invisibly (see orgs:backfill for the equivalent one-time migration of pre-existing
         // users). Created before the user so current_organization_id (NOT NULL) can be set on
         // the very first insert — current_organization_id isn't $fillable, so forceFill it.
-        $organization = Organization::create(['name' => "{$validated['name']}'s workspace"]);
+        $organization = new Organization([
+            'name' => $accountType === 'organization' ? trim($validated['organization_name']) : "{$validated['name']} (Personal)",
+        ]);
+        $organization->forceFill(['account_type' => $accountType])->save();
 
         $user = new User();
         $user->forceFill([
@@ -112,7 +120,12 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
-        return response()->json($request->user()->load('currentOrganization'));
+        $user = $request->user()->load('currentOrganization');
+        // What the current workspace's plan includes and how much of it is used — drives the
+        // plan card in Settings and upgrade prompts.
+        $user->currentOrganization?->setAttribute('plan_usage', $user->currentOrganization->planUsage());
+
+        return response()->json($user);
     }
 
     public function updateProfile(Request $request)

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\PlanGate;
 use App\Models\Dataset;
 use App\Services\DashboardTemplateService;
 use Illuminate\Http\Request;
@@ -30,6 +31,7 @@ class DashboardTemplateController extends Controller
 
         $dataset = Dataset::findOrFail($validated['dataset_id']);
         $this->authorize('view', $dataset);
+        PlanGate::newDashboard($dataset->dataSource->organization_id, $request->user());
 
         try {
             $dashboard = $this->templates->instantiate($validated['template'], $dataset, $request->user(), $validated['name']);

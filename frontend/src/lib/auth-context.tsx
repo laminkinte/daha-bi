@@ -10,11 +10,14 @@ import {
 import { useRouter } from "next/navigation";
 import { api, setToken, type User } from "./api";
 
+/** Sign-up choice: a personal account, or an organization account named after the company. */
+export type AccountChoice = { type: "personal" | "organization"; organizationName?: string };
+
 type AuthContextValue = {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string, next?: string | null) => Promise<void>;
-  register: (name: string, email: string, password: string, referralCode?: string, next?: string | null) => Promise<void>;
+  register: (name: string, email: string, password: string, referralCode?: string, next?: string | null, account?: AccountChoice) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
 };
@@ -55,12 +58,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push(safeNext(next));
   }
 
-  async function register(name: string, email: string, password: string, referralCode?: string, next?: string | null) {
+  async function register(name: string, email: string, password: string, referralCode?: string, next?: string | null, account?: AccountChoice) {
     const res = await api.post<{ user: User; token: string }>("/register", {
       name,
       email,
       password,
       referral_code: referralCode || undefined,
+      account_type: account?.type,
+      organization_name: account?.type === "organization" ? account.organizationName : undefined,
     });
     setToken(res.token);
     setUser(res.user);

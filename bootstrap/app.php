@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => EnsureUserIsAdmin::class,
             'active' => \App\Http\Middleware\TrackUserActivity::class,
+            'plan' => \App\Http\Middleware\RequirePlanFeature::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

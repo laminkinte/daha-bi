@@ -81,7 +81,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept'])->middleware('throttle:10,1');
 
     Route::get('/organizations/{organization}/branding', [BrandingController::class, 'show']);
-    Route::post('/organizations/{organization}/branding', [BrandingController::class, 'update']);
+    Route::post('/organizations/{organization}/branding', [BrandingController::class, 'update'])->middleware('plan:branding');
     Route::get('/dashboards/{dashboard}/embeds', [EmbedController::class, 'index']);
     Route::post('/dashboards/{dashboard}/embeds', [EmbedController::class, 'store'])->middleware('throttle:20,1');
     Route::delete('/embeds/{embed}', [EmbedController::class, 'destroy']);
@@ -114,12 +114,12 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('/data-sources/{dataSource}/resync', [DataSourceController::class, 'resync']);
     Route::get('/data-sources/{dataSource}/tables', [DataSourceController::class, 'tables']);
     Route::get('/data-sources/{dataSource}/tables/{table}/preview', [DataSourceController::class, 'previewTable']);
-    Route::post('/data-sources/{dataSource}/notebook/run', [NotebookController::class, 'run']);
-    Route::post('/data-sources/{dataSource}/notebook/save', [NotebookController::class, 'save']);
-    Route::post('/data-sources/{dataSource}/notebook/suggest-sql', [NotebookController::class, 'suggestSql']);
-    Route::post('/datasets/{dataset}/notebook/python', [NotebookController::class, 'runPython'])->middleware('throttle:30,1');
+    Route::post('/data-sources/{dataSource}/notebook/run', [NotebookController::class, 'run'])->middleware('plan:notebook');
+    Route::post('/data-sources/{dataSource}/notebook/save', [NotebookController::class, 'save'])->middleware('plan:notebook');
+    Route::post('/data-sources/{dataSource}/notebook/suggest-sql', [NotebookController::class, 'suggestSql'])->middleware(['plan:notebook', 'plan:ai']);
+    Route::post('/datasets/{dataset}/notebook/python', [NotebookController::class, 'runPython'])->middleware(['throttle:30,1', 'plan:notebook']);
     Route::get('/notebook/python-status', [NotebookController::class, 'pythonStatus']);
-    Route::post('/datasets/{dataset}/notebook/suggest-python', [NotebookController::class, 'suggestPython']);
+    Route::post('/datasets/{dataset}/notebook/suggest-python', [NotebookController::class, 'suggestPython'])->middleware(['plan:notebook', 'plan:ai']);
 
     Route::apiResource('datasets', DatasetController::class)->only(['index', 'show', 'destroy']);
     Route::get('/datasets/{dataset}/preview', [DatasetController::class, 'preview']);
@@ -141,7 +141,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('/dashboard-templates', [DashboardTemplateController::class, 'store']);
     Route::post('/dashboards/{dashboard}/share', [DashboardController::class, 'share']);
     Route::delete('/dashboards/{dashboard}/share', [DashboardController::class, 'unshare']);
-    Route::post('/dashboards/{dashboard}/ai-recommendations', [DashboardController::class, 'aiRecommendations']);
+    Route::post('/dashboards/{dashboard}/ai-recommendations', [DashboardController::class, 'aiRecommendations'])->middleware('plan:ai');
     Route::post('/dashboards/{dashboard}/duplicate', [DashboardController::class, 'duplicate']);
     Route::get('/dashboards/{dashboard}/slicer-values', [DashboardController::class, 'slicerValues']);
     Route::get('/dashboards/{dashboard}/export/excel', [DashboardExportController::class, 'excel']);
@@ -155,12 +155,12 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::delete('/report-schedules/{reportSchedule}', [ReportScheduleController::class, 'destroy']);
     Route::post('/report-schedules/{reportSchedule}/send-now', [ReportScheduleController::class, 'sendNow']);
 
-    Route::post('/dashboards/{dashboard}/ai-prompt', [AiPromptController::class, 'respond']);
+    Route::post('/dashboards/{dashboard}/ai-prompt', [AiPromptController::class, 'respond'])->middleware('plan:ai');
 
     Route::apiResource('ai-conversations', AiConversationController::class)
         ->only(['index', 'store', 'show', 'destroy'])
         ->parameters(['ai-conversations' => 'conversation']);
-    Route::post('/ai-conversations/{conversation}/messages', [AiConversationController::class, 'sendMessage']);
+    Route::post('/ai-conversations/{conversation}/messages', [AiConversationController::class, 'sendMessage'])->middleware('plan:ai');
     Route::post('/ai-messages/{message}/save-chart', [AiConversationController::class, 'saveChart']);
     Route::post('/ai-messages/{message}/save-dashboard', [AiConversationController::class, 'saveDashboard']);
 
@@ -181,7 +181,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/charts/{chart}/goals', [GoalController::class, 'forChart']);
     Route::post('/charts/{chart}/goals', [GoalController::class, 'store']);
     Route::delete('/goals/{goal}', [GoalController::class, 'destroy']);
-    Route::post('/goals/{goal}/recommend', [GoalController::class, 'recommend']);
+    Route::post('/goals/{goal}/recommend', [GoalController::class, 'recommend'])->middleware('plan:ai');
 
     Route::middleware('admin')->prefix('admin')->group(function () {
         Route::get('/stats', [AdminController::class, 'stats']);

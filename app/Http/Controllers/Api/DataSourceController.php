@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\PlanGate;
 use App\Models\DataSource;
 use App\Services\AuditLogger;
 use App\Services\DataIngestionService;
@@ -38,6 +39,12 @@ class DataSourceController extends Controller
 
         if ($type === 'csv') {
             return $this->storeCsv($request);
+        }
+
+        // Live connections (databases and REST APIs) are a paid feature; CSV uploads are on every plan.
+        if (($type === 'rest_api' || in_array($type, self::DATABASE_DRIVERS, true))
+            && ($organization = \App\Models\Organization::find($request->user()->current_organization_id))) {
+            PlanGate::require($organization, 'database_sources', $request->user());
         }
 
         if ($type === 'rest_api') {

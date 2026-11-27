@@ -6,6 +6,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-context";
 import Sidebar from "@/components/Sidebar";
+import PlanLimitPrompt from "@/components/PlanLimitPrompt";
 
 const THEME_INIT_SCRIPT = `
 (function () {
@@ -55,6 +56,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           <ThemeProvider>
             <AuthProvider>
               <Sidebar>{children}</Sidebar>
+              <PlanLimitPrompt />
             </AuthProvider>
           </ThemeProvider>
         </NextIntlClientProvider>

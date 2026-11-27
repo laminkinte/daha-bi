@@ -42,6 +42,8 @@ function RegisterForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [agreed, setAgreed] = useState(false);
+  const [accountType, setAccountType] = useState<"personal" | "organization">("personal");
+  const [organizationName, setOrganizationName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -57,7 +59,10 @@ function RegisterForm() {
     const submittedEmail = String(formData.get("email") ?? email);
     const submittedPassword = String(formData.get("password") ?? password);
     try {
-      await register(submittedName, submittedEmail, submittedPassword, referralCode, next);
+      await register(submittedName, submittedEmail, submittedPassword, referralCode, next, {
+        type: accountType,
+        organizationName: organizationName.trim(),
+      });
     } catch (err) {
       if (err instanceof ApiError) {
         const firstFieldError = err.errors
@@ -82,6 +87,56 @@ function RegisterForm() {
           )}
 
           <form onSubmit={onSubmit} className="flex flex-col gap-4">
+            <fieldset>
+              <legend className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">Account type</legend>
+              <div className="grid grid-cols-2 gap-2">
+                {(
+                  [
+                    { value: "personal", title: "Personal", hint: "Just me" },
+                    { value: "organization", title: "Organization", hint: "My company or team" },
+                  ] as const
+                ).map((o) => {
+                  const on = accountType === o.value;
+                  return (
+                    <label
+                      key={o.value}
+                      className={`flex cursor-pointer flex-col rounded-lg border px-3 py-2.5 transition-colors ${
+                        on ? "border-[var(--accent)] bg-[var(--accent-soft)] ring-1 ring-[var(--accent)]" : "border-[var(--border)] hover:border-[var(--baseline)]"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="account_type"
+                        value={o.value}
+                        checked={on}
+                        onChange={() => setAccountType(o.value)}
+                        className="sr-only"
+                      />
+                      <span className={`text-sm font-semibold ${on ? "text-[var(--accent)]" : "text-[var(--text-primary)]"}`}>{o.title}</span>
+                      <span className="text-xs text-[var(--text-muted)]">{o.hint}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
+            {accountType === "organization" && (
+              <div>
+                <label htmlFor="organization_name" className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">
+                  Organization name
+                </label>
+                <input
+                  id="organization_name"
+                  name="organization_name"
+                  autoComplete="organization"
+                  required
+                  maxLength={255}
+                  value={organizationName}
+                  onChange={(e) => setOrganizationName(e.target.value)}
+                  placeholder="e.g. Acme Trading Ltd"
+                  className={AUTH_INPUT}
+                />
+              </div>
+            )}
             <div>
               <label className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">
                 {t("name")}

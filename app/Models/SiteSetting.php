@@ -50,7 +50,7 @@ class SiteSetting extends Model
                 ['icon' => 'report', 'title' => 'Reports that show up on their own', 'description' => 'Schedule a dashboard summary to land in your inbox daily or weekly, or send one on demand.'],
             ],
             'landing_faqs' => [
-                ['question' => 'Do I need a credit card to start?', 'answer' => 'No. The free plan covers unlimited dashboards and charts, CSV and MySQL data sources, and one public share link — no card required.'],
+                ['question' => 'Do I need a credit card to start?', 'answer' => 'No. The free plan gives you up to 3 dashboards with every chart type, CSV data, and one public share link — no card required. Upgrade when you need your team, live databases, the notebook or AI.'],
                 ['question' => 'Can I connect my own MySQL database?', 'answer' => 'Yes — either point it at a specific table or write your own SQL query, and daha-bi keeps a synced copy for fast dashboards. You can also browse tables and preview data before connecting.'],
                 ['question' => 'Can my team work in the same account?', 'answer' => 'Yes. Invite teammates to any dashboard as a viewer or an editor — everyone with access sees the same live data and charts, with permissions enforced on every action.'],
                 ['question' => 'What happens when a number crosses a threshold I care about?', 'answer' => "Set an alert on any KPI chart (above or below a value). It's checked automatically and you'll see it flagged the moment it's breached."],
@@ -65,7 +65,7 @@ class SiteSetting extends Model
                     'period' => 'forever',
                     'tagline' => 'For getting your first dashboard live.',
                     'highlighted' => false,
-                    'features' => ['1 user', 'Up to 3 dashboards', 'CSV data sources', 'Bar, line, pie, KPI & table charts', '1 public share link', 'Community support'],
+                    'features' => ['1 user', 'Up to 3 dashboards', 'CSV data sources', 'All 14 chart types', '1 public share link', 'Community support'],
                 ],
                 [
                     'plan' => 'growth',

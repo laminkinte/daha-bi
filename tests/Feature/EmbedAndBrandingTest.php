@@ -62,7 +62,7 @@ class EmbedAndBrandingTest extends TestCase
         $t = $this->embedToken($res->json('url'));
         $this->assertNull(DashboardEmbed::where('token_hash', $t)->first(), 'raw token must not be the lookup key');
 
-        $this->getJson("/api/public/embeds/{$t}")->assertOk()->assertJsonPath('name', 'Distributor KPIs')->assertJsonPath('branding.name', "Owner's workspace");
+        $this->getJson("/api/public/embeds/{$t}")->assertOk()->assertJsonPath('name', 'Distributor KPIs')->assertJsonPath('branding.name', 'Owner (Personal)');
         $this->postJson("/api/public/embeds/{$t}/charts/{$this->chartId}/data")->assertOk()->assertJsonPath('value', 110);
         // A viewer's own filter narrows further but can never widen past the embed's.
         $this->postJson("/api/public/embeds/{$t}/charts/{$this->chartId}/data", ['filters' => [['field' => 'city', 'operator' => '=', 'value' => 'Accra']]])
@@ -114,7 +114,7 @@ class EmbedAndBrandingTest extends TestCase
 
         // Lagos + Accra only (160), never the owner's 185; branding is the partner's, not the owner's.
         $this->postJson("/api/public/embeds/{$t}/charts/{$this->chartId}/data")->assertJsonPath('value', 160);
-        $this->getJson("/api/public/embeds/{$t}")->assertJsonPath('branding.name', "Partner Admin's workspace");
+        $this->getJson("/api/public/embeds/{$t}")->assertJsonPath('branding.name', 'Partner Admin (Personal)');
 
         // The owner's embeds list doesn't include the partner's, and vice versa.
         $this->asToken($this->token)->getJson("/api/dashboards/{$this->dashboardId}/embeds")->assertJsonCount(0);

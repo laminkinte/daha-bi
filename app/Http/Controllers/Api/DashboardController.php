@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\PlanGate;
 use App\Models\Dashboard;
 use App\Models\User;
 use App\Services\AiPromptService;
@@ -50,6 +51,8 @@ class DashboardController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:255'],
         ]);
+
+        PlanGate::newDashboard($request->user()->current_organization_id, $request->user());
 
         $dashboard = $request->user()->dashboards()->create([
             ...$validated,
@@ -250,6 +253,7 @@ class DashboardController extends Controller
     public function duplicate(Request $request, Dashboard $dashboard)
     {
         $this->authorize('manage', $dashboard);
+        PlanGate::newDashboard($dashboard->organization_id, $request->user());
 
         $copy = $request->user()->dashboards()->create([
             'organization_id' => $dashboard->organization_id,
@@ -274,6 +278,9 @@ class DashboardController extends Controller
     public function share(Request $request, Dashboard $dashboard)
     {
         $this->authorize('manage', $dashboard);
+        if (! $dashboard->is_shared && $dashboard->organization) {
+            PlanGate::underLimit($dashboard->organization, 'share_links', $dashboard->organization->shareLinksUsed(), $request->user());
+        }
 
         $dashboard->update([
             'share_token' => $dashboard->share_token ?? Str::random(32),

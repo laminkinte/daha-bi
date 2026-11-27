@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\PlanGate;
 use App\Models\Organization;
 use App\Models\User;
 use App\Services\AuditLogger;
@@ -64,6 +65,11 @@ class OrganizationController extends Controller
         ]);
 
         $invitee = User::whereRaw('LOWER(email) = ?', [strtolower(trim($validated['email']))])->first();
+
+        // Changing an existing member's role doesn't take a seat; anyone new does.
+        if (! $invitee || $invitee->roleInOrganization($organization->id) === null) {
+            PlanGate::newSeat($organization, $request->user());
+        }
 
         // No account yet: email them an invitation link instead of failing.
         if (! $invitee) {

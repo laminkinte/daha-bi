@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\PlanGate;
 use App\Models\Dashboard;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -27,6 +28,20 @@ class DashboardCollaboratorController extends Controller
         ]);
 
         $collaborator = User::whereRaw('LOWER(email) = ?', [strtolower(trim($validated['email']))])->first();
+
+        // Someone who already uses the workspace (member or guest) doesn't take a new seat.
+        $organization = $dashboard->organization;
+        $alreadyIn = $collaborator && $organization && (
+            $collaborator->roleInOrganization($organization->id) !== null
+            || \Illuminate\Support\Facades\DB::table('dashboard_collaborators')
+                ->join('dashboards', 'dashboards.id', '=', 'dashboard_collaborators.dashboard_id')
+                ->where('dashboards.organization_id', $organization->id)
+                ->where('dashboard_collaborators.user_id', $collaborator->id)
+                ->exists()
+        );
+        if ($organization && ! $alreadyIn) {
+            PlanGate::newSeat($organization, $request->user());
+        }
 
         // No account yet (typically someone at a partner company): email them a guest invitation.
         if (! $collaborator) {

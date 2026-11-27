@@ -25,7 +25,7 @@ abstract class TestCase extends BaseTestCase
      *
      * @return array{0: User, 1: string}
      */
-    protected function registerUser(string $name = 'Test User', ?string $email = null): array
+    protected function registerUser(string $name = 'Test User', ?string $email = null, string $plan = 'business'): array
     {
         $response = $this->postJson('/api/register', [
             'name' => $name,
@@ -33,7 +33,12 @@ abstract class TestCase extends BaseTestCase
             'password' => 'password123',
         ])->assertCreated();
 
-        return [User::findOrFail($response->json('user.id')), $response->json('token')];
+        $user = User::findOrFail($response->json('user.id'));
+        // Feature tests exercise features, not billing: their workspaces are on Business unless a
+        // test asks for another plan (PlanLimitsTest covers what each plan allows).
+        $user->currentOrganization->forceFill(['plan' => $plan, 'plan_status' => 'active'])->save();
+
+        return [$user, $response->json('token')];
     }
 
     protected function asToken(string $token): static

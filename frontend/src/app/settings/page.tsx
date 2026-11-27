@@ -16,6 +16,7 @@ import {
   type OrganizationMember,
   type OrgRole,
   type Plan,
+  type PlanUsage,
   type PricingTier,
   type User,
 } from "@/lib/api";
@@ -330,6 +331,57 @@ function ActivitySection() {
   );
 }
 
+/** What the plan includes and how much of it this workspace uses. */
+function PlanUsageMeters({ usage }: { usage: PlanUsage }) {
+  const meters: { label: string; used: number; limit: number | null }[] = [
+    { label: "Users", used: usage.usage.users, limit: usage.limits.users },
+    { label: "Dashboards", used: usage.usage.dashboards, limit: usage.limits.dashboards },
+    { label: "Public share links", used: usage.usage.share_links, limit: usage.limits.share_links },
+  ];
+  const features: { label: string; on: boolean }[] = [
+    { label: "Live database & API sources", on: usage.limits.database_sources },
+    { label: "SQL & Python notebook", on: usage.limits.notebook },
+    { label: "AI chat & insights", on: usage.limits.ai },
+    { label: "Custom branding", on: usage.limits.branding },
+  ];
+  return (
+    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+      <div className="space-y-3">
+        {meters.map((m) => {
+          const full = m.limit !== null && m.used >= m.limit;
+          return (
+            <div key={m.label}>
+              <div className="flex justify-between text-xs">
+                <span className="text-[var(--text-secondary)]">{m.label}</span>
+                <span className={`tabular-nums ${full ? "font-semibold text-[var(--status-critical)]" : "text-[var(--text-muted)]"}`}>
+                  {m.used} / {m.limit ?? "Unlimited"}
+                </span>
+              </div>
+              {m.limit !== null && (
+                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--surface-2)]">
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${Math.min(100, (m.used / Math.max(1, m.limit)) * 100)}%`, background: full ? "var(--status-critical)" : "var(--accent)" }}
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <ul className="space-y-1.5 text-sm">
+        {features.map((f) => (
+          <li key={f.label} className={`flex items-center gap-2 ${f.on ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"}`}>
+            <span aria-hidden className={f.on ? "text-[var(--status-good)]" : ""}>{f.on ? "✓" : "—"}</span>
+            {f.label}
+            <span className="sr-only">{f.on ? "included" : "not included"}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function PlanSection() {
   const t = useTranslations("settings");
   const { user } = useAuth();
@@ -403,6 +455,8 @@ function PlanSection() {
         </p>
       )}
       {plan === "free" && <p className="mt-1 text-sm text-[var(--text-muted)]">Free, forever.</p>}
+
+      {org.plan_usage && <PlanUsageMeters usage={org.plan_usage} />}
 
       {error && <p className="mt-3 text-sm text-[var(--status-critical)]">{error}</p>}
 
