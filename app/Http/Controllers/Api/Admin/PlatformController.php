@@ -196,7 +196,7 @@ class PlatformController extends Controller
     {
         return AdminAction::with('admin:id,name,email')
             ->when($request->input('search'), fn ($q, $s) => $q->where('description', 'like', "%{$s}%"))
-            ->latest()->limit(300)->get();
+            ->latest()->orderByDesc('id')->limit(300)->get();
     }
 
     /**

@@ -67,25 +67,47 @@ class NotebookController extends Controller
         $this->authorize('query', $dataset);
 
         $access = config('services.python.access', 'admins');
-        if ($access === 'disabled' || ($access !== 'all' && ! $request->user()->is_admin)) {
+        // Open to every editor only when the code runs isolated (or on a developer's own machine).
+        $openToAll = $access === 'all' && ($this->python->isSandboxed() || app()->environment('local', 'testing'));
+        if ($access === 'disabled' || (! $openToAll && ! $request->user()->is_admin)) {
             return response()->json([
-                'message' => 'Python execution is restricted on this server. It runs unsandboxed, so it is limited to platform administrators until isolated execution is available.',
+                'message' => $access === 'disabled'
+                    ? 'Python notebooks are turned off on this server.'
+                    : 'Python notebooks are limited to platform administrators on this server.',
             ], Response::HTTP_FORBIDDEN);
         }
 
         $validated = $request->validate([
-            'code' => ['required', 'string', 'max:10000'],
+            'code' => ['required', 'string', 'max:20000'],
         ]);
 
         try {
-            $output = $this->python->run($dataset, $validated['code']);
+            $run = $this->python->run($dataset, $validated['code'], $request->user());
         } catch (Throwable $e) {
             return response()->json([
                 'message' => $e->getMessage(),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        return response()->json(['output' => $output]);
+        // `output` (plain text) is kept for older clients; `run` carries tables, figures and errors.
+        $text = trim(($run['stdout'] ?? '').(($run['result']['type'] ?? null) === 'text' ? "\n".$run['result']['value'] : ''));
+
+        return response()->json(['output' => $text, 'run' => $run]);
+    }
+
+    /** Whether the signed-in user may run Python here (drives the notebook UI). */
+    public function pythonStatus(Request $request)
+    {
+        $access = config('services.python.access', 'admins');
+        $openToAll = $access === 'all' && ($this->python->isSandboxed() || app()->environment('local', 'testing'));
+        $allowed = $access !== 'disabled' && ($openToAll || $request->user()->is_admin);
+
+        return [
+            'allowed' => $allowed,
+            'sandboxed' => $this->python->isSandboxed(),
+            'reason' => $allowed ? null : ($access === 'disabled' ? 'disabled' : 'admins_only'),
+            'max_rows' => \App\Services\PythonExecutionService::MAX_ROWS,
+        ];
     }
 
     public function suggestSql(Request $request, DataSource $dataSource)

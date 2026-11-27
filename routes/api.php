@@ -110,13 +110,15 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/billing/flutterwave/verify', [BillingController::class, 'flutterwaveVerify']);
 
     Route::apiResource('data-sources', DataSourceController::class);
+    Route::post('/sample-data', [\App\Http\Controllers\Api\SampleDataController::class, 'store'])->middleware('throttle:5,1');
     Route::post('/data-sources/{dataSource}/resync', [DataSourceController::class, 'resync']);
     Route::get('/data-sources/{dataSource}/tables', [DataSourceController::class, 'tables']);
     Route::get('/data-sources/{dataSource}/tables/{table}/preview', [DataSourceController::class, 'previewTable']);
     Route::post('/data-sources/{dataSource}/notebook/run', [NotebookController::class, 'run']);
     Route::post('/data-sources/{dataSource}/notebook/save', [NotebookController::class, 'save']);
     Route::post('/data-sources/{dataSource}/notebook/suggest-sql', [NotebookController::class, 'suggestSql']);
-    Route::post('/datasets/{dataset}/notebook/python', [NotebookController::class, 'runPython']);
+    Route::post('/datasets/{dataset}/notebook/python', [NotebookController::class, 'runPython'])->middleware('throttle:30,1');
+    Route::get('/notebook/python-status', [NotebookController::class, 'pythonStatus']);
     Route::post('/datasets/{dataset}/notebook/suggest-python', [NotebookController::class, 'suggestPython']);
 
     Route::apiResource('datasets', DatasetController::class)->only(['index', 'show', 'destroy']);

@@ -221,6 +221,9 @@ function ChatContent() {
   const [draftDatasetId, setDraftDatasetId] = useState<number | null>(null);
   const [draft, setDraft] = useState("");
   const draftRef = useRef<HTMLTextAreaElement>(null);
+  const startRef = useRef<HTMLDivElement>(null);
+  const [pulse, setPulse] = useState(0);
+  const [sampleBusy, setSampleBusy] = useState(false);
   const [savedDashboardNames, setSavedDashboardNames] = useState<Record<number, string>>({});
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -271,7 +274,30 @@ function ChatContent() {
     setError(null);
     setDraft("");
     setComposing(true);
-    setTimeout(() => draftRef.current?.focus(), 50);
+    // Always visible feedback — even when the start panel is already showing (desktop), the
+    // composer (or, with no data yet, the "add data" card) flashes and takes focus.
+    setPulse((n) => n + 1);
+    setTimeout(() => {
+      draftRef.current?.focus();
+      startRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 50);
+  }
+
+  async function addSampleData() {
+    setSampleBusy(true);
+    setError(null);
+    try {
+      const res = await api.post<{ dataset: Dataset }>("/sample-data");
+      const list = await api.get<Dataset[]>("/datasets");
+      setDatasets(list);
+      setDraftDatasetId(res.dataset.id);
+      setDraft("Which country brings in the most revenue?");
+      setTimeout(() => draftRef.current?.focus(), 50);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't add the sample data.");
+    } finally {
+      setSampleBusy(false);
+    }
   }
 
   function backToList() {
@@ -496,15 +522,27 @@ function ChatContent() {
           </div>
         )}
         {datasets?.length === 0 && (
-          <div className="mt-6">
+          <div key={`empty-${pulse}`} ref={startRef} className={`mt-6 rounded-2xl ${pulse ? "animate-[popIn_260ms_ease-out] ring-2 ring-[var(--accent)]/40" : ""}`}>
             <EmptyState
               icon={<SparkleIcon />}
-              title="No datasets yet"
-              description="Connect a data source first — then you can chat with it here."
+              title="Add some data to start chatting"
+              description="Daha AI answers questions about your own data. Upload a spreadsheet or connect a database — or try it right now with a realistic sample sales dataset."
               action={
-                <Link href="/data-sources" className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white">
-                  Add a data source
-                </Link>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <button
+                    onClick={addSampleData}
+                    disabled={sampleBusy}
+                    className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+                  >
+                    {sampleBusy ? "Adding sample data…" : "Try with sample data"}
+                  </button>
+                  <Link
+                    href="/data-sources"
+                    className="rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-4 py-2 text-sm font-medium text-[var(--text-primary)]"
+                  >
+                    Upload your own data
+                  </Link>
+                </div>
               }
             />
           </div>
@@ -513,8 +551,12 @@ function ChatContent() {
         {draftDataset && (
           <>
             <form
+              key={`composer-${pulse}`}
               onSubmit={onStart}
-              className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--surface-1)] p-3 shadow-[var(--shadow-card)] focus-within:border-[var(--accent)]"
+              ref={(el) => {
+                startRef.current = el as unknown as HTMLDivElement;
+              }}
+              className={`${pulse ? "animate-[popIn_260ms_ease-out] " : ""}mt-6 rounded-2xl border border-[var(--border)] bg-[var(--surface-1)] p-3 shadow-[var(--shadow-card)] focus-within:border-[var(--accent)]`}
             >
               <textarea
                 ref={draftRef}

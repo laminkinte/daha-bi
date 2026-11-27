@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import RequireAuth from "@/components/RequireAuth";
-import { useAuth } from "@/lib/auth-context";
 import { EmptyState } from "@/components/EmptyState";
 import { api, ApiError, type DataSource, type Dataset, type MysqlTable } from "@/lib/api";
 import { PageHeader, PAGE_CONTAINER } from "@/components/PageHeader";
@@ -54,8 +53,24 @@ type GridColumn = { key: string; label: string };
 type GridData = { columns: GridColumn[]; rows: Record<string, unknown>[] };
 
 /** What the bottom panel is currently showing: a query/script result, or a preview of a table/dataset. */
+/** What the sandboxed Python runner returns (see resources/python/runner.py). */
+type PyRun = {
+  ok: boolean;
+  stdout: string;
+  result:
+    | { type: "table"; columns: string[]; rows: Record<string, unknown>[]; total_rows: number; truncated: boolean }
+    | { type: "text"; value: string }
+    | { type: "json"; value: unknown }
+    | null;
+  figures: string[];
+  error: { type: string; message: string; where: string[] } | null;
+  duration_ms: number;
+  rows_loaded: number;
+};
+
 type Output =
   | { kind: "result"; grid: GridData; ms: number }
+  | { kind: "python"; run: PyRun; ms: number }
   | { kind: "text"; text: string; ms: number }
   | { kind: "preview"; title: string; grid: GridData | null; error?: string }
   | null;
@@ -121,6 +136,48 @@ function DataGrid({ grid }: { grid: GridData }) {
   );
 }
 
+/** A Python cell's result: error, printed output, the `result` value, and any charts. */
+function PythonRunView({ run }: { run: PyRun }) {
+  const r = run.result;
+  const nothing = run.ok && !r && !run.stdout && run.figures.length === 0;
+  return (
+    <div className="divide-y divide-[var(--border)]">
+      {run.error && (
+        <div className="bg-[var(--status-critical)]/5 p-4">
+          <p className="font-mono text-sm font-semibold text-[var(--status-critical)]">
+            {run.error.type}: <span className="font-normal">{run.error.message}</span>
+          </p>
+          {run.error.where.map((w, i) => (
+            <p key={i} className="mt-1 font-mono text-xs text-[var(--text-secondary)]">
+              {w}
+            </p>
+          ))}
+          {run.error.type === "KeyError" && (
+            <p className="mt-2 text-xs text-[var(--text-muted)]">Tip: column names are case-sensitive. Check the list on the left.</p>
+          )}
+        </div>
+      )}
+      {run.stdout && <pre className="max-h-64 overflow-auto p-4 font-mono text-xs leading-5 text-[var(--text-primary)]">{run.stdout}</pre>}
+      {r?.type === "table" && <DataGrid grid={{ columns: r.columns.map((c) => ({ key: c, label: c })), rows: r.rows }} />}
+      {r?.type === "text" && <pre className="max-h-64 overflow-auto p-4 font-mono text-sm text-[var(--text-primary)]">{r.value}</pre>}
+      {r?.type === "json" && <pre className="max-h-64 overflow-auto p-4 font-mono text-xs text-[var(--text-primary)]">{JSON.stringify(r.value, null, 2)}</pre>}
+      {run.figures.length > 0 && (
+        <div className="grid gap-3 p-4 md:grid-cols-2">
+          {run.figures.map((png, i) => (
+            // eslint-disable-next-line @next/next/no-img-element -- base64 chart rendered by matplotlib
+            <img key={i} src={`data:image/png;base64,${png}`} alt={`Chart ${i + 1}`} className="w-full rounded-lg border border-[var(--border)] bg-white" />
+          ))}
+        </div>
+      )}
+      {nothing && (
+        <p className="p-4 text-sm text-[var(--text-muted)]">
+          Ran fine, but there is nothing to show. Assign a value to <code>result</code>, use print(), or draw a chart with plt.
+        </p>
+      )}
+    </div>
+  );
+}
+
 /** Bottom panel: results of the last run, a preview, or a hint when nothing has run yet. */
 function OutputPanel({
   output,
@@ -142,6 +199,17 @@ function OutputPanel({
     label = "Output";
     meta = `${output.ms} ms`;
   }
+  if (output?.kind === "python") {
+    label = output.run.ok ? "Output" : "Error";
+    const r = output.run.result;
+    meta = [
+      r?.type === "table" ? `${r.total_rows.toLocaleString()} row${r.total_rows === 1 ? "" : "s"}${r.truncated ? ` (showing ${r.rows.length})` : ""}` : null,
+      `ran on ${output.run.rows_loaded.toLocaleString()} rows`,
+      `${output.ms} ms`,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  }
   if (output?.kind === "preview") {
     label = `Preview · ${output.title}`;
     if (output.grid) meta = `first ${output.grid.rows.length} rows`;
@@ -155,7 +223,7 @@ function OutputPanel({
             className={`h-2 w-2 shrink-0 rounded-full ${
               running
                 ? "animate-pulse bg-[var(--status-warning)]"
-                : error
+                : error || (output?.kind === "python" && !output.run.ok)
                   ? "bg-[var(--status-critical)]"
                   : output
                     ? "bg-[var(--status-good)]"
@@ -187,6 +255,8 @@ function OutputPanel({
             <kbd className="rounded border border-[var(--border)] bg-[var(--surface-2)] px-1 font-mono">Enter</kbd> in the editor
           </p>
         </div>
+      ) : output.kind === "python" ? (
+        <PythonRunView run={output.run} />
       ) : output.kind === "text" ? (
         <pre className="max-h-[28rem] overflow-auto p-4 font-mono text-xs leading-5 text-[var(--text-primary)]">
           {output.text || "(no output — assign to `result` or use print())"}
@@ -692,9 +762,35 @@ FROM ${list[0].table}` : SQL_DEFAULT;
 
 /* ─────────────────────────── Python workbench ─────────────────────────── */
 
-const PYTHON_DEFAULT = `# df is a pandas DataFrame of this dataset's rows.
-# Assign to \`result\` to display it (or just print()).
-result = df.head(10)`;
+const PYTHON_DEFAULT = `# df is a pandas DataFrame of this dataset (pd, np and plt are ready to use).
+# Assign to \`result\` to show a table, print() for text, or draw a chart with plt.
+result = df.describe(include="all").T`;
+
+/** One-click starters that adapt to the dataset's own numeric, text and date-like columns. */
+function pythonExamples(cols: string[]): { label: string; code: string }[] {
+  const num = cols.find((c) => /amount|revenue|total|price|sales|value|qty|quantity|count/i.test(c)) ?? cols[1] ?? cols[0] ?? "value";
+  const cat = cols.find((c) => /country|region|city|category|product|channel|status|type|name|method/i.test(c)) ?? cols[0] ?? "category";
+  const date = cols.find((c) => /date|time|day|month|created/i.test(c));
+  const list: { label: string; code: string }[] = [
+    { label: "Summary statistics", code: 'result = df.describe(include="all").T' },
+    {
+      label: `Top 10 ${cat} by ${num}`,
+      code: `result = (df.groupby("${cat}")["${num}"].sum()\n          .sort_values(ascending=False).head(10))`,
+    },
+    {
+      label: `Bar chart of ${num} by ${cat}`,
+      code: `top = df.groupby("${cat}")["${num}"].sum().sort_values().tail(10)\nax = top.plot(kind="barh", figsize=(8, 4), color="#0b7a5e", title="${num} by ${cat}")\nax.set_xlabel("${num}")\nresult = top.sort_values(ascending=False)`,
+    },
+    { label: "Missing values", code: 'result = df.isna().sum().rename("missing").to_frame().assign(pct=lambda t: (100 * t.missing / len(df)).round(1))' },
+  ];
+  if (date) {
+    list.splice(3, 0, {
+      label: `Monthly trend of ${num}`,
+      code: `monthly = (df.assign(month=pd.to_datetime(df["${date}"], errors="coerce").dt.to_period("M").astype(str))\n             .groupby("month")["${num}"].sum())\nmonthly.plot(figsize=(8, 3.5), marker="o", color="#0b7a5e", title="Monthly ${num}")\nresult = monthly`,
+    });
+  }
+  return list;
+}
 
 function PythonWorkbench() {
   const [datasets, setDatasets] = useState<Dataset[] | null>(null);
@@ -704,7 +800,14 @@ function PythonWorkbench() {
   const [output, setOutput] = useState<Output>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
+  const [status, setStatus] = useState<{ allowed: boolean; reason: string | null } | null>(null);
+
+  useEffect(() => {
+    api
+      .get<{ allowed: boolean; reason: string | null }>("/notebook/python-status")
+      .then(setStatus)
+      .catch(() => setStatus({ allowed: false, reason: "unknown" }));
+  }, []);
 
   function preview(d: Dataset) {
     setError(null);
@@ -741,8 +844,12 @@ function PythonWorkbench() {
     setError(null);
     const started = now();
     try {
-      const res = await api.post<{ output: string }>(`/datasets/${datasetId}/notebook/python`, { code });
-      setOutput({ kind: "text", text: res.output, ms: Math.round(now() - started) });
+      const res = await api.post<{ output: string; run?: PyRun }>(`/datasets/${datasetId}/notebook/python`, { code });
+      setOutput(
+        res.run
+          ? { kind: "python", run: res.run, ms: Math.round(now() - started) }
+          : { kind: "text", text: res.output, ms: Math.round(now() - started) },
+      );
     } catch (err) {
       setError(errorText(err, "Python execution failed."));
     } finally {
@@ -796,16 +903,31 @@ function PythonWorkbench() {
       </Explorer>
 
       <div className="min-w-0 space-y-4">
-        {!user?.is_admin && (
+        {status && !status.allowed && (
           <div className="flex items-start gap-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3.5 py-2.5 text-xs leading-5 text-[var(--text-secondary)]">
             <span className="mt-0.5 shrink-0 text-[var(--text-muted)]">
               <LockIcon />
             </span>
             <p>
-              <strong className="font-semibold text-[var(--text-primary)]">Python is limited to administrators</strong> on this
-              server for security. You can still explore and preview datasets here, and use the SQL tab or AI Chat to analyze
-              your data.
+              <strong className="font-semibold text-[var(--text-primary)]">
+                {status.reason === "disabled" ? "Python is turned off on this server." : "Python is limited to platform administrators on this server."}
+              </strong>{" "}
+              You can still explore and preview datasets here, and use the SQL tab or AI Chat to analyze your data.
             </p>
+          </div>
+        )}
+        {status?.allowed && selected && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-[var(--text-muted)]">Try:</span>
+            {pythonExamples(selected.columns.map((c) => c.name)).map((ex) => (
+              <button
+                key={ex.label}
+                onClick={() => setCode(ex.code)}
+                className="max-w-[16rem] truncate rounded-full border border-[var(--border)] bg-[var(--surface-1)] px-3 py-1 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                {ex.label}
+              </button>
+            ))}
           </div>
         )}
 
@@ -830,7 +952,7 @@ function PythonWorkbench() {
           error={error}
           emptyHint={selected ? `Run your code against “${selected.name}”.` : "Pick a dataset to start."}
           actions={
-            output?.kind === "text" && selected ? (
+            (output?.kind === "text" || output?.kind === "python") && selected ? (
               <button
                 onClick={() => preview(selected)}
                 className="rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"

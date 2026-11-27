@@ -44,11 +44,16 @@ return [
 
     'python' => [
         'bin' => env('PYTHON_BIN', 'python'),
-        // Who may run notebook Python. It executes unsandboxed as the web server's OS
-        // user, so in a multi-tenant deployment it is remote code execution for anyone
-        // allowed to use it. 'admins' = platform super-admins only; 'all' = any org
-        // editor (single-user local machines only); 'disabled' = nobody.
+        // Who may run notebook Python: 'all' = any workspace editor, 'admins' = platform
+        // super-admins only, 'disabled' = nobody. Without a sandbox, 'all' is downgraded to
+        // admins outside local development (unsandboxed code = code execution on the server).
         'access' => env('PYTHON_NOTEBOOK_ACCESS', 'admins'),
+        // 'bwrap' = bubblewrap isolation (Linux production), 'none' = plain subprocess (local dev).
+        'sandbox' => env('PYTHON_SANDBOX', 'none'),
+        'bwrap' => env('PYTHON_BWRAP_BIN', '/usr/bin/bwrap'),
+        // A dedicated virtualenv with pandas/numpy/matplotlib, mounted read-only in the sandbox.
+        'env_dir' => env('PYTHON_ENV_DIR'),
+        'memory_mb' => (int) env('PYTHON_MEMORY_MB', 2048),
     ],
 
     'data_sources' => [

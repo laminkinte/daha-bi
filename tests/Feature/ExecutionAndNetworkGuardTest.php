@@ -37,7 +37,7 @@ class ExecutionAndNetworkGuardTest extends TestCase
         $this->asToken($token)
             ->postJson("/api/datasets/{$datasetId}/notebook/python", ['code' => 'import os; result = os.environ'])
             ->assertForbidden()
-            ->assertJsonPath('message', fn ($m) => str_contains($m, 'restricted'));
+            ->assertJsonPath('message', fn ($m) => str_contains($m, 'administrators'));
     }
 
     public function test_disabled_python_blocks_even_admins(): void
