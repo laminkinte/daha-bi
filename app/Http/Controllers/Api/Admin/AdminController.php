@@ -86,6 +86,9 @@ class AdminController extends Controller
                 ->where('name', 'like', "%{$search}%")
                 ->orWhere('email', 'like', "%{$search}%")
             ))
+            ->when($request->input('status') === 'admins', fn ($q) => $q->where('is_admin', true))
+            ->when($request->input('status') === 'suspended', fn ($q) => $q->whereNotNull('suspended_at'))
+            ->when($request->input('status') === 'inactive', fn ($q) => $q->where(fn ($q) => $q->whereNull('last_active_at')->orWhere('last_active_at', '<', now()->subDays(30))))
             ->latest()
             ->limit(200)
             ->get();
@@ -101,6 +104,8 @@ class AdminController extends Controller
         // ordinary user-facing endpoint) — forceFill is the intentional bypass for this one
         // admin-gated, explicitly-validated write.
         $user->forceFill(['is_admin' => $validated['is_admin']])->save();
+        \App\Models\AdminAction::record($request->user(), $validated['is_admin'] ? 'user.admin_granted' : 'user.admin_revoked',
+            ($validated['is_admin'] ? 'Made ' : 'Revoked admin from ').$user->email, $user);
 
         return $user->fresh();
     }
@@ -109,6 +114,7 @@ class AdminController extends Controller
     {
         abort_if($user->id === $request->user()->id, Response::HTTP_UNPROCESSABLE_ENTITY, "You can't delete your own account here.");
 
+        \App\Models\AdminAction::record($request->user(), 'user.deleted', "Deleted {$user->email}", $user, ['name' => $user->name]);
         $user->delete();
 
         return response()->json(status: Response::HTTP_NO_CONTENT);

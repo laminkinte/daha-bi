@@ -29,7 +29,7 @@
     "login": {
       "brand": "Daha BI",
       "title": "Log in",
-      "demoNotice": "Demo account: demo@daha.bi / password",
+      "subtitle": "Welcome back — sign in to your workspace.",
       "email": "Email",
       "password": "Password",
       "forgotPassword": "Forgot password?",

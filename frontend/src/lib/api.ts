@@ -303,6 +303,70 @@ export type AdminUser = User & {
   dashboards_count: number;
   data_sources_count: number;
   referrals_count: number;
+  last_active_at?: string | null;
+  suspended_at?: string | null;
+  suspended_reason?: string | null;
+};
+
+export type HealthCheck = { key: string; label: string; status: "ok" | "warn" | "fail"; detail: string };
+
+export type AdminAction = {
+  id: number;
+  action: string;
+  description: string;
+  target_type: string | null;
+  target_id: number | null;
+  metadata: Record<string, unknown> | null;
+  ip_address: string | null;
+  created_at: string;
+  admin: { id: number; name: string; email?: string } | null;
+};
+
+export type AdminOverview = {
+  kpis: {
+    users: number;
+    users_new_7d: number;
+    users_active_7d: number;
+    suspended: number;
+    workspaces: number;
+    paying_workspaces: number;
+    dashboards: number;
+    data_sources: number;
+    rows_stored: number;
+    ai_conversations: number;
+    company_shares: number;
+    embeds: number;
+    comments: number;
+  };
+  signups_30d: { date: string; signups: number }[];
+  plan_mix: { plan: Plan; workspaces: number }[];
+  recent_users: { id: number; name: string; email: string; created_at: string; last_active_at: string | null; is_admin: boolean; suspended_at: string | null }[];
+  recent_actions: AdminAction[];
+  health: HealthCheck[];
+};
+
+export type AdminUserDetail = {
+  user: { id: number; name: string; email: string; is_admin: boolean; created_at: string; last_active_at: string | null; suspended_at: string | null; suspended_reason: string | null };
+  workspaces: { id: number; name: string; role: OrgRole; plan: Plan; plan_status: string }[];
+  counts: { dashboards: number; data_sources: number; ai_conversations: number; comments: number; active_sessions: number };
+  recent_activity: { id: number; action: string; description: string; created_at: string }[];
+};
+
+export type AdminWorkspace = {
+  id: number;
+  name: string;
+  brand_name: string | null;
+  billing_email: string | null;
+  plan: Plan;
+  plan_status: string;
+  billing_interval: string | null;
+  trial_ends_at: string | null;
+  current_period_end: string | null;
+  created_at: string;
+  members_count: number;
+  dashboards_count: number;
+  data_sources_count: number;
+  owner: { id: number; name: string; email: string } | null;
 };
 
 export type AdminSubscription = OrganizationBilling & {

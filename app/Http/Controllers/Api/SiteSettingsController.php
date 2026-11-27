@@ -36,6 +36,7 @@ class SiteSettingsController extends Controller
         }
 
         SiteSetting::updateOrCreate(['key' => $key], ['value' => $validated['value']]);
+        \App\Models\AdminAction::record($request->user(), 'site.setting_updated', "Updated site content: {$key}");
 
         return response()->json(['key' => $key, 'value' => $validated['value']]);
     }

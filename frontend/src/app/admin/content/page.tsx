@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import RequireAuth from "@/components/RequireAuth";
+import { AdminPage } from "@/components/AdminShell";
 import { ICON_KEYS, LandingIcon } from "@/lib/landing-icons";
 import {
   api,
@@ -434,17 +435,14 @@ function ContentEditor() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-10">
-      <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Site Content</h1>
-      <p className="mt-1 text-sm text-[var(--text-muted)]">
-        Edit the welcome page and pricing — changes go live immediately, no deploy needed.
-      </p>
+    <AdminPage title="Site content" description="Edit the public welcome page and pricing. Changes go live immediately.">
+      <div className="max-w-3xl">
 
-      {error && <p className="mt-4 text-sm text-[var(--status-critical)]">{error}</p>}
-      {!settings && !error && <p className="mt-6 text-sm text-[var(--text-muted)]">Loading...</p>}
+      {error && <p className="mb-4 text-sm text-[var(--status-critical)]">{error}</p>}
+      {!settings && !error && <p className="text-sm text-[var(--text-muted)]">Loading...</p>}
 
       {settings && (
-        <div className="mt-6 flex flex-col gap-6">
+        <div className="flex flex-col gap-6">
           <PricingSection initial={settings.pricing_tiers} />
           <HeroSection initial={settings.landing_hero} />
           <StatsSection initial={settings.landing_stats} />
@@ -453,7 +451,8 @@ function ContentEditor() {
           <FaqsSection initial={settings.landing_faqs} />
         </div>
       )}
-    </div>
+      </div>
+    </AdminPage>
   );
 }
 

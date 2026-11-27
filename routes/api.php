@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AdminController;
+use App\Http\Controllers\Api\Admin\PlatformController;
 use App\Http\Controllers\Api\AiConversationController;
 use App\Http\Controllers\Api\AiPromptController;
 use App\Http\Controllers\Api\AlertController;
@@ -58,7 +59,7 @@ Route::post('/webhooks/stripe', [BillingController::class, 'stripeWebhook']);
 // Flutterwave calls this server-to-server — authenticated by the verif-hash header, not Sanctum.
 Route::post('/webhooks/flutterwave', [BillingController::class, 'flutterwaveWebhook']);
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'me']);
     Route::put('/user', [AuthController::class, 'updateProfile']);
@@ -188,5 +189,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/subscriptions', [AdminController::class, 'subscriptions']);
         Route::get('/payments', [AdminController::class, 'payments']);
         Route::put('/site-settings/{key}', [SiteSettingsController::class, 'update']);
+
+        Route::get('/overview', [PlatformController::class, 'overview']);
+        Route::get('/health', [PlatformController::class, 'health']);
+        Route::get('/actions', [PlatformController::class, 'actions']);
+        Route::get('/users/{user}', [PlatformController::class, 'showUser']);
+        Route::post('/users/{user}/suspend', [PlatformController::class, 'suspend']);
+        Route::post('/users/{user}/unsuspend', [PlatformController::class, 'unsuspend']);
+        Route::post('/users/{user}/sign-out', [PlatformController::class, 'signOutEverywhere']);
+        Route::post('/users/{user}/password-reset', [PlatformController::class, 'sendPasswordReset'])->middleware('throttle:10,1');
+        Route::get('/organizations', [PlatformController::class, 'organizations']);
+        Route::put('/organizations/{organization}/plan', [PlatformController::class, 'updatePlan']);
     });
 });

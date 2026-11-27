@@ -56,6 +56,8 @@ class User extends Authenticatable
             // them may ever be settable via mass assignment (registration, profile update, etc.);
             // only AdminController/BillingController write them, via explicit ->update([...]).
             'is_admin' => 'boolean',
+            'suspended_at' => 'datetime',
+            'last_active_at' => 'datetime',
             'low_bandwidth_mode' => 'boolean',
             'trial_ends_at' => 'datetime',
             'subscribed_at' => 'datetime',

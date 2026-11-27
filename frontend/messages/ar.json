@@ -29,7 +29,7 @@
     "login": {
       "brand": "داها بي آي",
       "title": "تسجيل الدخول",
-      "demoNotice": "حساب تجريبي: demo@daha.bi / password",
+      "subtitle": "مرحبًا بعودتك — سجّل الدخول إلى مساحة عملك.",
       "email": "البريد الإلكتروني",
       "password": "كلمة المرور",
       "forgotPassword": "هل نسيت كلمة المرور؟",

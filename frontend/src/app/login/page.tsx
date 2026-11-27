@@ -47,7 +47,7 @@ function LoginForm() {
   }
 
   return (
-    <AuthShell title={t("title")} subtitle={t("demoNotice")}>
+    <AuthShell title={t("title")} subtitle={t("subtitle")}>
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
           <div>
             <label htmlFor="login-email" className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">

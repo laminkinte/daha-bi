@@ -29,7 +29,7 @@
     "login": {
       "brand": "Daha BI",
       "title": "Connexion",
-      "demoNotice": "Compte de démonstration : demo@daha.bi / password",
+      "subtitle": "Bon retour — connectez-vous à votre espace de travail.",
       "email": "E-mail",
       "password": "Mot de passe",
       "forgotPassword": "Mot de passe oublié ?",

@@ -1,190 +1,193 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import RequireAuth from "@/components/RequireAuth";
-import { StatCard } from "@/components/StatCard";
-import { money, PlanBadge } from "@/components/admin/shared";
-import DataTable, { type Column } from "@/components/admin/DataTable";
-import { api, type AdminPayment, type AdminStats, type AdminSubscription } from "@/lib/api";
+import { ADMIN_CARD, AdminPage, StatusDot, timeAgo } from "@/components/AdminShell";
+import { api, ApiError, type AdminOverview } from "@/lib/api";
 
-/** Paystack and Stripe revenue are separate currencies, not one combined total. */
-function combinedRevenue(ngnKobo: number, usdCents: number): string {
-  const parts = [ngnKobo > 0 && money(ngnKobo, "NGN"), usdCents > 0 && money(usdCents, "USD")].filter(Boolean);
-  return parts.length > 0 ? parts.join(" + ") : money(0, "NGN");
-}
+const nf = new Intl.NumberFormat();
 
-const SUBSCRIPTION_COLUMNS: Column<AdminSubscription>[] = [
-  {
-    key: "organization",
-    label: "Organization",
-    value: (s) => s.name,
-    render: (s) => (
-      <>
-        {s.name}
-        <div className="text-xs text-[var(--text-muted)]">{s.billing_email ?? "—"}</div>
-      </>
-    ),
-  },
-  {
-    key: "members",
-    label: "Members",
-    value: (s) => s.members_count,
-    align: "right",
-  },
-  {
-    key: "plan",
-    label: "Plan",
-    value: (s) => s.plan ?? "free",
-    render: (s) => <PlanBadge plan={s.plan} status={s.plan_status} />,
-  },
-  {
-    key: "interval",
-    label: "Interval",
-    value: (s) => s.billing_interval ?? "monthly",
-    render: (s) => <span className="capitalize">{s.billing_interval ?? "monthly"}</span>,
-  },
-  {
-    key: "subscribed",
-    label: "Subscribed",
-    value: (s) => s.subscribed_at ?? null,
-    render: (s) => (s.subscribed_at ? new Date(s.subscribed_at).toLocaleDateString() : "—"),
-  },
-  {
-    key: "renews",
-    label: "Renews / trial ends",
-    value: (s) => s.current_period_end ?? s.trial_ends_at ?? null,
-    render: (s) =>
-      s.current_period_end
-        ? new Date(s.current_period_end).toLocaleDateString()
-        : s.trial_ends_at
-          ? new Date(s.trial_ends_at).toLocaleDateString()
-          : "—",
-  },
-  {
-    key: "lifetime_paid",
-    label: "Lifetime paid",
-    // NGN and USD totals can't be collapsed into one sortable number without mixing currencies
-    // again (the exact bug fixed elsewhere on this page), so this column isn't sortable.
-    value: (s) => combinedRevenue(s.lifetime_paid_ngn_kobo ?? 0, s.lifetime_paid_usd_cents ?? 0),
-    sortable: false,
-  },
-];
-
-const PAYMENT_COLUMNS: Column<AdminPayment>[] = [
-  {
-    key: "organization",
-    label: "Organization",
-    value: (p) => p.organization?.name ?? null,
-    render: (p) => (
-      <>
-        {p.organization?.name ?? "—"}
-        {/* No user on an automated renewal charge — no human initiated it. */}
-        <div className="text-xs text-[var(--text-muted)]">{p.user ? p.user.email : "Automated renewal"}</div>
-      </>
-    ),
-  },
-  { key: "plan", label: "Plan", value: (p) => p.plan, render: (p) => <span className="capitalize">{p.plan}</span> },
-  {
-    key: "amount",
-    label: "Amount",
-    value: (p) => money(p.amount, p.currency),
-    // Formatted strings across different currencies ("$10" vs "₦15,000") don't have a
-    // meaningful sort order, so this is left unsortable rather than faking one.
-    sortable: false,
-  },
-  {
-    key: "status",
-    label: "Status",
-    value: (p) => p.status,
-    render: (p) => (
-      <span
-        className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
-          p.status === "success"
-            ? "bg-[var(--status-good)]/15 text-[var(--status-good)]"
-            : "bg-[var(--status-critical)]/15 text-[var(--status-critical)]"
-        }`}
-      >
-        {p.status}
-      </span>
-    ),
-  },
-  {
-    key: "date",
-    label: "Date",
-    value: (p) => p.created_at,
-    render: (p) => new Date(p.created_at).toLocaleDateString(),
-  },
-];
-
-function SubscriptionsView() {
-  const [stats, setStats] = useState<AdminStats | null>(null);
-  const [subs, setSubs] = useState<AdminSubscription[] | null>(null);
-  const [payments, setPayments] = useState<AdminPayment[] | null>(null);
-
-  useEffect(() => {
-    api.get<AdminStats>("/admin/stats").then(setStats).catch(() => {});
-    api.get<AdminSubscription[]>("/admin/subscriptions").then(setSubs).catch(() => setSubs([]));
-    api.get<AdminPayment[]>("/admin/payments").then(setPayments).catch(() => setPayments([]));
-  }, []);
-
-  return (
-    <div className="mx-auto max-w-5xl px-8 py-10">
-      <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Subscriptions & Revenue</h1>
-      <p className="mt-1 text-sm text-[var(--text-muted)]">What daha-bi is earning, and who&apos;s paying for it.</p>
-
-      {stats && !stats.payments_configured && (
-        <div className="mt-6 rounded-md border border-[var(--status-warning)]/30 bg-[var(--status-warning)]/10 px-4 py-3 text-sm text-[var(--text-secondary)]">
-          Neither Paystack nor Stripe is configured yet (no <code>PAYSTACK_SECRET_KEY</code> or{" "}
-          <code>STRIPE_SECRET_KEY</code>) — the numbers below reflect plans assigned manually so far, not real
-          payments. Checkout will start working the moment real keys are added.
-        </div>
-      )}
-
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard
-          label="Revenue this month"
-          value={stats ? combinedRevenue(stats.payments_this_month_ngn_kobo, stats.payments_this_month_usd_cents) : "—"}
-        />
-        <StatCard
-          label="Total revenue"
-          value={stats ? combinedRevenue(stats.total_revenue_ngn_kobo, stats.total_revenue_usd_cents) : "—"}
-        />
-        <StatCard label="Past due" value={stats?.past_due_users ?? "—"} />
-        <StatCard label="Free" value={stats?.free_users ?? "—"} />
-        <StatCard label="Growth" value={stats?.growth_users ?? "—"} />
-        <StatCard label="Business" value={stats?.business_users ?? "—"} />
-        <StatCard label="Trialing" value={stats?.trialing_users ?? "—"} />
+function Kpi({ label, value, sub, href }: { label: string; value: number | string; sub?: string; href?: string }) {
+  const body = (
+    <>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{label}</div>
+      <div className="mt-2 text-[26px] font-semibold leading-none tracking-tight tabular-nums text-[var(--text-primary)]">
+        {typeof value === "number" ? nf.format(value) : value}
       </div>
-
-      <h2 className="mt-8 text-sm font-medium text-[var(--text-primary)]">Active subscriptions</h2>
-      <div className="mt-3">
-        <DataTable
-          columns={SUBSCRIPTION_COLUMNS}
-          rows={subs}
-          getRowKey={(s) => s.id}
-          filename="daha-bi-subscriptions"
-          emptyMessage="No paid or trialing subscriptions yet."
-        />
-      </div>
-
-      <h2 className="mt-8 text-sm font-medium text-[var(--text-primary)]">Recent payments</h2>
-      <div className="mt-3">
-        <DataTable
-          columns={PAYMENT_COLUMNS}
-          rows={payments}
-          getRowKey={(p) => p.id}
-          filename="daha-bi-payments"
-          emptyMessage="No payments recorded yet."
-        />
-      </div>
-    </div>
+      {sub && <div className="mt-1.5 text-xs text-[var(--text-secondary)]">{sub}</div>}
+    </>
+  );
+  return href ? (
+    <Link href={href} className={`${ADMIN_CARD} block p-4 transition-colors hover:border-[var(--accent)]/40`}>
+      {body}
+    </Link>
+  ) : (
+    <div className={`${ADMIN_CARD} p-4`}>{body}</div>
   );
 }
 
-export default function AdminPage() {
+function Overview() {
+  const [data, setData] = useState<AdminOverview | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api
+      .get<AdminOverview>("/admin/overview")
+      .then(setData)
+      .catch((err) => setError(err instanceof ApiError ? err.message : "Couldn't load the overview."));
+  }, []);
+
+  const k = data?.kpis;
+  const signups30 = data?.signups_30d.reduce((s, d) => s + d.signups, 0) ?? 0;
+  const totalWs = data?.plan_mix.reduce((s, p) => s + p.workspaces, 0) || 1;
+  const issues = data?.health.filter((h) => h.status !== "ok") ?? [];
+
+  return (
+    <AdminPage title="Overview" description="How the Daha BI platform is doing right now.">
+      {error && <p className="mb-4 rounded-lg bg-[var(--status-critical)]/10 px-3 py-2 text-sm text-[var(--status-critical)]">{error}</p>}
+
+      {data && issues.length > 0 && (
+        <Link
+          href="/admin/health"
+          className="mb-5 flex items-center gap-2 rounded-xl border border-[var(--status-warning)]/30 bg-[var(--status-warning)]/10 px-4 py-2.5 text-sm text-[var(--text-secondary)] hover:border-[var(--status-warning)]/60"
+        >
+          <StatusDot status={issues.some((i) => i.status === "fail") ? "fail" : "warn"} />
+          {issues.length} item{issues.length === 1 ? " needs" : "s need"} attention: {issues.map((i) => i.label).join(", ")}
+          <span className="ml-auto font-medium text-[var(--accent)]">View →</span>
+        </Link>
+      )}
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kpi label="Users" value={k?.users ?? "—"} sub={k ? `+${k.users_new_7d} this week · ${k.users_active_7d} active` : undefined} href="/admin/users" />
+        <Kpi label="Workspaces" value={k?.workspaces ?? "—"} sub={k ? `${k.paying_workspaces} paying` : undefined} href="/admin/workspaces" />
+        <Kpi label="Dashboards" value={k?.dashboards ?? "—"} sub={k ? `${nf.format(k.company_shares)} company shares · ${nf.format(k.embeds)} embeds` : undefined} />
+        <Kpi label="Data" value={k ? `${nf.format(k.rows_stored)} rows` : "—"} sub={k ? `${k.data_sources} data sources` : undefined} />
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        <section className={`${ADMIN_CARD} p-5 lg:col-span-2`}>
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-sm font-semibold text-[var(--text-primary)]">Sign-ups, last 30 days</h2>
+            <span className="text-xs text-[var(--text-muted)]">{signups30} total</span>
+          </div>
+          <div className="mt-3 h-[220px]">
+            {data && (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={data.signups_30d} margin={{ top: 8, right: 4, left: -24, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="su" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--series-1)" stopOpacity={0.25} />
+                      <stop offset="100%" stopColor="var(--series-1)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="var(--gridline)" vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(d: string) => new Date(d).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+                    tick={{ fontSize: 11, fill: "var(--text-muted)" }}
+                    axisLine={false}
+                    tickLine={false}
+                    minTickGap={28}
+                  />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{ background: "var(--surface-1)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
+                    labelFormatter={(d) => new Date(String(d)).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}
+                    formatter={(v) => [v, "Sign-ups"]}
+                  />
+                  <Area type="monotone" dataKey="signups" stroke="var(--series-1)" strokeWidth={2} fill="url(#su)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </section>
+
+        <section className={`${ADMIN_CARD} p-5`}>
+          <h2 className="text-sm font-semibold text-[var(--text-primary)]">Workspaces by plan</h2>
+          <ul className="mt-4 flex flex-col gap-3.5">
+            {(data?.plan_mix ?? []).map((p) => (
+              <li key={p.plan}>
+                <div className="flex justify-between text-sm">
+                  <span className="capitalize text-[var(--text-secondary)]">{p.plan}</span>
+                  <span className="font-medium tabular-nums text-[var(--text-primary)]">{p.workspaces}</span>
+                </div>
+                <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-[var(--surface-2)]">
+                  <div className="h-full rounded-full bg-[var(--series-1)]" style={{ width: `${(100 * p.workspaces) / totalWs}%` }} />
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-5 grid grid-cols-2 gap-2 border-t border-[var(--border)] pt-4 text-xs text-[var(--text-secondary)]">
+            <span>AI chats</span>
+            <span className="text-right font-medium tabular-nums text-[var(--text-primary)]">{k ? nf.format(k.ai_conversations) : "—"}</span>
+            <span>Comments</span>
+            <span className="text-right font-medium tabular-nums text-[var(--text-primary)]">{k ? nf.format(k.comments) : "—"}</span>
+            <span>Suspended users</span>
+            <span className="text-right font-medium tabular-nums text-[var(--text-primary)]">{k?.suspended ?? "—"}</span>
+          </div>
+        </section>
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        <section className={`${ADMIN_CARD} lg:col-span-2`}>
+          <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-3.5">
+            <h2 className="text-sm font-semibold text-[var(--text-primary)]">Newest users</h2>
+            <Link href="/admin/users" className="text-xs font-medium text-[var(--accent)] hover:underline">
+              All users →
+            </Link>
+          </div>
+          <ul className="divide-y divide-[var(--border)]">
+            {data?.recent_users.map((u) => (
+              <li key={u.id}>
+                <Link href={`/admin/users?open=${u.id}`} className="flex items-center gap-3 px-5 py-2.5 hover:bg-[var(--surface-2)]">
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-1.5 text-sm font-medium text-[var(--text-primary)]">
+                      <span className="truncate">{u.name}</span>
+                      {u.is_admin && <span className="rounded bg-[var(--accent-soft)] px-1.5 text-[10px] font-semibold text-[var(--accent)]">ADMIN</span>}
+                      {u.suspended_at && <span className="rounded bg-[var(--status-critical)]/12 px-1.5 text-[10px] font-semibold text-[var(--status-critical)]">SUSPENDED</span>}
+                    </span>
+                    <span className="block truncate text-xs text-[var(--text-muted)]">{u.email}</span>
+                  </span>
+                  <span className="shrink-0 text-right text-xs text-[var(--text-muted)]">
+                    Joined {timeAgo(u.created_at)}
+                    <span className="block">Active {timeAgo(u.last_active_at)}</span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+            {data?.recent_users.length === 0 && <li className="px-5 py-6 text-sm text-[var(--text-muted)]">No users yet.</li>}
+          </ul>
+        </section>
+
+        <section className={ADMIN_CARD}>
+          <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-3.5">
+            <h2 className="text-sm font-semibold text-[var(--text-primary)]">System health</h2>
+            <Link href="/admin/health" className="text-xs font-medium text-[var(--accent)] hover:underline">
+              Details →
+            </Link>
+          </div>
+          <ul className="divide-y divide-[var(--border)]">
+            {data?.health.map((h) => (
+              <li key={h.key} className="flex items-center gap-2.5 px-5 py-2.5 text-sm">
+                <StatusDot status={h.status} />
+                <span className="text-[var(--text-primary)]">{h.label}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
+
+      {!data && !error && <div className="mt-4 h-24 animate-pulse rounded-xl bg-[var(--surface-2)]" />}
+    </AdminPage>
+  );
+}
+
+export default function AdminOverviewPage() {
   return (
     <RequireAuth>
-      <SubscriptionsView />
+      <Overview />
     </RequireAuth>
   );
 }
