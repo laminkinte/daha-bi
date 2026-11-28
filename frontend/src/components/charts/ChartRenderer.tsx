@@ -37,6 +37,7 @@ import type {
   PieVariant,
   ScatterPoint,
 } from "@/lib/api";
+import { useT, uiLocaleTag } from "@/i18n/ui";
 
 // Leaflet touches `window` at import time, so it can never load during SSR — dynamically
 // imported with ssr:false to keep it fully isolated to the client bundle. In practice this chart
@@ -226,6 +227,7 @@ function ScatterTooltipCard({
   theme: ReturnType<typeof useChartTheme>;
   chart: Chart;
 }) {
+  const tr = useT();
   if (!active || !payload?.length) return null;
   const p = payload[0].payload;
   return (
@@ -239,12 +241,12 @@ function ScatterTooltipCard({
         color: theme.primaryInk,
       }}
     >
-      {p.label && <div style={{ color: theme.secondaryInk, marginBottom: 2 }}>{p.label}</div>}
+      {p.label && <div style={{ color: theme.secondaryInk, marginBottom: 2 }}>{tr(p.label)}</div>}
       <div>
-        {chart.config.x_field ?? "x"}: <strong>{p.x.toLocaleString()}</strong>
+        {chart.config.x_field ?? tr("x")}: <strong>{p.x.toLocaleString(uiLocaleTag())}</strong>
       </div>
       <div>
-        {chart.config.y_field ?? "y"}: <strong>{formatValue(p.y, chart.config.format, chart.config.currency)}</strong>
+        {chart.config.y_field ?? tr("y")}: <strong>{formatValue(p.y, chart.config.format, chart.config.currency)}</strong>
       </div>
     </div>
   );
@@ -280,6 +282,7 @@ function periodWord(label: string | undefined): string {
  * Up/down is shown with an arrow and words as well as colour, never colour alone.
  */
 function KpiView({ chart, data, theme }: { chart: Chart; data: Extract<ChartData, { value: number }>; theme: ReturnType<typeof useChartTheme> }) {
+  const tr = useT();
   const style: ChartStyle = chart.config.style ?? {};
   const variant = kpiVariant(style);
   // A "tile" paints the whole card (see kpiTileColor); everything on it switches to an ink that reads on that fill.
@@ -328,11 +331,11 @@ function KpiView({ chart, data, theme }: { chart: Chart; data: Extract<ChartData
             >
               {delta.pct >= 0 ? "▲" : "▼"} {Math.abs(delta.pct).toFixed(1)}%
             </span>
-            <span className="truncate" style={{ color: muted }}>vs prev. {delta.word}</span>
+            <span className="truncate" style={{ color: muted }}>{tr("vs prev.")} {delta.word}</span>
           </div>
         ) : (
           <div className="text-xs" style={{ color: muted }}>
-            {(chart.config.agg ?? "count").replace("_", " ")} of {chart.config.y_field ?? "records"}
+            {(chart.config.agg ?? "count").replace("_", " ")} {tr("of")} {chart.config.y_field ?? tr("records")}
           </div>
         )}
         {variant === "progress" && typeof target === "number" && target > 0 && (
@@ -341,7 +344,7 @@ function KpiView({ chart, data, theme }: { chart: Chart; data: Extract<ChartData
               <div className="h-full rounded-full" style={{ width: `${Math.max(0, Math.min(100, (data.value / target) * 100))}%`, background: lineColor }} />
             </div>
             <div className="mt-1 text-[11px]" style={{ color: theme.mutedInk }}>
-              {Math.round((data.value / target) * 100)}% of {fmt(target)} target
+              {Math.round((data.value / target) * 100)}{tr("% of")} {fmt(target)} {tr("target")}
             </div>
           </div>
         )}
@@ -392,6 +395,7 @@ function PieView({
   selected?: string;
   onPick?: (name: string) => void;
 }) {
+  const tr = useT();
   const [ref, width] = useWidth<HTMLDivElement>();
   const wide = width >= 440;
   const total = rows.reduce((a, r) => a + r.value, 0);
@@ -443,7 +447,7 @@ function PieView({
       {isDonut && (
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
           <span className="text-[11px] uppercase tracking-wide" style={{ color: theme.mutedInk }}>
-            {selected ? selected : "Total"}
+            {selected ? selected : tr("Total")}
           </span>
           <span className="text-lg font-semibold tabular-nums" style={{ color: theme.primaryInk }}>
             {formatCompact(selected ? rows.find((r) => r.name === selected)?.value ?? 0 : total, chart.config.format, chart.config.currency)}
@@ -469,7 +473,7 @@ function PieView({
                   className={`${onPick ? "cursor-pointer" : ""} border-b last:border-0`}
                   style={{ borderColor: theme.gridline, opacity: dim(r.name) }}
                 >
-                  <td className="py-1.5 pr-2">
+                  <td className="py-1.5 pe-2">
                     <span className="flex min-w-0 items-center gap-2">
                       <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: colorAt(i) }} />
                       <span className="truncate" style={{ color: theme.secondaryInk }} title={r.name}>
@@ -477,10 +481,10 @@ function PieView({
                       </span>
                     </span>
                   </td>
-                  <td className="py-1.5 pr-2 text-right font-medium" style={{ color: theme.primaryInk }}>
+                  <td className="py-1.5 pe-2 text-end font-medium" style={{ color: theme.primaryInk }}>
                     {fmt(r.value)}
                   </td>
-                  <td className="w-12 py-1.5 text-right" style={{ color: theme.mutedInk }}>
+                  <td className="w-12 py-1.5 text-end" style={{ color: theme.mutedInk }}>
                     {total ? `${((r.value / total) * 100).toFixed(1)}%` : "—"}
                   </td>
                 </tr>
@@ -520,6 +524,7 @@ export default function ChartRenderer({
   /** Category picked by a cross-filter click: it stays bright and the rest dim. */
   selected?: string;
 }) {
+  const tr = useT();
   const theme = useChartTheme();
   const style: ChartStyle = chart.config.style ?? {};
   const showLegend = style.show_legend ?? chart.type === "pie";
@@ -550,7 +555,7 @@ export default function ChartRenderer({
   const tick = { fontSize: 11, fill: theme.mutedInk };
   const seriesName =
     style.y_axis_label ||
-    (chart.config.agg === "count" || !chart.config.y_field ? "Records" : chart.config.y_field.replace(/_/g, " "));
+    (chart.config.agg === "count" || !chart.config.y_field ? tr("Records") : chart.config.y_field.replace(/_/g, " "));
 
   if (chart.type === "kpi" && "value" in data) {
     return <KpiView chart={chart} data={data} theme={theme} />;
@@ -830,7 +835,7 @@ export default function ChartRenderer({
     const baseColor = style.colors?.[0] || theme.categorical[0];
 
     if (xLabels.length === 0 || yLabels.length === 0) {
-      return <div className="flex h-full items-center justify-center text-sm" style={{ color: theme.mutedInk }}>No data.</div>;
+      return <div className="flex h-full items-center justify-center text-sm" style={{ color: theme.mutedInk }}>{tr("No data.")}</div>;
     }
 
     return (
@@ -847,7 +852,7 @@ export default function ChartRenderer({
           ))}
           {yLabels.map((y) => (
             <Fragment key={y}>
-              <div className="truncate pr-2 text-right text-[10px] leading-6" style={{ color: theme.mutedInk }} title={y}>
+              <div className="truncate pe-2 text-end text-[10px] leading-6" style={{ color: theme.mutedInk }} title={y}>
                 {y}
               </div>
               {xLabels.map((x) => {
@@ -856,7 +861,7 @@ export default function ChartRenderer({
                 return (
                   <div
                     key={x}
-                    title={`${x} / ${y}: ${value !== undefined ? formatValue(value, chart.config.format, chart.config.currency) : "no data"}`}
+                    title={`${x} / ${y}: ${value !== undefined ? formatValue(value, chart.config.format, chart.config.currency) : tr("no data")}`}
                     className="flex aspect-square items-center justify-center overflow-hidden rounded-sm text-[9px]"
                     style={{
                       background: value !== undefined ? hexToRgba(baseColor, 0.08 + t * 0.92) : theme.gridline,

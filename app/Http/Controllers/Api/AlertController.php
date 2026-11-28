@@ -42,7 +42,7 @@ class AlertController extends Controller
     {
         $this->authorize('view', $chart);
 
-        abort_unless($chart->type === 'kpi', Response::HTTP_UNPROCESSABLE_ENTITY, 'Alerts can only be set on KPI charts.');
+        abort_unless($chart->type === 'kpi', Response::HTTP_UNPROCESSABLE_ENTITY, __('Alerts can only be set on KPI charts.'));
 
         $validated = $request->validate([
             'condition' => ['required', 'in:above,below,anomaly'],
@@ -51,7 +51,7 @@ class AlertController extends Controller
         ]);
 
         if ($validated['condition'] === 'anomaly' && empty($chart->config['x_field'] ?? null)) {
-            abort(Response::HTTP_UNPROCESSABLE_ENTITY, 'This chart needs an x-axis field (a trend) set to support anomaly detection.');
+            abort(Response::HTTP_UNPROCESSABLE_ENTITY, __('This chart needs an x-axis field (a trend) set to support anomaly detection.'));
         }
 
         $alert = $chart->alerts()->create([

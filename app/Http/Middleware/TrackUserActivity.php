@@ -19,11 +19,17 @@ class TrackUserActivity
         if ($user && $user->suspended_at) {
             $user->currentAccessToken()?->delete();
 
-            return response()->json(['message' => 'This account has been suspended. Contact support if you think this is a mistake.'], Response::HTTP_FORBIDDEN);
+            return response()->json(['message' => __('This account has been suspended. Contact support if you think this is a mistake.')], Response::HTTP_FORBIDDEN);
         }
 
         if ($user && (! $user->last_active_at || $user->last_active_at->lt(now()->subMinutes(5)))) {
             $user->forceFill(['last_active_at' => now()])->saveQuietly();
+        }
+
+        // Remember the language they use, so emails sent to them later match it.
+        $locale = SetLocale::fromHeader($request->header('Accept-Language'));
+        if ($user && $locale && $user->locale !== $locale) {
+            $user->forceFill(['locale' => $locale])->saveQuietly();
         }
 
         return $next($request);

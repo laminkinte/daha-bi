@@ -16,11 +16,13 @@ import {
   type RowLevelPolicy,
 } from "@/lib/api";
 import { PageHeader, PAGE_CONTAINER } from "@/components/PageHeader";
+import { useT, uiLocaleTag } from "@/i18n/ui";
 
 const RLS_ROLES = ["admin", "analyst", "viewer"] as const;
 const RLS_OPERATORS: RowFilterOperator[] = ["=", "!=", ">", "<", ">=", "<=", "contains"];
 
 function RowLevelSecurityPanel({ dataset, canManage }: { dataset: Dataset; canManage: boolean }) {
+  const tr = useT();
   const [policies, setPolicies] = useState<RowLevelPolicy[] | null>(null);
   const [role, setRole] = useState<(typeof RLS_ROLES)[number]>("viewer");
   const [field, setField] = useState(dataset.columns[0]?.name ?? "");
@@ -47,7 +49,7 @@ function RowLevelSecurityPanel({ dataset, canManage }: { dataset: Dataset; canMa
       setValue("");
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to add policy.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to add policy."));
     } finally {
       setAdding(false);
     }
@@ -58,19 +60,18 @@ function RowLevelSecurityPanel({ dataset, canManage }: { dataset: Dataset; canMa
       await api.del(`/row-level-policies/${id}`);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to remove policy.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to remove policy."));
     }
   }
 
   return (
     <div className="border-t border-[var(--border)] p-4">
-      <h3 className="text-sm font-medium text-[var(--text-primary)]">Row-level security</h3>
+      <h3 className="text-sm font-medium text-[var(--text-primary)]">{tr("Row-level security")}</h3>
       <p className="mt-1 text-xs text-[var(--text-muted)]">
-        Restrict which rows a role can see in every chart built on this dataset. Owners always see
-        everything.
+        {tr("Restrict which rows a role can see in every chart built on this dataset. Owners always see everything.")}
       </p>
 
-      {policies === null && <p className="mt-3 text-xs text-[var(--text-muted)]">Loading...</p>}
+      {policies === null && <p className="mt-3 text-xs text-[var(--text-muted)]">{tr("Loading...")}</p>}
 
       {policies && policies.length > 0 && (
         <div className="mt-3 flex flex-col gap-1.5">
@@ -80,15 +81,14 @@ function RowLevelSecurityPanel({ dataset, canManage }: { dataset: Dataset; canMa
               className="flex items-center justify-between rounded border border-[var(--border)] bg-[var(--page-plane)] px-2.5 py-1.5 text-xs"
             >
               <span className="text-[var(--text-secondary)]">
-                <span className="capitalize font-medium text-[var(--text-primary)]">{p.role}</span> can
-                only see rows where <code>{p.field}</code> {p.operator} &ldquo;{p.value}&rdquo;
+                <span className="capitalize font-medium text-[var(--text-primary)]">{p.role}</span> {tr("can only see rows where")} <code>{p.field}</code> {p.operator} &ldquo;{p.value}&rdquo;
               </span>
               {canManage && (
                 <button
                   onClick={() => removePolicy(p.id)}
                   className="text-[var(--text-muted)] hover:text-[var(--status-critical)]"
                 >
-                  Remove
+                  {tr("Remove")}
                 </button>
               )}
             </div>
@@ -96,7 +96,7 @@ function RowLevelSecurityPanel({ dataset, canManage }: { dataset: Dataset; canMa
         </div>
       )}
       {policies && policies.length === 0 && (
-        <p className="mt-3 text-xs text-[var(--text-muted)]">No restrictions — every role sees all rows.</p>
+        <p className="mt-3 text-xs text-[var(--text-muted)]">{tr("No restrictions — every role sees all rows.")}</p>
       )}
 
       {canManage && (
@@ -119,7 +119,7 @@ function RowLevelSecurityPanel({ dataset, canManage }: { dataset: Dataset; canMa
           >
             {dataset.columns.map((c) => (
               <option key={c.name} value={c.name}>
-                {c.label}
+                {tr(c.label)}
               </option>
             ))}
           </select>
@@ -137,7 +137,7 @@ function RowLevelSecurityPanel({ dataset, canManage }: { dataset: Dataset; canMa
           <input
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="value"
+            placeholder={tr("value")}
             className="w-24 rounded border border-[var(--border)] bg-transparent px-1.5 py-1 text-xs"
           />
           <button
@@ -145,7 +145,7 @@ function RowLevelSecurityPanel({ dataset, canManage }: { dataset: Dataset; canMa
             disabled={adding || !value}
             className="rounded bg-[var(--accent)] px-2 py-1 text-xs text-white disabled:opacity-60"
           >
-            {adding ? "Adding..." : "Add"}
+            {adding ? tr("Adding...") : tr("Add")}
           </button>
         </div>
       )}
@@ -167,6 +167,7 @@ function LayersIcon() {
 type Preview = { columns: { name: string; label: string }[]; rows: Record<string, unknown>[] };
 
 function DatasetPreviewPanel({ dataset }: { dataset: Dataset }) {
+  const tr = useT();
   const [preview, setPreview] = useState<Preview | null>(null);
 
   useEffect(() => {
@@ -175,17 +176,17 @@ function DatasetPreviewPanel({ dataset }: { dataset: Dataset }) {
   }, [dataset.id]);
 
   if (!preview) {
-    return <p className="p-4 text-sm text-[var(--text-muted)]">Loading preview...</p>;
+    return <p className="p-4 text-sm text-[var(--text-muted)]">{tr("Loading preview...")}</p>;
   }
 
   return (
     <div className="overflow-x-auto p-4">
-      <table className="w-full text-left text-sm tabular-nums">
+      <table className="w-full text-start text-sm tabular-nums">
         <thead>
           <tr className="border-b border-[var(--baseline)]">
             {preview.columns.map((col) => (
               <th key={col.name} className="whitespace-nowrap px-2 py-1 font-medium text-[var(--text-secondary)]">
-                {col.label}
+                {tr(col.label)}
               </th>
             ))}
           </tr>
@@ -203,13 +204,14 @@ function DatasetPreviewPanel({ dataset }: { dataset: Dataset }) {
         </tbody>
       </table>
       {preview.rows.length === 0 && (
-        <p className="py-4 text-center text-sm text-[var(--text-muted)]">No rows to preview.</p>
+        <p className="py-4 text-center text-sm text-[var(--text-muted)]">{tr("No rows to preview.")}</p>
       )}
     </div>
   );
 }
 
 function DataQualityPanel({ dataset, canManage }: { dataset: Dataset; canManage: boolean }) {
+  const tr = useT();
   const [report, setReport] = useState<DataQualityReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [cleaning, setCleaning] = useState(false);
@@ -221,7 +223,7 @@ function DataQualityPanel({ dataset, canManage }: { dataset: Dataset; canManage:
     api
       .get<DataQualityReport>(`/datasets/${dataset.id}/quality-report`)
       .then(setReport)
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to analyze this dataset."))
+      .catch((err) => setError(err instanceof ApiError ? err.message : tr("Failed to analyze this dataset.")))
       .finally(() => setLoading(false));
   }
 
@@ -232,7 +234,7 @@ function DataQualityPanel({ dataset, canManage }: { dataset: Dataset; canManage:
       await api.post(`/datasets/${dataset.id}/remove-duplicates`, {});
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to remove duplicates.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to remove duplicates."));
     } finally {
       setCleaning(false);
     }
@@ -241,35 +243,35 @@ function DataQualityPanel({ dataset, canManage }: { dataset: Dataset; canManage:
   return (
     <div className="border-t border-[var(--border)] p-4 text-sm">
       <div className="flex items-center justify-between">
-        <h4 className="font-medium text-[var(--text-primary)]">Data quality</h4>
+        <h4 className="font-medium text-[var(--text-primary)]">{tr("Data quality")}</h4>
         {!report && (
           <button
             onClick={load}
             disabled={loading}
             className="rounded-md border border-[var(--border)] px-2.5 py-1 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-60"
           >
-            {loading ? "Analyzing..." : "Run analysis"}
+            {loading ? tr("Analyzing...") : tr("Run analysis")}
           </button>
         )}
       </div>
       {error && <p className="mt-2 text-[var(--status-critical)]">{error}</p>}
       {report && (
         <div className="mt-2 flex flex-col gap-2">
-          {report.summary && <p className="text-[var(--text-secondary)]">{report.summary}</p>}
+          {report.summary && <p className="text-[var(--text-secondary)]">{tr(report.summary)}</p>}
           <p className="text-xs text-[var(--text-muted)]">
-            {report.total_rows} rows &middot; {report.duplicate_row_count} exact duplicate
-            {report.duplicate_row_count === 1 ? "" : "s"}
+            {report.total_rows} {tr("rows ·")} {report.duplicate_row_count} {tr("exact duplicate")}
+            {report.duplicate_row_count === 1 ? "" : tr("s")}
           </p>
           <ul className="flex flex-col gap-0.5 text-xs">
             {report.columns
               .filter((c) => c.missing_count > 0)
               .map((c) => (
                 <li key={c.name} className="text-[var(--text-secondary)]">
-                  {c.name}: {c.missing_count} missing ({c.missing_pct}%)
+                  {c.name}: {c.missing_count} {tr("missing (")}{c.missing_pct}%)
                 </li>
               ))}
             {report.columns.every((c) => c.missing_count === 0) && (
-              <li className="text-[var(--text-muted)]">No missing values in any column.</li>
+              <li className="text-[var(--text-muted)]">{tr("No missing values in any column.")}</li>
             )}
           </ul>
           <div className="flex items-center gap-2">
@@ -279,11 +281,11 @@ function DataQualityPanel({ dataset, canManage }: { dataset: Dataset; canManage:
                 disabled={cleaning}
                 className="rounded-md border border-[var(--border)] px-2.5 py-1 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-60"
               >
-                {cleaning ? "Removing..." : `Remove ${report.duplicate_row_count} duplicate row(s)`}
+                {cleaning ? tr("Removing...") : tr("Remove {duplicate_row_count} duplicate row(s)", { duplicate_row_count: report.duplicate_row_count })}
               </button>
             )}
             <button onClick={load} disabled={loading} className="text-xs text-[var(--accent)] hover:underline disabled:opacity-60">
-              Re-run
+              {tr("Re-run")}
             </button>
           </div>
         </div>
@@ -293,6 +295,7 @@ function DataQualityPanel({ dataset, canManage }: { dataset: Dataset; canManage:
 }
 
 function DatasetsList() {
+  const tr = useT();
   const { user } = useAuth();
   const [datasets, setDatasets] = useState<Dataset[] | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
@@ -317,8 +320,8 @@ function DatasetsList() {
     <div className={`${PAGE_CONTAINER} max-w-5xl`}>
       <PageHeader
         icon="layers"
-        title="Datasets"
-        description="Every dataset imported from your data sources, ready to power charts."
+        title={tr("Datasets")}
+        description={tr("Every dataset imported from your data sources, ready to power charts.")}
         actions={
           <Link
             href="/data-sources"
@@ -327,7 +330,7 @@ function DatasetsList() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
               <path d="M12 5v14M5 12h14" />
             </svg>
-            Add data
+            {tr("Add data")}
           </Link>
         }
       />
@@ -342,8 +345,8 @@ function DatasetsList() {
         {datasets?.length === 0 && (
           <EmptyState
             icon={<LayersIcon />}
-            title="No datasets yet"
-            description="Upload a CSV or connect a MySQL table from Data Sources to create your first dataset."
+            title={tr("No datasets yet")}
+            description={tr("Upload a CSV or connect a MySQL table from Data Sources to create your first dataset.")}
           />
         )}
         {datasets?.map((d) => {
@@ -358,7 +361,7 @@ function DatasetsList() {
               <button
                 onClick={() => setExpanded(isOpen ? null : d.id)}
                 aria-expanded={isOpen}
-                className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
+                className="flex w-full items-center gap-3 px-4 py-3.5 text-start"
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent)]">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
@@ -370,23 +373,23 @@ function DatasetsList() {
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span className="truncate font-semibold tracking-tight text-[var(--text-primary)]">{d.name}</span>
                     <span className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-medium tabular-nums text-[var(--text-secondary)]">
-                      {d.row_count.toLocaleString()} rows
+                      {d.row_count.toLocaleString(uiLocaleTag())} {tr("rows")}
                     </span>
                     <span className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-medium tabular-nums text-[var(--text-secondary)]">
-                      {d.columns.length} columns
+                      {d.columns.length} {tr("columns")}
                     </span>
                   </div>
                   <div className="mt-1 truncate text-xs text-[var(--text-muted)]">
-                    from {d.data_source?.name ?? "unknown source"}
+                    {tr("from")} {d.data_source?.name ?? tr("unknown source")}
                     <span className="hidden sm:inline">
                       {" · "}
                       {d.columns.slice(0, 5).map((c) => c.label).join(", ")}
-                      {d.columns.length > 5 ? `, +${d.columns.length - 5} more` : ""}
+                      {d.columns.length > 5 ? tr(", +{v0} more", { v0: d.columns.length - 5 }) : ""}
                     </span>
                   </div>
                 </div>
                 <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-[var(--accent)]">
-                  <span className="hidden sm:inline">{isOpen ? "Hide" : "Explore"}</span>
+                  <span className="hidden sm:inline">{isOpen ? tr("Hide") : tr("Explore")}</span>
                   <svg
                     width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                     className={`transition-transform ${isOpen ? "rotate-180" : ""}`}

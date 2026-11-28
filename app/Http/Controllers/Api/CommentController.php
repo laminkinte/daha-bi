@@ -86,7 +86,7 @@ class CommentController extends Controller
 
         $chartId = $parent?->chart_id ?? ($validated['chart_id'] ?? null);
         if ($chartId) {
-            abort_unless($dashboard->charts()->whereKey($chartId)->exists(), Response::HTTP_UNPROCESSABLE_ENTITY, 'That chart is not on this dashboard.');
+            abort_unless($dashboard->charts()->whereKey($chartId)->exists(), Response::HTTP_UNPROCESSABLE_ENTITY, __('That chart is not on this dashboard.'));
         }
 
         $audience = $this->audience($dashboard, $space)->keyBy('id');
@@ -147,16 +147,16 @@ class CommentController extends Controller
         ]);
 
         if (array_key_exists('body', $validated)) {
-            abort_unless($comment->user_id === $request->user()->id, Response::HTTP_FORBIDDEN, 'Only the author can edit a comment.');
+            abort_unless($comment->user_id === $request->user()->id, Response::HTTP_FORBIDDEN, __('Only the author can edit a comment.'));
             $comment->update(['body' => trim($validated['body']), 'edited_at' => now()]);
         }
 
         if (array_key_exists('resolved', $validated)) {
-            abort_if($comment->parent_id, Response::HTTP_UNPROCESSABLE_ENTITY, 'Resolve the thread, not a reply.');
+            abort_if($comment->parent_id, Response::HTTP_UNPROCESSABLE_ENTITY, __('Resolve the thread, not a reply.'));
             abort_unless(
                 $comment->user_id === $request->user()->id || $request->user()->can('update', $dashboard),
                 Response::HTTP_FORBIDDEN,
-                'Only the author or an editor can resolve this thread.'
+                __('Only the author or an editor can resolve this thread.')
             );
             $comment->update($validated['resolved']
                 ? ['resolved_at' => now(), 'resolved_by_id' => $request->user()->id]
@@ -177,7 +177,7 @@ class CommentController extends Controller
         abort_unless(
             $comment->user_id === $request->user()->id || $request->user()->can('manage', $dashboard),
             Response::HTTP_FORBIDDEN,
-            'Only the author or a dashboard manager can delete this comment.'
+            __('Only the author or a dashboard manager can delete this comment.')
         );
 
         $comment->delete();
@@ -216,7 +216,7 @@ class CommentController extends Controller
         if (! $orgId) {
             return null;
         }
-        abort_unless($dashboard->shares()->active()->where('organization_id', $orgId)->exists(), Response::HTTP_UNPROCESSABLE_ENTITY, 'That company does not have this dashboard.');
+        abort_unless($dashboard->shares()->active()->where('organization_id', $orgId)->exists(), Response::HTTP_UNPROCESSABLE_ENTITY, __('That company does not have this dashboard.'));
 
         return $orgId;
     }

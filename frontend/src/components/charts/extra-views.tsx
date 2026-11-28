@@ -15,6 +15,7 @@ import {
 import type { Chart, ChartSeries, FeedItem } from "@/lib/api";
 import type { ChartTheme } from "@/lib/chart-theme";
 import { formatCompact, formatValue } from "@/lib/format-value";
+import { useT, translate, uiLocaleTag } from "@/i18n/ui";
 
 /* ─────────────────────────────── status words ─────────────────────────────── */
 
@@ -100,15 +101,15 @@ export function whenText(raw: string): string {
   if (secs >= 0 && secs < 30 * 86400) {
     if (dateOnly) {
       const days = Math.floor(secs / 86400);
-      return days === 0 ? "Today" : days === 1 ? "Yesterday" : `${days} days ago`;
+      return days === 0 ? translate("Today") : days === 1 ? translate("Yesterday") : translate("{days} days ago", { days: days });
     }
-    if (secs < 60) return "Just now";
-    if (secs < 3600) return `${Math.floor(secs / 60)} min ago`;
-    if (secs < 86400) return `${Math.floor(secs / 3600)} h ago`;
+    if (secs < 60) return translate("Just now");
+    if (secs < 3600) return translate("{v0} min ago", { v0: Math.floor(secs / 60) });
+    if (secs < 86400) return translate("{v0} h ago", { v0: Math.floor(secs / 3600) });
     const days = Math.floor(secs / 86400);
-    return days === 1 ? "Yesterday" : `${days} days ago`;
+    return days === 1 ? translate("Yesterday") : translate("{days} days ago", { days: days });
   }
-  return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  return d.toLocaleDateString(uiLocaleTag(), { day: "numeric", month: "short", year: "numeric" });
 }
 
 /* ──────────────────────────────── smart table ──────────────────────────────── */
@@ -137,6 +138,7 @@ function classify(col: string, rows: Record<string, unknown>[]): ColKind {
  * status-like columns ("Active", "Overdue", "Paid"…) drawn as coloured badges.
  */
 export function SmartTable({ columns, rows, theme }: { columns: string[]; rows: Record<string, unknown>[]; theme: ChartTheme }) {
+  const tr = useT();
   const [sort, setSort] = useState<{ col: string; dir: 1 | -1 } | null>(null);
   const [q, setQ] = useState("");
   const kinds = useMemo(() => Object.fromEntries(columns.map((c) => [c, classify(c, rows)])) as Record<string, ColKind>, [columns, rows]);
@@ -162,11 +164,11 @@ export function SmartTable({ columns, rows, theme }: { columns: string[]; rows: 
       case "badge":
         return <StatusBadge value={v} />;
       case "number":
-        return NO_GROUPING.test(col) ? String(v) : Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 });
+        return NO_GROUPING.test(col) ? String(v) : Number(v).toLocaleString(uiLocaleTag(), { maximumFractionDigits: 2 });
       case "date": {
         const s = String(v);
         const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(s) ? `${s}T00:00:00` : s);
-        return Number.isNaN(d.getTime()) ? s : d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+        return Number.isNaN(d.getTime()) ? s : d.toLocaleDateString(uiLocaleTag(), { day: "numeric", month: "short", year: "numeric" });
       }
       default:
         return String(v);
@@ -180,28 +182,28 @@ export function SmartTable({ columns, rows, theme }: { columns: string[]; rows: 
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search rows…"
-            aria-label="Search rows"
+            placeholder={tr("Search rows…")}
+            aria-label={tr("Search rows")}
             className="w-48 max-w-full rounded-md border border-[var(--border)] bg-transparent px-2.5 py-1 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] focus:outline-none"
           />
           <span className="shrink-0 text-[11px] tabular-nums" style={{ color: theme.mutedInk }}>
-            {shown.length === rows.length ? `${rows.length.toLocaleString()} rows` : `${shown.length.toLocaleString()} of ${rows.length.toLocaleString()}`}
+            {shown.length === rows.length ? tr("{v0} rows", { v0: rows.length.toLocaleString(uiLocaleTag()) }) : tr("{v0} of {v1}", { v0: shown.length.toLocaleString(uiLocaleTag()), v1: rows.length.toLocaleString(uiLocaleTag()) })}
           </span>
         </div>
       )}
       <div className="min-h-0 flex-1 overflow-auto rounded-lg border" style={{ borderColor: theme.gridline }}>
-        <table className="w-full text-left text-[13px] tabular-nums">
+        <table className="w-full text-start text-[13px] tabular-nums">
           <thead className="sticky top-0 z-[1]" style={{ background: "var(--surface-2)" }}>
             <tr>
               {columns.map((col) => {
                 const on = sort?.col === col;
                 return (
-                  <th key={col} className={`whitespace-nowrap px-3 py-2 font-semibold ${kinds[col] === "number" ? "text-right" : ""}`} style={{ color: theme.secondaryInk, borderBottom: `1px solid ${theme.baseline}` }}>
+                  <th key={col} className={`whitespace-nowrap px-3 py-2 font-semibold ${kinds[col] === "number" ? "text-end" : ""}`} style={{ color: theme.secondaryInk, borderBottom: `1px solid ${theme.baseline}` }}>
                     <button
                       type="button"
                       onClick={() => setSort((s) => (s?.col === col ? (s.dir === 1 ? { col, dir: -1 } : null) : { col, dir: 1 }))}
                       className="inline-flex items-center gap-1 hover:text-[var(--text-primary)]"
-                      title="Sort"
+                      title={tr("Sort")}
                     >
                       {col.charAt(0).toUpperCase() + col.slice(1).replace(/_/g, " ")}
                       <span className="text-[9px]" style={{ opacity: on ? 1 : 0.35 }}>
@@ -219,7 +221,7 @@ export function SmartTable({ columns, rows, theme }: { columns: string[]; rows: 
                 {columns.map((col, ci) => (
                   <td
                     key={col}
-                    className={`whitespace-nowrap px-3 py-2 ${kinds[col] === "number" ? "text-right" : ""} ${ci === 0 ? "font-medium" : ""}`}
+                    className={`whitespace-nowrap px-3 py-2 ${kinds[col] === "number" ? "text-end" : ""} ${ci === 0 ? "font-medium" : ""}`}
                     style={{ color: theme.primaryInk }}
                   >
                     {cell(col, row[col])}
@@ -230,7 +232,7 @@ export function SmartTable({ columns, rows, theme }: { columns: string[]; rows: 
             {shown.length === 0 && (
               <tr>
                 <td colSpan={columns.length} className="px-3 py-6 text-center" style={{ color: theme.mutedInk }}>
-                  No matching rows.
+                  {tr("No matching rows.")}
                 </td>
               </tr>
             )}
@@ -252,6 +254,7 @@ function niceMax(v: number): number {
 
 /** A half-dial: the value against its target (or a rounded-up scale when no target is set). */
 export function GaugeView({ chart, value, color, theme }: { chart: Chart; value: number; color: string; theme: ChartTheme }) {
+  const tr = useT();
   const target = typeof chart.config.target === "number" && chart.config.target > 0 ? chart.config.target : null;
   const max = target ?? niceMax(value);
   const f = Math.max(0, Math.min(1, value / max));
@@ -272,7 +275,7 @@ export function GaugeView({ chart, value, color, theme }: { chart: Chart; value:
           {compact(value)}
         </text>
         <text x="100" y="106" textAnchor="middle" fontSize="10.5" fill={theme.mutedInk}>
-          {target ? `${Math.round((value / target) * 100)}% of ${compact(target)} target` : "of " + compact(max)}
+          {target ? tr("{v0}% of {v1} target", { v0: Math.round((value / target) * 100), v1: compact(target) }) : "of " + compact(max)}
         </text>
         <text x={100 - r} y="116" textAnchor="middle" fontSize="9" fill={theme.mutedInk}>0</text>
         <text x={100 + r} y="116" textAnchor="middle" fontSize="9" fill={theme.mutedInk}>{compact(max)}</text>
@@ -299,15 +302,16 @@ export function ListView({
   selected?: string;
   onPick?: (name: string) => void;
 }) {
+  const tr = useT();
   const max = Math.max(...rows.map((r) => Math.abs(r.value)), 0) || 1;
   return (
-    <div className="h-full overflow-y-auto pr-1">
+    <div className="h-full overflow-y-auto pe-1">
       {rows.map((r) => (
         <button
           key={r.name}
           type="button"
           onClick={onPick ? () => onPick(r.name) : undefined}
-          className={`flex w-full items-center gap-3 border-b py-2 text-left last:border-0 ${onPick ? "cursor-pointer" : "cursor-default"}`}
+          className={`flex w-full items-center gap-3 border-b py-2 text-start last:border-0 ${onPick ? "cursor-pointer" : "cursor-default"}`}
           style={{ borderColor: theme.gridline, opacity: selected && selected !== r.name ? 0.35 : 1 }}
         >
           <span className="min-w-0 flex-1">
@@ -323,7 +327,7 @@ export function ListView({
           </span>
         </button>
       ))}
-      {rows.length === 0 && <p className="py-6 text-center text-sm" style={{ color: theme.mutedInk }}>No data.</p>}
+      {rows.length === 0 && <p className="py-6 text-center text-sm" style={{ color: theme.mutedInk }}>{tr("No data.")}</p>}
     </div>
   );
 }
@@ -332,13 +336,14 @@ export function ListView({
 
 /** Stages largest first, each bar centred and sized to its value, with its share of the first stage. */
 export function FunnelView({ chart, rows, color, theme }: { chart: Chart; rows: { name: string; value: number }[]; color: string; theme: ChartTheme }) {
+  const tr = useT();
   const first = rows[0]?.value || 1;
   const max = Math.max(...rows.map((r) => r.value), 0) || 1;
   return (
     <div className="flex h-full flex-col justify-center gap-1.5 overflow-y-auto">
       {rows.map((r, i) => (
         <div key={r.name} className="grid grid-cols-[minmax(0,5.5rem)_minmax(0,1fr)_auto] items-center gap-2.5 text-[12.5px]">
-          <span className="truncate text-right" style={{ color: theme.secondaryInk }} title={r.name}>
+          <span className="truncate text-end" style={{ color: theme.secondaryInk }} title={r.name}>
             {r.name}
           </span>
           <span className="flex h-8 justify-center">
@@ -348,7 +353,7 @@ export function FunnelView({ chart, rows, color, theme }: { chart: Chart; rows: 
               title={`${r.name}: ${formatValue(r.value, chart.config.format, chart.config.currency)}`}
             />
           </span>
-          <span className="whitespace-nowrap text-right tabular-nums">
+          <span className="whitespace-nowrap text-end tabular-nums">
             <span className="font-semibold" style={{ color: theme.primaryInk }}>
               {formatCompact(r.value, chart.config.format, chart.config.currency)}
             </span>
@@ -378,6 +383,7 @@ export function TreemapView({
   theme: ChartTheme;
   onPick?: (name: string) => void;
 }) {
+  const tr = useT();
   const data = rows.filter((r) => r.value > 0).map((r) => ({ name: r.name, size: r.value }));
   const total = data.reduce((s, d) => s + d.size, 0) || 1;
   const renderNode = (props: TreemapNodeProps) => {
@@ -458,9 +464,10 @@ export function RadarView({
 
 /** Newest rows as an activity list: what happened, its state, how much, and when. */
 export function FeedView({ chart, items, theme }: { chart: Chart; items: FeedItem[]; theme: ChartTheme }) {
-  if (!items.length) return <p className="py-6 text-center text-sm" style={{ color: theme.mutedInk }}>No recent activity.</p>;
+  const tr = useT();
+  if (!items.length) return <p className="py-6 text-center text-sm" style={{ color: theme.mutedInk }}>{tr("No recent activity.")}</p>;
   return (
-    <ul className="h-full overflow-y-auto pr-1">
+    <ul className="h-full overflow-y-auto pe-1">
       {items.map((item, i) => {
         const tone = item.tag ? statusTone(item.tag) : "neutral";
         const dot = tone === "neutral" ? "var(--accent)" : TONE_VAR[tone];
@@ -482,8 +489,8 @@ export function FeedView({ chart, items, theme }: { chart: Chart; items: FeedIte
               )}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[13px] font-medium" style={{ color: theme.primaryInk }} title={item.title}>
-                {item.title}
+              <span className="block truncate text-[13px] font-medium" style={{ color: theme.primaryInk }} title={tr(item.title)}>
+                {tr(item.title)}
               </span>
               <span className="mt-0.5 flex items-center gap-2 text-[11.5px]" style={{ color: theme.mutedInk }}>
                 {item.tag && <StatusBadge value={item.tag} />}

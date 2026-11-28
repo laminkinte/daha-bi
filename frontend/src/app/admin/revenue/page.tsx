@@ -7,6 +7,7 @@ import { money, PlanBadge } from "@/components/admin/shared";
 import DataTable, { type Column } from "@/components/admin/DataTable";
 import { api, type AdminPayment, type AdminStats, type AdminSubscription } from "@/lib/api";
 import { AdminPage } from "@/components/AdminShell";
+import { useT, translate, uiLocaleTag } from "@/i18n/ui";
 
 /** Paystack and Stripe revenue are separate currencies, not one combined total. */
 function combinedRevenue(ngnKobo: number, usdCents: number): string {
@@ -42,13 +43,13 @@ const SUBSCRIPTION_COLUMNS: Column<AdminSubscription>[] = [
     key: "interval",
     label: "Interval",
     value: (s) => s.billing_interval ?? "monthly",
-    render: (s) => <span className="capitalize">{s.billing_interval ?? "monthly"}</span>,
+    render: (s) => <span className="capitalize">{s.billing_interval ?? translate("monthly")}</span>,
   },
   {
     key: "subscribed",
     label: "Subscribed",
     value: (s) => s.subscribed_at ?? null,
-    render: (s) => (s.subscribed_at ? new Date(s.subscribed_at).toLocaleDateString() : "—"),
+    render: (s) => (s.subscribed_at ? new Date(s.subscribed_at).toLocaleDateString(uiLocaleTag()) : "—"),
   },
   {
     key: "renews",
@@ -56,9 +57,9 @@ const SUBSCRIPTION_COLUMNS: Column<AdminSubscription>[] = [
     value: (s) => s.current_period_end ?? s.trial_ends_at ?? null,
     render: (s) =>
       s.current_period_end
-        ? new Date(s.current_period_end).toLocaleDateString()
+        ? new Date(s.current_period_end).toLocaleDateString(uiLocaleTag())
         : s.trial_ends_at
-          ? new Date(s.trial_ends_at).toLocaleDateString()
+          ? new Date(s.trial_ends_at).toLocaleDateString(uiLocaleTag())
           : "—",
   },
   {
@@ -80,7 +81,7 @@ const PAYMENT_COLUMNS: Column<AdminPayment>[] = [
       <>
         {p.organization?.name ?? "—"}
         {/* No user on an automated renewal charge — no human initiated it. */}
-        <div className="text-xs text-[var(--text-muted)]">{p.user ? p.user.email : "Automated renewal"}</div>
+        <div className="text-xs text-[var(--text-muted)]">{p.user ? p.user.email : translate("Automated renewal")}</div>
       </>
     ),
   },
@@ -113,11 +114,12 @@ const PAYMENT_COLUMNS: Column<AdminPayment>[] = [
     key: "date",
     label: "Date",
     value: (p) => p.created_at,
-    render: (p) => new Date(p.created_at).toLocaleDateString(),
+    render: (p) => new Date(p.created_at).toLocaleDateString(uiLocaleTag()),
   },
 ];
 
 function SubscriptionsView() {
+  const tr = useT();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [subs, setSubs] = useState<AdminSubscription[] | null>(null);
   const [payments, setPayments] = useState<AdminPayment[] | null>(null);
@@ -129,51 +131,50 @@ function SubscriptionsView() {
   }, []);
 
   return (
-    <AdminPage title="Revenue" description="What Daha BI is earning, and who's paying for it.">
+    <AdminPage title={tr("Revenue")} description={tr("What Daha BI is earning, and who's paying for it.")}>
 
       {stats && !stats.payments_configured && (
         <div className="mb-6 rounded-md border border-[var(--status-warning)]/30 bg-[var(--status-warning)]/10 px-4 py-3 text-sm text-[var(--text-secondary)]">
-          Neither Paystack nor Stripe is configured yet (no <code>PAYSTACK_SECRET_KEY</code> or{" "}
-          <code>STRIPE_SECRET_KEY</code>) — the numbers below reflect plans assigned manually so far, not real
-          payments. Checkout will start working the moment real keys are added.
+          {tr("Neither Paystack nor Stripe is configured yet (no")} <code>{tr("PAYSTACK_SECRET_KEY")}</code> {tr("or")}{" "}
+          <code>{tr("STRIPE_SECRET_KEY")}</code>{tr(") — the numbers below reflect plans assigned manually so far, not real payments. Checkout will start working the moment real keys are added.")}
         </div>
       )}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard
-          label="Revenue this month"
+          label={tr("Revenue this month")}
           value={stats ? combinedRevenue(stats.payments_this_month_ngn_kobo, stats.payments_this_month_usd_cents) : "—"}
         />
         <StatCard
-          label="Total revenue"
+          label={tr("Total revenue")}
           value={stats ? combinedRevenue(stats.total_revenue_ngn_kobo, stats.total_revenue_usd_cents) : "—"}
         />
-        <StatCard label="Past due" value={stats?.past_due_users ?? "—"} />
-        <StatCard label="Free" value={stats?.free_users ?? "—"} />
-        <StatCard label="Growth" value={stats?.growth_users ?? "—"} />
-        <StatCard label="Business" value={stats?.business_users ?? "—"} />
-        <StatCard label="Trialing" value={stats?.trialing_users ?? "—"} />
+        <StatCard label={tr("Past due")} value={stats?.past_due_users ?? "—"} />
+        <StatCard label={tr("Free")} value={stats?.free_users ?? "—"} />
+        <StatCard label={tr("Growth")} value={stats?.growth_users ?? "—"} />
+        <StatCard label={tr("Business")} value={stats?.business_users ?? "—"} />
+        <StatCard label={tr("Trialing")} value={stats?.trialing_users ?? "—"} />
       </div>
 
-      <h2 className="mt-8 text-sm font-medium text-[var(--text-primary)]">Active subscriptions</h2>
+      <h2 className="mt-8 text-sm font-medium text-[var(--text-primary)]">{tr("Active subscriptions")}</h2>
       <div className="mt-3">
         <DataTable
           columns={SUBSCRIPTION_COLUMNS}
           rows={subs}
           getRowKey={(s) => s.id}
           filename="daha-bi-subscriptions"
-          emptyMessage="No paid or trialing subscriptions yet."
+          emptyMessage={tr("No paid or trialing subscriptions yet.")}
         />
       </div>
 
-      <h2 className="mt-8 text-sm font-medium text-[var(--text-primary)]">Recent payments</h2>
+      <h2 className="mt-8 text-sm font-medium text-[var(--text-primary)]">{tr("Recent payments")}</h2>
       <div className="mt-3">
         <DataTable
           columns={PAYMENT_COLUMNS}
           rows={payments}
           getRowKey={(p) => p.id}
           filename="daha-bi-payments"
-          emptyMessage="No payments recorded yet."
+          emptyMessage={tr("No payments recorded yet.")}
         />
       </div>
     </AdminPage>

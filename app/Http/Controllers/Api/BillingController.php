@@ -32,7 +32,7 @@ class BillingController extends Controller
 
         if (! $this->paystack->isConfigured()) {
             return response()->json([
-                'message' => 'Payments are not set up yet. Add PAYSTACK_SECRET_KEY and PAYSTACK_PUBLIC_KEY to the backend .env to enable real checkout.',
+                'message' => __('Payments are not set up yet. Add PAYSTACK_SECRET_KEY and PAYSTACK_PUBLIC_KEY to the backend .env to enable real checkout.'),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
@@ -64,7 +64,7 @@ class BillingController extends Controller
         }
 
         if (! $payment) {
-            return response()->json(['message' => 'Payment could not be verified.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return response()->json(['message' => __('Payment could not be verified.')], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         $user = $request->user()->fresh()->load('currentOrganization');
@@ -101,7 +101,7 @@ class BillingController extends Controller
 
         if (! $this->stripe->isConfigured()) {
             return response()->json([
-                'message' => 'Card payments are not set up yet. Add STRIPE_SECRET_KEY and STRIPE_PUBLISHABLE_KEY to the backend .env to enable Stripe checkout.',
+                'message' => __('Card payments are not set up yet. Add STRIPE_SECRET_KEY and STRIPE_PUBLISHABLE_KEY to the backend .env to enable Stripe checkout.'),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
@@ -135,7 +135,7 @@ class BillingController extends Controller
         }
 
         if (! $payment) {
-            return response()->json(['message' => 'Payment could not be verified.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return response()->json(['message' => __('Payment could not be verified.')], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         $user = $request->user()->fresh()->load('currentOrganization');
@@ -154,7 +154,7 @@ class BillingController extends Controller
 
         if (! $this->flutterwave->isConfigured()) {
             return response()->json([
-                'message' => 'Payments are not set up yet. Add FLUTTERWAVE_SECRET_KEY and FLUTTERWAVE_PUBLIC_KEY to the backend .env to enable Flutterwave checkout.',
+                'message' => __('Payments are not set up yet. Add FLUTTERWAVE_SECRET_KEY and FLUTTERWAVE_PUBLIC_KEY to the backend .env to enable Flutterwave checkout.'),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
@@ -186,7 +186,7 @@ class BillingController extends Controller
         }
 
         if (! $payment) {
-            return response()->json(['message' => 'Payment could not be verified.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return response()->json(['message' => __('Payment could not be verified.')], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         $user = $request->user()->fresh()->load('currentOrganization');

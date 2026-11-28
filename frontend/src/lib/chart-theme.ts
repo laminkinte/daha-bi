@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { translate } from "@/i18n/ui";
 
 // surface/gridline/baseline mirror --surface-1/--gridline/--baseline in globals.css, so the 2px
 // separators between slices and bars read as true gaps on the card, not off-white seams.
@@ -94,7 +95,7 @@ export function foldToOther(
   const otherTotal = rest.reduce((sum, p) => sum + p.value, 0);
 
   return {
-    labels: [...kept.map((p) => p.label), "Other"],
+    labels: [...kept.map((p) => p.label), translate("Other")],
     values: [...kept.map((p) => p.value), otherTotal],
   };
 }

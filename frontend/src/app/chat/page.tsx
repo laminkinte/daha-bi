@@ -16,6 +16,7 @@ import {
   type Dashboard,
   type Dataset,
 } from "@/lib/api";
+import { useT, translate, uiLocaleTag } from "@/i18n/ui";
 
 function previewChart(
   datasetId: number,
@@ -87,22 +88,23 @@ const SUGGESTED_PROMPTS = [
 function relativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const mins = Math.round(diffMs / 60_000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return translate("just now");
+  if (mins < 60) return translate("{mins}m ago", { mins: mins });
   const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.round(hours / 24)}d ago`;
+  if (hours < 24) return translate("{hours}h ago", { hours: hours });
+  return translate("{v0}d ago", { v0: Math.round(hours / 24) });
 }
 
 /** Tells the user what's happening while the AI works, instead of bare dots. */
 function ThinkingLabel() {
+  const tr = useT();
   const [secs, setSecs] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setSecs((n) => n + 1), 1000);
     return () => clearInterval(t);
   }, []);
-  const text = secs < 2 ? "Reading your data…" : secs < 6 ? "Working out the answer…" : secs < 15 ? "Building the chart and analysis…" : "Almost there…";
-  return <span className="ml-2 text-xs text-[var(--text-muted)]">{text}</span>;
+  const text = secs < 2 ? tr("Reading your data…") : secs < 6 ? tr("Working out the answer…") : secs < 15 ? tr("Building the chart and analysis…") : tr("Almost there…");
+  return <span className="ms-2 text-xs text-[var(--text-muted)]">{text}</span>;
 }
 
 function SaveChartButton({
@@ -114,6 +116,7 @@ function SaveChartButton({
   dashboards: Dashboard[];
   onSaved: (chartId: number, dashboardName: string) => void;
 }) {
+  const tr = useT();
   const [dashboardId, setDashboardId] = useState<number | "">("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -129,14 +132,14 @@ function SaveChartButton({
       const dashboard = dashboards.find((d) => d.id === dashboardId);
       onSaved(chart.id, dashboard?.name ?? "dashboard");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to save chart.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to save chart."));
     } finally {
       setSaving(false);
     }
   }
 
   if (dashboards.length === 0) {
-    return <p className="mt-2 text-[var(--text-muted)]">Create a dashboard first to save this chart.</p>;
+    return <p className="mt-2 text-[var(--text-muted)]">{tr("Create a dashboard first to save this chart.")}</p>;
   }
 
   return (
@@ -147,7 +150,7 @@ function SaveChartButton({
           onChange={(e) => setDashboardId(Number(e.target.value))}
           className="rounded border border-[var(--border)] bg-transparent px-1.5 py-1 text-xs"
         >
-          <option value="">Choose dashboard...</option>
+          <option value="">{tr("Choose dashboard...")}</option>
           {dashboards.map((d) => (
             <option key={d.id} value={d.id}>
               {d.name}
@@ -159,7 +162,7 @@ function SaveChartButton({
           disabled={!dashboardId || saving}
           className="rounded bg-[var(--accent)] px-2.5 py-1 text-xs font-medium text-white disabled:opacity-60"
         >
-          {saving ? "Saving..." : "Save chart"}
+          {saving ? tr("Saving...") : tr("Save chart")}
         </button>
       </div>
       {error && <p className="mt-1 text-[var(--status-critical)]">{error}</p>}
@@ -174,6 +177,7 @@ function SaveDashboardButton({
   message: AiMessage;
   onSaved: (dashboardId: number, name: string) => void;
 }) {
+  const tr = useT();
   const [name, setName] = useState(message.dashboard_title ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -187,7 +191,7 @@ function SaveDashboardButton({
       });
       onSaved(dashboard.id, dashboard.name);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to create dashboard.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to create dashboard."));
     } finally {
       setSaving(false);
     }
@@ -199,7 +203,7 @@ function SaveDashboardButton({
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Dashboard name"
+          placeholder={tr("Dashboard name")}
           className="min-w-0 flex-1 rounded border border-[var(--border)] bg-transparent px-2 py-1 text-xs"
         />
         <button
@@ -207,7 +211,7 @@ function SaveDashboardButton({
           disabled={saving}
           className="shrink-0 rounded bg-[var(--accent)] px-2.5 py-1 text-xs font-medium text-white disabled:opacity-60"
         >
-          {saving ? "Creating..." : "Create dashboard"}
+          {saving ? tr("Creating...") : tr("Create dashboard")}
         </button>
       </div>
       {error && <p className="mt-1 text-[var(--status-critical)]">{error}</p>}
@@ -216,6 +220,7 @@ function SaveDashboardButton({
 }
 
 function ChatContent() {
+  const tr = useT();
   const [conversations, setConversations] = useState<AiConversation[] | null>(null);
   // null = still loading. Starting as [] made the page claim "No datasets yet" while the
   // request was in flight (and forever, if it failed — the error was swallowed).
@@ -273,7 +278,7 @@ function ChatContent() {
     api
       .get<AiConversation>(`/ai-conversations/${id}`)
       .then((c) => setActive(c))
-      .catch(() => setError("Failed to load conversation."))
+      .catch(() => setError(tr("Failed to load conversation.")))
       .finally(() => setLoadingActive(false));
   }
 
@@ -302,10 +307,10 @@ function ChatContent() {
       const list = await api.get<Dataset[]>("/datasets");
       setDatasets(list);
       setDraftDatasetId(res.dataset.id);
-      setDraft("Which country brings in the most revenue?");
+      setDraft(tr("Which country brings in the most revenue?"));
       setTimeout(() => draftRef.current?.focus(), 50);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't add the sample data.");
+      setError(err instanceof ApiError ? err.message : tr("Couldn't add the sample data."));
     } finally {
       setSampleBusy(false);
     }
@@ -330,7 +335,7 @@ function ChatContent() {
       setDraft("");
       if (firstQuestion?.trim()) void sendMessage(firstQuestion, conv.id);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to start conversation.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to start conversation."));
     } finally {
       setNewDatasetId("");
     }
@@ -338,7 +343,7 @@ function ChatContent() {
 
   async function onDeleteConversation(id: number, e?: MouseEvent) {
     e?.stopPropagation();
-    if (!confirm("Delete this conversation?")) return;
+    if (!confirm(tr("Delete this conversation?"))) return;
     try {
       await api.del(`/ai-conversations/${id}`);
       setConversations((prev) => (prev ?? []).filter((c) => c.id !== id));
@@ -347,7 +352,7 @@ function ChatContent() {
         setActive(null);
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to delete conversation.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to delete conversation."));
     }
   }
 
@@ -404,7 +409,7 @@ function ChatContent() {
       );
       loadConversations();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "AI request failed.");
+      setError(err instanceof ApiError ? err.message : tr("AI request failed."));
       // The server discards an unanswered question, so drop the optimistic bubble and give the
       // text back to the input for a one-click retry.
       setActive((prev) => (prev ? { ...prev, messages: (prev.messages ?? []).filter((m) => m.id !== tempId) } : prev));
@@ -430,23 +435,23 @@ function ChatContent() {
 
 
   const conversationList = (
-    <div className="flex h-full w-full flex-col border-[var(--border)] bg-[var(--surface-1)] md:w-72 md:shrink-0 md:border-r">
+    <div className="flex h-full w-full flex-col border-[var(--border)] bg-[var(--surface-1)] md:w-72 md:shrink-0 md:border-e">
       <div className="flex items-center justify-between gap-2 px-4 pb-3 pt-4">
         <div className="flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent)]">
             <SparkleIcon />
           </span>
-          <h1 className="text-[15px] font-semibold tracking-tight text-[var(--text-primary)]">AI Chat</h1>
+          <h1 className="text-[15px] font-semibold tracking-tight text-[var(--text-primary)]">{tr("AI Chat")}</h1>
         </div>
         <button
           onClick={startNewChat}
           className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-white shadow-sm"
         >
           <PlusIcon />
-          New chat
+          {tr("New chat")}
         </button>
       </div>
-      <div className="px-4 pb-2 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">Recent</div>
+      <div className="px-4 pb-2 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{tr("Recent")}</div>
       <div className="flex-1 overflow-y-auto px-2 pb-3">
         {conversations === null && (
           <div className="flex flex-col gap-2 px-2">
@@ -457,15 +462,15 @@ function ChatContent() {
         {conversations?.map((c) => (
           <div
             key={c.id}
-            className={`mb-0.5 flex items-center gap-1 rounded-lg pr-1 transition-colors ${
+            className={`mb-0.5 flex items-center gap-1 rounded-lg pe-1 transition-colors ${
               activeId === c.id ? "bg-[var(--accent-soft)]" : "hover:bg-[var(--surface-2)]"
             }`}
           >
-            <button onClick={() => openConversation(c.id)} className="min-w-0 flex-1 px-2.5 py-2 text-left text-sm">
+            <button onClick={() => openConversation(c.id)} className="min-w-0 flex-1 px-2.5 py-2 text-start text-sm">
               <span
                 className={`block truncate font-medium ${activeId === c.id ? "text-[var(--accent)]" : "text-[var(--text-primary)]"}`}
               >
-                {c.title ?? "New chat"}
+                {tr(c.title) ?? tr("New chat")}
               </span>
               <span className="block truncate text-xs text-[var(--text-muted)]">
                 {c.dataset?.name} · {relativeTime(c.updated_at)}
@@ -474,8 +479,8 @@ function ChatContent() {
             <button
               onClick={(e) => onDeleteConversation(c.id, e)}
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--status-critical)]/10 hover:text-[var(--status-critical)]"
-              title="Delete conversation"
-              aria-label="Delete conversation"
+              title={tr("Delete conversation")}
+              aria-label={tr("Delete conversation")}
             >
               <TrashIcon />
             </button>
@@ -483,7 +488,7 @@ function ChatContent() {
         ))}
         {conversations?.length === 0 && (
           <p className="px-2.5 py-2 text-xs text-[var(--text-muted)]">
-            No conversations yet. Start one to ask questions about your data in plain language.
+            {tr("No conversations yet. Start one to ask questions about your data in plain language.")}
           </p>
         )}
       </div>
@@ -511,16 +516,16 @@ function ChatContent() {
           >
             <SparkleIcon size={26} />
           </div>
-          <h2 className="mt-4 text-[22px] font-semibold tracking-tight text-[var(--text-primary)]">Ask your data anything</h2>
+          <h2 className="mt-4 text-[22px] font-semibold tracking-tight text-[var(--text-primary)]">{tr("Ask your data anything")}</h2>
           <p className="mx-auto mt-1.5 max-w-md text-sm text-[var(--text-secondary)]">
-            Daha AI reads every row of the dataset, answers with exact numbers and builds charts you can save to a dashboard.
+            {tr("Daha AI reads every row of the dataset, answers with exact numbers and builds charts you can save to a dashboard.")}
           </p>
         </div>
 
         {datasets === null && !datasetsError && <div className="mt-6 h-[150px] animate-pulse rounded-2xl bg-[var(--surface-2)]" />}
         {datasetsError && (
           <div className="mt-6 rounded-xl border border-[var(--status-critical)]/30 bg-[var(--status-critical)]/5 p-4 text-sm">
-            <span className="text-[var(--status-critical)]">Couldn&apos;t load your datasets.</span>{" "}
+            <span className="text-[var(--status-critical)]">{tr("Couldn't load your datasets.")}</span>{" "}
             <button
               onClick={() => {
                 setDatasetsError(false);
@@ -528,7 +533,7 @@ function ChatContent() {
               }}
               className="font-medium text-[var(--accent)] hover:underline"
             >
-              Try again
+              {tr("Try again")}
             </button>
           </div>
         )}
@@ -536,8 +541,8 @@ function ChatContent() {
           <div key={`empty-${pulse}`} ref={startRef} className={`mt-6 rounded-2xl ${pulse ? "animate-[popIn_260ms_ease-out] ring-2 ring-[var(--accent)]/40" : ""}`}>
             <EmptyState
               icon={<SparkleIcon />}
-              title="Add some data to start chatting"
-              description="Daha AI answers questions about your own data. Upload a spreadsheet or connect a database — or try it right now with a realistic sample sales dataset."
+              title={tr("Add some data to start chatting")}
+              description={tr("Daha AI answers questions about your own data. Upload a spreadsheet or connect a database — or try it right now with a realistic sample sales dataset.")}
               action={
                 <div className="flex flex-wrap justify-center gap-2">
                   <button
@@ -545,13 +550,13 @@ function ChatContent() {
                     disabled={sampleBusy}
                     className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
                   >
-                    {sampleBusy ? "Adding sample data…" : "Try with sample data"}
+                    {sampleBusy ? tr("Adding sample data…") : tr("Try with sample data")}
                   </button>
                   <Link
                     href="/data-sources"
                     className="rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-4 py-2 text-sm font-medium text-[var(--text-primary)]"
                   >
-                    Upload your own data
+                    {tr("Upload your own data")}
                   </Link>
                 </div>
               }
@@ -581,22 +586,22 @@ function ChatContent() {
                 }}
                 rows={3}
                 autoFocus
-                placeholder={`Ask about ${draftDataset.name}… e.g. "Which product earns the most?"`}
+                placeholder={tr("Ask about {name}… e.g. \"Which product earns the most?\"", { name: draftDataset.name })}
                 className="w-full resize-none bg-transparent px-1 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus-visible:outline-none"
                 disabled={newDatasetId !== ""}
               />
               <div className="mt-2 flex items-center justify-between gap-2">
                 <label className="flex min-w-0 flex-1 items-center gap-2 text-xs text-[var(--text-muted)]">
-                  <span className="shrink-0">Dataset</span>
+                  <span className="shrink-0">{tr("Dataset")}</span>
                   <select
                     value={draftDataset.id}
                     onChange={(e) => setDraftDatasetId(Number(e.target.value))}
                     className="w-full min-w-0 max-w-[16rem] truncate rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1.5 text-xs font-medium text-[var(--text-primary)]"
-                    aria-label="Dataset to chat about"
+                    aria-label={tr("Dataset to chat about")}
                   >
                     {datasets?.map((d) => (
                       <option key={d.id} value={d.id}>
-                        {d.name} ({d.row_count.toLocaleString()} rows)
+                        {d.name} ({d.row_count.toLocaleString(uiLocaleTag())} {tr("rows)")}
                       </option>
                     ))}
                   </select>
@@ -606,16 +611,16 @@ function ChatContent() {
                   disabled={!draft.trim() || newDatasetId !== ""}
                   className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3.5 text-sm font-medium text-white disabled:opacity-40"
                 >
-                  {newDatasetId !== "" ? "Starting…" : "Ask"}
+                  {newDatasetId !== "" ? tr("Starting…") : tr("Ask")}
                   <SendIcon />
                 </button>
               </div>
             </form>
 
             <div className="mt-4">
-              <p className="mb-2 text-xs font-medium text-[var(--text-muted)]">Or start with one of these</p>
+              <p className="mb-2 text-xs font-medium text-[var(--text-muted)]">{tr("Or start with one of these")}</p>
               <div className="flex flex-wrap gap-2">
-                {SUGGESTED_PROMPTS.map((p) => (
+                {SUGGESTED_PROMPTS.map((s) => tr(s)).map((p) => (
                   <button
                     key={p}
                     onClick={() => createConversation(draftDataset.id, p)}
@@ -649,38 +654,38 @@ function ChatContent() {
         {!showConversation ? (
           <>
             <div className="flex items-center gap-2 border-b border-[var(--border)] px-4 py-3 md:hidden">
-              <button onClick={backToList} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]" aria-label="Back to chats">
+              <button onClick={backToList} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]" aria-label={tr("Back to chats")}>
                 <BackIcon />
               </button>
-              <span className="font-medium text-[var(--text-primary)]">New chat</span>
+              <span className="font-medium text-[var(--text-primary)]">{tr("New chat")}</span>
             </div>
             {startPanel}
           </>
         ) : (
           <>
             <div className="flex items-center gap-2 border-b border-[var(--border)] bg-[var(--surface-1)] px-4 py-3 md:px-6">
-              <button onClick={backToList} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] md:hidden" aria-label="Back to chats">
+              <button onClick={backToList} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] md:hidden" aria-label={tr("Back to chats")}>
                 <BackIcon />
               </button>
               <div className="min-w-0">
-                <h1 className="truncate font-medium text-[var(--text-primary)]">{active?.title ?? "New chat"}</h1>
-                {active?.dataset && <p className="truncate text-xs text-[var(--text-muted)]">Chatting about {active.dataset.name}</p>}
+                <h1 className="truncate font-medium text-[var(--text-primary)]">{tr(active?.title) ?? tr("New chat")}</h1>
+                {active?.dataset && <p className="truncate text-xs text-[var(--text-muted)]">{tr("Chatting about")} {active.dataset.name}</p>}
               </div>
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6">
               <div className="mx-auto max-w-3xl">
               {loadingActive && (
-                <div className="flex flex-col gap-3" aria-label="Loading conversation">
-                  <div className="ml-auto h-10 w-1/3 animate-pulse rounded-2xl bg-[var(--surface-2)]" />
+                <div className="flex flex-col gap-3" aria-label={tr("Loading conversation")}>
+                  <div className="ms-auto h-10 w-1/3 animate-pulse rounded-2xl bg-[var(--surface-2)]" />
                   <div className="h-20 w-2/3 animate-pulse rounded-2xl bg-[var(--surface-2)]" />
                 </div>
               )}
               {!loadingActive && active?.messages?.length === 0 && (
                 <div className="mb-4">
-                  <p className="mb-2 text-xs font-medium text-[var(--text-secondary)]">Try one of these to get started:</p>
+                  <p className="mb-2 text-xs font-medium text-[var(--text-secondary)]">{tr("Try one of these to get started:")}</p>
                   <div className="flex flex-wrap gap-2">
-                    {SUGGESTED_PROMPTS.map((p) => (
+                    {SUGGESTED_PROMPTS.map((s) => tr(s)).map((p) => (
                       <button
                         key={p}
                         onClick={() => sendMessage(p)}
@@ -724,7 +729,7 @@ function ChatContent() {
                           <div className="mt-3 border-t border-[var(--border)] pt-3">
                             {m.dashboard_id ? (
                               <p className="text-xs text-[var(--status-good)]">
-                                ✓ Created
+                                {tr("✓ Created")}
                                 {savedDashboardNames[m.id] && (
                                   <>
                                     :{" "}
@@ -737,7 +742,7 @@ function ChatContent() {
                             ) : (
                               <>
                                 <p className="mb-1.5 text-xs font-medium text-[var(--text-primary)]">
-                                  Ready to create this dashboard?
+                                  {tr("Ready to create this dashboard?")}
                                 </p>
                                 <SaveDashboardButton
                                   message={m}
@@ -765,7 +770,7 @@ function ChatContent() {
                             </div>
                           ) : (
                             <p className="mt-2 text-xs text-[var(--text-muted)]">
-                              {m.chart_type} chart
+                              {m.chart_type} {tr("chart")}
                               {m.chart_config?.x_field ? ` · ${m.chart_config.x_field}` : ""}
                               {m.chart_config?.y_field ? ` / ${m.chart_config.y_field}` : ""}
                             </p>
@@ -781,7 +786,7 @@ function ChatContent() {
                           <div className="mt-3">
                             {m.chart_id ? (
                               <p className="text-xs text-[var(--status-good)]">
-                                ✓ Saved{savedDashboardNames[m.id] ? ` to ${savedDashboardNames[m.id]}` : ""}
+                                {tr("✓ Saved")}{savedDashboardNames[m.id] ? tr(" to {v0}", { v0: savedDashboardNames[m.id] }) : ""}
                               </p>
                             ) : (
                               <SaveChartButton
@@ -810,8 +815,8 @@ function ChatContent() {
                       <div
                         className={`max-w-[85%] px-4 py-2.5 text-sm leading-relaxed ${
                           m.role === "user"
-                            ? "rounded-2xl rounded-br-md bg-[var(--accent)] text-white"
-                            : "rounded-2xl rounded-bl-md border border-[var(--border)] bg-[var(--surface-1)] text-[var(--text-primary)] shadow-sm"
+                            ? "rounded-2xl rounded-ee-md bg-[var(--accent)] text-white"
+                            : "rounded-2xl rounded-es-md border border-[var(--border)] bg-[var(--surface-1)] text-[var(--text-primary)] shadow-sm"
                         }`}
                       >
                         {m.role === "user" ? <p className="whitespace-pre-wrap">{m.content}</p> : <Markdown text={m.content} />}
@@ -820,7 +825,7 @@ function ChatContent() {
                   );
                 })}
                 {!sending && lastFollowUps.length > 0 && (
-                  <div className="flex flex-wrap gap-2 pl-9" aria-label="Suggested follow-up questions">
+                  <div className="flex flex-wrap gap-2 ps-9" aria-label={tr("Suggested follow-up questions")}>
                     {lastFollowUps.map((q) => (
                       <button
                         key={q}
@@ -842,9 +847,9 @@ function ChatContent() {
                       <SparkleIcon size={13} />
                     </span>
                     <div
-                      className="flex items-center gap-1 rounded-2xl rounded-bl-md border border-[var(--border)] bg-[var(--surface-1)] px-4 py-3"
+                      className="flex items-center gap-1 rounded-2xl rounded-es-md border border-[var(--border)] bg-[var(--surface-1)] px-4 py-3"
                       role="status"
-                      aria-label="Daha AI is thinking"
+                      aria-label={tr("Daha AI is thinking")}
                     >
                       {[0, 150, 300].map((delay) => (
                         <span
@@ -865,11 +870,11 @@ function ChatContent() {
             {error && <p className="px-4 pb-2 text-sm text-[var(--status-critical)] md:px-6">{error}</p>}
 
             <form onSubmit={onSend} className="border-t border-[var(--border)] bg-[var(--surface-1)] p-3 md:px-6 md:py-4">
-              <div className="mx-auto flex max-w-3xl items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--page-plane)] p-1.5 pl-4 shadow-sm focus-within:border-[var(--accent)]">
+              <div className="mx-auto flex max-w-3xl items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--page-plane)] p-1.5 ps-4 shadow-sm focus-within:border-[var(--accent)]">
                 <input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask a question or ask for a chart…"
+                  placeholder={tr("Ask a question or ask for a chart…")}
                   className="min-w-0 flex-1 bg-transparent py-1.5 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus-visible:outline-none"
                   disabled={sending}
                 />
@@ -877,7 +882,7 @@ function ChatContent() {
                   type="submit"
                   disabled={!input.trim() || sending}
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)] text-white disabled:opacity-40"
-                  aria-label="Send"
+                  aria-label={tr("Send")}
                 >
                   <SendIcon />
                 </button>

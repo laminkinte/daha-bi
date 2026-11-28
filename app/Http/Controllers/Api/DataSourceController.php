@@ -107,7 +107,7 @@ class DataSourceController extends Controller
             $dataSource->update(['status' => 'failed', 'error_message' => $e->getMessage()]);
 
             return response()->json([
-                'message' => 'Failed to fetch or import from the API.',
+                'message' => __('Failed to fetch or import from the API.'),
                 'error' => $e->getMessage(),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
@@ -146,7 +146,7 @@ class DataSourceController extends Controller
             $dataSource->update(['status' => 'failed', 'error_message' => $e->getMessage()]);
 
             return response()->json([
-                'message' => 'Failed to import file.',
+                'message' => __('Failed to import file.'),
                 'error' => $e->getMessage(),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
@@ -205,7 +205,7 @@ class DataSourceController extends Controller
             $dataSource->update(['status' => 'failed', 'error_message' => $e->getMessage()]);
 
             return response()->json([
-                'message' => 'Failed to connect or import from '.ucfirst($driver).'.',
+                'message' => __('Failed to connect or import from :source.', ['source' => ucfirst($driver)]),
                 'error' => $e->getMessage(),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
@@ -229,7 +229,7 @@ class DataSourceController extends Controller
 
         if ($dataSource->type === 'csv') {
             return response()->json([
-                'message' => 'Failed to resync data source.',
+                'message' => __('Failed to resync data source.'),
                 'error' => 'Re-uploading required to resync a CSV data source.',
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
@@ -257,7 +257,7 @@ class DataSourceController extends Controller
             $dataSource->update(['status' => 'failed', 'error_message' => $e->getMessage()]);
 
             return response()->json([
-                'message' => 'Failed to resync data source.',
+                'message' => __('Failed to resync data source.'),
                 'error' => $e->getMessage(),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
@@ -331,7 +331,7 @@ class DataSourceController extends Controller
             $dataSource->update(['status' => 'failed', 'error_message' => $e->getMessage()]);
 
             return response()->json([
-                'message' => 'Failed to connect or import from '.ucfirst($driver).'.',
+                'message' => __('Failed to connect or import from :source.', ['source' => ucfirst($driver)]),
                 'error' => $e->getMessage(),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
@@ -370,7 +370,7 @@ class DataSourceController extends Controller
             $dataSource->update(['status' => 'failed', 'error_message' => $e->getMessage()]);
 
             return response()->json([
-                'message' => 'Failed to fetch or import from the API.',
+                'message' => __('Failed to fetch or import from the API.'),
                 'error' => $e->getMessage(),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
@@ -385,13 +385,13 @@ class DataSourceController extends Controller
     {
         $this->authorize('view', $dataSource);
 
-        abort_unless(in_array($dataSource->type, self::DATABASE_DRIVERS, true), Response::HTTP_UNPROCESSABLE_ENTITY, 'Only database connections have tables to browse.');
+        abort_unless(in_array($dataSource->type, self::DATABASE_DRIVERS, true), Response::HTTP_UNPROCESSABLE_ENTITY, __('Only database connections have tables to browse.'));
 
         try {
             return $this->ingestion->listSchema($dataSource);
         } catch (Throwable $e) {
             return response()->json([
-                'message' => 'Failed to read database schema.',
+                'message' => __('Failed to read database schema.'),
                 'error' => $e->getMessage(),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
@@ -401,13 +401,13 @@ class DataSourceController extends Controller
     {
         $this->authorize('view', $dataSource);
 
-        abort_unless(in_array($dataSource->type, self::DATABASE_DRIVERS, true), Response::HTTP_UNPROCESSABLE_ENTITY, 'Only database connections have tables to preview.');
+        abort_unless(in_array($dataSource->type, self::DATABASE_DRIVERS, true), Response::HTTP_UNPROCESSABLE_ENTITY, __('Only database connections have tables to preview.'));
 
         try {
             return $this->ingestion->previewTable($dataSource, $table, (int) $request->input('limit', 25));
         } catch (Throwable $e) {
             return response()->json([
-                'message' => 'Failed to preview table.',
+                'message' => __('Failed to preview table.'),
                 'error' => $e->getMessage(),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }

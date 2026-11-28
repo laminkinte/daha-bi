@@ -122,7 +122,7 @@ export default function MentionInput({
       {query && matches.length > 0 && (
         <ul
           role="listbox"
-          className="absolute bottom-full left-0 z-10 mb-1 w-full max-w-xs overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-1)] py-1 shadow-[var(--shadow-pop)]"
+          className="absolute bottom-full start-0 z-10 mb-1 w-full max-w-xs overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-1)] py-1 shadow-[var(--shadow-pop)]"
         >
           {matches.map((p, i) => (
             <li key={p.id}>
@@ -134,7 +134,7 @@ export default function MentionInput({
                   e.preventDefault();
                   pick(p);
                 }}
-                className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm ${i === active ? "bg-[var(--accent-soft)]" : ""}`}
+                className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-start text-sm ${i === active ? "bg-[var(--accent-soft)]" : ""}`}
               >
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--surface-2)] text-[10px] font-semibold text-[var(--text-secondary)]">
                   {initials(p.name)}

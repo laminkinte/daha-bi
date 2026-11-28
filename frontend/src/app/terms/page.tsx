@@ -1,5 +1,8 @@
+"use client";
+
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
+import { useT, uiLocaleTag } from "@/i18n/ui";
 
 const SECTIONS = [
   {
@@ -37,27 +40,28 @@ const SECTIONS = [
 ];
 
 export default function TermsPage() {
+  const tr = useT();
   return (
     <div className="min-h-screen bg-[var(--page-plane)]">
       <PublicHeader />
 
       <section className="mx-auto max-w-2xl px-6 py-16">
-        <h1 className="text-3xl font-semibold text-[var(--text-primary)]">Terms of Service</h1>
-        <p className="mt-2 text-sm text-[var(--text-muted)]">Last updated {new Date().toLocaleDateString()}.</p>
+        <h1 className="text-3xl font-semibold text-[var(--text-primary)]">{tr("Terms of Service")}</h1>
+        <p className="mt-2 text-sm text-[var(--text-muted)]">{tr("Last updated")} {new Date().toLocaleDateString(uiLocaleTag())}.</p>
 
         <div className="mt-10 flex flex-col gap-8">
           {SECTIONS.map((s) => (
             <div key={s.title}>
-              <h2 className="font-medium text-[var(--text-primary)]">{s.title}</h2>
-              <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">{s.body}</p>
+              <h2 className="font-medium text-[var(--text-primary)]">{tr(s.title)}</h2>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">{tr(s.body)}</p>
             </div>
           ))}
         </div>
 
         <p className="mt-10 text-sm text-[var(--text-muted)]">
-          Questions about these terms? Reach us at{" "}
+          {tr("Questions about these terms? Reach us at")}{" "}
           <a href="mailto:hello@daha.bi" className="text-[var(--accent)]">
-            hello@daha.bi
+            {tr("hello@daha.bi")}
           </a>
           .
         </p>

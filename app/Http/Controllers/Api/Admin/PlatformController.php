@@ -93,8 +93,8 @@ class PlatformController extends Controller
 
     public function suspend(Request $request, User $user)
     {
-        abort_if($user->id === $request->user()->id, Response::HTTP_UNPROCESSABLE_ENTITY, "You can't suspend yourself.");
-        abort_if($user->is_admin, Response::HTTP_UNPROCESSABLE_ENTITY, 'Revoke admin rights before suspending an administrator.');
+        abort_if($user->id === $request->user()->id, Response::HTTP_UNPROCESSABLE_ENTITY, __("You can't suspend yourself."));
+        abort_if($user->is_admin, Response::HTTP_UNPROCESSABLE_ENTITY, __('Revoke admin rights before suspending an administrator.'));
         $validated = $request->validate(['reason' => ['nullable', 'string', 'max:255']]);
 
         $user->forceFill(['suspended_at' => now(), 'suspended_reason' => $validated['reason'] ?? null])->save();
@@ -128,7 +128,7 @@ class PlatformController extends Controller
         abort_unless($status === Password::RESET_LINK_SENT, Response::HTTP_UNPROCESSABLE_ENTITY, __($status));
         AdminAction::record($request->user(), 'user.password_reset_sent', "Sent a password reset link to {$user->email}", $user);
 
-        return response()->json(['message' => "Password reset link sent to {$user->email}."]);
+        return response()->json(['message' => __('Password reset link sent to :email.', ['email' => $user->email])]);
     }
 
     public function organizations(Request $request)

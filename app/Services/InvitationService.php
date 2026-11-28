@@ -84,7 +84,7 @@ class InvitationService
     protected function send(Invitation $invitation, string $token): bool
     {
         try {
-            Mail::to($invitation->email)->send(new InvitationMail($invitation->loadMissing('organization', 'invitedBy', 'dashboard'), self::url($token)));
+            Mail::to($invitation->email)->locale(app()->getLocale())->send(new InvitationMail($invitation->loadMissing('organization', 'invitedBy', 'dashboard'), self::url($token)));
 
             return true;
         } catch (Throwable $e) {
@@ -102,13 +102,13 @@ class InvitationService
     public function accept(Invitation $invitation, User $user): void
     {
         if ($invitation->accepted_at) {
-            throw new HttpException(422, 'This invitation has already been used.');
+            throw new HttpException(422, __('This invitation has already been used.'));
         }
         if ($invitation->isExpired()) {
-            throw new HttpException(422, 'This invitation has expired. Ask for a new one.');
+            throw new HttpException(422, __('This invitation has expired. Ask for a new one.'));
         }
         if (Str::lower($user->email) !== Str::lower($invitation->email)) {
-            throw new HttpException(403, "This invitation was sent to {$invitation->email}. Sign in with that email to accept it.");
+            throw new HttpException(403, __('This invitation was sent to :email. Sign in with that email to accept it.', ['email' => $invitation->email]));
         }
 
         DB::transaction(function () use ($invitation, $user) {

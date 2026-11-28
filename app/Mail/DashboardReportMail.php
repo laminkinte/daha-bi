@@ -22,7 +22,7 @@ class DashboardReportMail extends Mailable
 
     public function build(): self
     {
-        return $this->sentBy($this->sender)->subject("Dashboard report: {$this->dashboard->name}")
+        return $this->sentBy($this->sender)->subject(__('Dashboard report: :name', ['name' => $this->dashboard->name]))
             ->view('mail.dashboard-report', [
                 'dashboard' => $this->dashboard,
                 'chartSummaries' => $this->chartSummaries,

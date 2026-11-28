@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useT, translate, uiLocaleTag } from "@/i18n/ui";
 
 const I = {
   overview: <path d="M3 13h8V3H3v10Zm0 8h8v-6H3v6Zm10 0h8V11h-8v10Zm0-18v6h8V3h-8Z" />,
@@ -38,21 +39,22 @@ function Icon({ name }: { name: keyof typeof I }) {
  * sections, the signed-in admin, and a way back to the product. Collapses to a top bar on phones.
  */
 export default function AdminShell({ children }: { children: ReactNode }) {
+  const tr = useT();
   const { user, loading, logout } = useAuth();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
   if (loading) {
-    return <div className="flex min-h-screen items-center justify-center bg-[var(--page-plane)] text-sm text-[var(--text-muted)]">Loading…</div>;
+    return <div className="flex min-h-screen items-center justify-center bg-[var(--page-plane)] text-sm text-[var(--text-muted)]">{tr("Loading…")}</div>;
   }
 
   if (!user?.is_admin) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-2 bg-[var(--page-plane)] px-6 text-center">
-        <h1 className="text-xl font-semibold text-[var(--text-primary)]">Not authorized</h1>
-        <p className="text-sm text-[var(--text-muted)]">This area is only available to platform administrators.</p>
+        <h1 className="text-xl font-semibold text-[var(--text-primary)]">{tr("Not authorized")}</h1>
+        <p className="text-sm text-[var(--text-muted)]">{tr("This area is only available to platform administrators.")}</p>
         <Link href="/dashboards" className="mt-2 text-sm font-medium text-[var(--accent)]">
-          Back to Daha BI
+          {tr("Back to Daha BI")}
         </Link>
       </div>
     );
@@ -71,14 +73,14 @@ export default function AdminShell({ children }: { children: ReactNode }) {
         </span>
         <span className="leading-tight">
           <span className="block text-[14px] font-semibold tracking-tight text-white">Daha BI</span>
-          <span className="block text-[11px] font-medium uppercase tracking-[0.12em] text-emerald-400/90">Admin console</span>
+          <span className="block text-[11px] font-medium uppercase tracking-[0.12em] text-emerald-400/90">{tr("Admin console")}</span>
         </span>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3">
         {groups.map((g) => (
           <div key={g} className="mb-5">
-            <div className="px-2.5 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">{g}</div>
+            <div className="px-2.5 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">{tr(g)}</div>
             {NAV.filter((n) => n.group === g).map((n) => (
               <Link
                 key={n.href}
@@ -91,7 +93,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
                 <span className={active(n.href) ? "text-emerald-400" : ""}>
                   <Icon name={n.icon} />
                 </span>
-                {n.label}
+                {tr(n.label)}
               </Link>
             ))}
           </div>
@@ -115,10 +117,10 @@ export default function AdminShell({ children }: { children: ReactNode }) {
         </div>
         <div className="mt-1 grid grid-cols-2 gap-1">
           <Link href="/dashboards" className="rounded-md px-2 py-1.5 text-center text-xs text-zinc-400 hover:bg-white/5 hover:text-zinc-100">
-            Open product
+            {tr("Open product")}
           </Link>
           <button onClick={() => logout()} className="rounded-md px-2 py-1.5 text-xs text-zinc-400 hover:bg-white/5 hover:text-zinc-100">
-            Log out
+            {tr("Log out")}
           </button>
         </div>
       </div>
@@ -131,9 +133,9 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
       <div className="fixed inset-x-0 top-0 z-30 flex items-center justify-between bg-[#0d1416] px-4 py-3 lg:hidden">
         <span className="text-sm font-semibold text-white">
-          Daha BI <span className="text-emerald-400">Admin</span>
+          Daha BI <span className="text-emerald-400">{tr("Admin")}</span>
         </span>
-        <button onClick={() => setOpen(true)} className="rounded-md p-1.5 text-zinc-300" aria-label="Open admin menu">
+        <button onClick={() => setOpen(true)} className="rounded-md p-1.5 text-zinc-300" aria-label={tr("Open admin menu")}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M4 6h16M4 12h16M4 18h16" />
           </svg>
@@ -142,7 +144,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 w-64 bg-[#0d1416]">{rail}</aside>
+          <aside className="absolute inset-y-0 start-0 w-64 bg-[#0d1416]">{rail}</aside>
         </div>
       )}
 
@@ -177,10 +179,10 @@ export function StatusDot({ status }: { status: "ok" | "warn" | "fail" }) {
 export function timeAgo(iso: string | null | undefined): string {
   if (!iso) return "Never";
   const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins} min ago`;
+  if (mins < 1) return translate("Just now");
+  if (mins < 60) return translate("{mins} min ago", { mins: mins });
   const h = Math.round(mins / 60);
-  if (h < 24) return `${h} h ago`;
+  if (h < 24) return translate("{h} h ago", { h: h });
   const d = Math.round(h / 24);
-  return d < 60 ? `${d} d ago` : new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  return d < 60 ? translate("{d} d ago", { d: d }) : new Date(iso).toLocaleDateString(uiLocaleTag(), { day: "numeric", month: "short", year: "numeric" });
 }

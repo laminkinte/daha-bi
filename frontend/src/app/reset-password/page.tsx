@@ -5,8 +5,10 @@ import Link from "next/link";
 import { AuthShell, AUTH_INPUT } from "@/components/AuthShell";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
+import { useT } from "@/i18n/ui";
 
 function ResetPasswordForm() {
+  const tr = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
@@ -32,31 +34,31 @@ function ResetPasswordForm() {
       setDone(true);
       setTimeout(() => router.push("/login"), 2000);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Something went wrong.");
+      setError(err instanceof ApiError ? err.message : tr("Something went wrong."));
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <AuthShell title="Set a new password">
+    <AuthShell title={tr("Set a new password")}>
       <div>
         {!token || !email ? (
           <p className="text-sm text-[var(--status-critical)]">
-            This reset link is missing or invalid. Request a new one from the{" "}
+            {tr("This reset link is missing or invalid. Request a new one from the")}{" "}
             <Link href="/forgot-password" className="text-[var(--accent)]">
-              forgot password
+              {tr("forgot password")}
             </Link>{" "}
             page.
           </p>
         ) : done ? (
           <p className="rounded-lg bg-[var(--status-good)]/10 p-3 text-sm text-[var(--status-good)]">
-            Password reset. Redirecting you to log in...
+            {tr("Password reset. Redirecting you to log in...")}
           </p>
         ) : (
           <form onSubmit={onSubmit} className="flex flex-col gap-4">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">New password</label>
+              <label className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">{tr("New password")}</label>
               <input
                 type="password"
                 autoComplete="new-password"
@@ -68,7 +70,7 @@ function ResetPasswordForm() {
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">Confirm new password</label>
+              <label className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">{tr("Confirm new password")}</label>
               <input
                 type="password"
                 autoComplete="new-password"
@@ -87,7 +89,7 @@ function ResetPasswordForm() {
               disabled={submitting}
               className="mt-2 rounded-lg bg-[var(--accent)] px-3 py-2.5 text-sm font-medium text-white shadow-sm disabled:opacity-60"
             >
-              {submitting ? "Resetting..." : "Reset password"}
+              {submitting ? tr("Resetting...") : tr("Reset password")}
             </button>
           </form>
         )}

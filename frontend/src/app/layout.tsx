@@ -7,6 +7,7 @@ import { AuthProvider } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-context";
 import Sidebar from "@/components/Sidebar";
 import PlanLimitPrompt from "@/components/PlanLimitPrompt";
+import { UiTranslationsProvider, type UiDictionary } from "@/i18n/ui";
 
 const THEME_INIT_SCRIPT = `
 (function () {
@@ -39,6 +40,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const locale = await getLocale();
   const messages = await getMessages();
   const dir = locale === "ar" ? "rtl" : "ltr";
+  // Interface text is keyed by its English wording; English itself needs no dictionary.
+  const uiDict: UiDictionary = locale === "en" ? {} : (await import(`../../messages/ui/${locale}.json`)).default;
 
   return (
     <html
@@ -53,12 +56,14 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       >
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <NextIntlClientProvider messages={messages}>
+          <UiTranslationsProvider locale={locale} dict={uiDict}>
           <ThemeProvider>
             <AuthProvider>
               <Sidebar>{children}</Sidebar>
               <PlanLimitPrompt />
             </AuthProvider>
           </ThemeProvider>
+          </UiTranslationsProvider>
         </NextIntlClientProvider>
       </body>
     </html>

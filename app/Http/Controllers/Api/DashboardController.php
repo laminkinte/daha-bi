@@ -172,14 +172,14 @@ class DashboardController extends Controller
 
         if (! $this->ai->isConfigured()) {
             return response()->json([
-                'message' => 'AI is not configured yet — GEMINI_API_KEY is missing.',
+                'message' => __('AI is not configured yet — GEMINI_API_KEY is missing.'),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         $charts = $dashboard->charts()->with('dataset')->get();
 
         if ($charts->isEmpty()) {
-            return response()->json(['message' => 'Add at least one chart before requesting recommendations.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return response()->json(['message' => __('Add at least one chart before requesting recommendations.')], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         $forAnalysis = $charts->map(function ($chart) use ($request) {
@@ -199,7 +199,7 @@ class DashboardController extends Controller
         $analysis = $this->ai->interpretDashboard($dashboard->name, $forAnalysis);
 
         if (! $analysis) {
-            return response()->json(['message' => 'AI did not return a response. Try again in a moment.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return response()->json(['message' => __('AI did not return a response. Try again in a moment.')], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         return response()->json(['analysis' => $analysis]);

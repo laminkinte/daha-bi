@@ -13,14 +13,19 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  */
 class PlanGate
 {
+    // Whole sentences (translated in lang/*.json) so every language can word them properly.
     protected const FEATURE_PLAN = [
-        'ai' => ['Business', 'AI chat, prompt-to-chart and AI insights'],
-        'branding' => ['Business', 'Custom branding'],
-        'notebook' => ['Growth', 'The SQL & Python notebook'],
-        'database_sources' => ['Growth', 'Live database and API connections'],
+        'ai' => ['Business', 'AI chat, prompt-to-chart and AI insights are part of the :plan plan.'],
+        'branding' => ['Business', 'Custom branding is part of the :plan plan.'],
+        'notebook' => ['Growth', 'The SQL & Python notebook is part of the :plan plan.'],
+        'database_sources' => ['Growth', 'Live database and API connections are part of the :plan plan. The Free plan works with CSV uploads.'],
     ];
 
-    protected const LIMIT_NOUN = ['users' => 'user', 'dashboards' => 'dashboard', 'share_links' => 'public share link'];
+    protected const LIMIT_SENTENCE = [
+        'users' => 'Your :plan plan includes :limit users, and this workspace is using :used.',
+        'dashboards' => 'Your :plan plan includes :limit dashboards, and this workspace is using :used.',
+        'share_links' => 'Your :plan plan includes :limit public share links, and this workspace is using :used. Turn off another public link, or upgrade.',
+    ];
 
     public static function require(Organization $organization, string $feature, ?User $user = null): void
     {
@@ -28,10 +33,9 @@ class PlanGate
             return;
         }
 
-        [$plan, $what] = self::FEATURE_PLAN[$feature];
-        $extra = $feature === 'database_sources' ? ' The Free plan works with CSV uploads.' : '';
+        [$plan, $sentence] = self::FEATURE_PLAN[$feature];
 
-        self::refuse("{$what} ".($what === 'Custom branding' ? 'is' : 'are')." part of the {$plan} plan.{$extra}", $feature);
+        self::refuse(__($sentence, ['plan' => __($plan)]), $feature);
     }
 
     /** Refuses when $used has already reached the plan's limit for $key (adding one more would exceed it). */
@@ -42,11 +46,9 @@ class PlanGate
             return;
         }
 
-        $plan = ucfirst($organization->effectivePlan());
-        $noun = self::LIMIT_NOUN[$key].($limit === 1 ? '' : 's');
-        $hint = $key === 'share_links' ? ' Turn off another public link, or upgrade.' : '';
+        $plan = __(ucfirst($organization->effectivePlan()));
 
-        self::refuse("Your {$plan} plan includes {$limit} {$noun}, and this workspace is using {$used}.{$hint}", $key);
+        self::refuse(__(self::LIMIT_SENTENCE[$key], ['plan' => $plan, 'limit' => $limit, 'used' => $used]), $key);
     }
 
     /** Before creating a dashboard in this workspace. */
@@ -65,6 +67,6 @@ class PlanGate
 
     protected static function refuse(string $message, string $limit): never
     {
-        throw new HttpException(402, $message.' Upgrade on the Pricing page to unlock more.', null, ['X-Plan-Limit' => $limit]);
+        throw new HttpException(402, $message.' '.__('Upgrade on the Pricing page to unlock more.'), null, ['X-Plan-Limit' => $limit]);
     }
 }

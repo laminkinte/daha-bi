@@ -47,6 +47,7 @@ class AuthController extends Controller
             'password' => $validated['password'],
             'referred_by_id' => $referredBy?->id,
             'current_organization_id' => $organization->id,
+            'locale' => app()->getLocale(),
         ])->save();
 
         $organization->members()->attach($user->id, ['role' => 'owner']);
@@ -62,7 +63,7 @@ class AuthController extends Controller
         if (! empty($validated['invite_token'])) {
             $invitation = \App\Models\Invitation::findByToken($validated['invite_token']);
             try {
-                abort_unless($invitation, 404, 'This invitation link is not valid.');
+                abort_unless($invitation, 404, __('This invitation link is not valid.'));
                 app(\App\Services\InvitationService::class)->accept($invitation, $user);
                 $user->refresh();
             } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
@@ -117,13 +118,13 @@ class AuthController extends Controller
 
         if (! $user || ! Hash::check($validated['password'], $user->password)) {
             throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
+                'email' => [__('The provided credentials are incorrect.')],
             ]);
         }
 
         if ($user->suspended_at) {
             throw ValidationException::withMessages([
-                'email' => ['This account has been suspended. Contact support if you think this is a mistake.'],
+                'email' => [__('This account has been suspended. Contact support if you think this is a mistake.')],
             ]);
         }
 
@@ -140,7 +141,7 @@ class AuthController extends Controller
     {
         $request->user()->currentAccessToken()->delete();
 
-        return response()->json(['message' => 'Logged out.']);
+        return response()->json(['message' => __('Logged out.')]);
     }
 
     public function me(Request $request)
@@ -179,13 +180,13 @@ class AuthController extends Controller
 
         if (! Hash::check($validated['current_password'], $user->password)) {
             throw ValidationException::withMessages([
-                'current_password' => ['The current password is incorrect.'],
+                'current_password' => [__('The current password is incorrect.')],
             ]);
         }
 
         $user->update(['password' => $validated['password']]);
 
-        return response()->json(['message' => 'Password updated.']);
+        return response()->json(['message' => __('Password updated.')]);
     }
 
     public function forgotPassword(Request $request)
@@ -195,7 +196,7 @@ class AuthController extends Controller
         Password::sendResetLink($validated);
 
         // Same response whether or not the email is registered, so this can't be used to enumerate accounts.
-        return response()->json(['message' => 'If an account exists for that email, a reset link has been sent.']);
+        return response()->json(['message' => __('If an account exists for that email, a reset link has been sent.')]);
     }
 
     public function resetPassword(Request $request)
@@ -214,6 +215,6 @@ class AuthController extends Controller
             throw ValidationException::withMessages(['email' => [__($status)]]);
         }
 
-        return response()->json(['message' => 'Password has been reset.']);
+        return response()->json(['message' => __('Password has been reset.')]);
     }
 }

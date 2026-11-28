@@ -45,7 +45,7 @@ class InvitationController extends Controller
     public function resend(Request $request, Invitation $invitation)
     {
         $this->authorizeInvitation($invitation);
-        abort_if($invitation->accepted_at, Response::HTTP_UNPROCESSABLE_ENTITY, 'This invitation has already been accepted.');
+        abort_if($invitation->accepted_at, Response::HTTP_UNPROCESSABLE_ENTITY, __('This invitation has already been accepted.'));
 
         [$token, $sent] = $this->invitations->resend($invitation);
 
@@ -69,7 +69,7 @@ class InvitationController extends Controller
     public function preview(string $token)
     {
         $invitation = Invitation::findByToken($token);
-        abort_unless($invitation, Response::HTTP_NOT_FOUND, 'This invitation link is not valid. It may have been revoked or replaced by a newer one.');
+        abort_unless($invitation, Response::HTTP_NOT_FOUND, __('This invitation link is not valid. It may have been revoked or replaced by a newer one.'));
 
         return [
             'email' => $invitation->email,
@@ -87,7 +87,7 @@ class InvitationController extends Controller
     public function accept(Request $request, string $token)
     {
         $invitation = Invitation::findByToken($token);
-        abort_unless($invitation, Response::HTTP_NOT_FOUND, 'This invitation link is not valid.');
+        abort_unless($invitation, Response::HTTP_NOT_FOUND, __('This invitation link is not valid.'));
 
         $this->invitations->accept($invitation, $request->user());
 

@@ -60,7 +60,7 @@ class DashboardCollaboratorController extends Controller
         }
 
         if ($collaborator->id === $dashboard->user_id) {
-            abort(Response::HTTP_UNPROCESSABLE_ENTITY, 'That user already owns this dashboard.');
+            abort(Response::HTTP_UNPROCESSABLE_ENTITY, __('That user already owns this dashboard.'));
         }
 
         $record = $dashboard->collaborators()->updateOrCreate(

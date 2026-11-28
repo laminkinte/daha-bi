@@ -20,7 +20,7 @@ class DashboardReportService
 
         $summaries = $this->buildSummaries($dashboard, $schedule->user);
 
-        Mail::to($schedule->recipients)->send(new DashboardReportMail($dashboard, $summaries, $schedule->user));
+        Mail::to($schedule->recipients)->locale($schedule->user?->locale ?? config('app.locale'))->send(new DashboardReportMail($dashboard, $summaries, $schedule->user));
     }
 
     /**

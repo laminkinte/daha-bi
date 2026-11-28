@@ -1,4 +1,7 @@
+"use client";
+
 import type { BillingInterval } from "@/lib/api";
+import { useT } from "@/i18n/ui";
 
 export function yearlySavingsPercent(monthlyCents: number, yearlyCents: number): number {
   if (monthlyCents <= 0 || yearlyCents <= 0) return 0;
@@ -14,6 +17,7 @@ export default function BillingIntervalToggle({
   onChange: (interval: BillingInterval) => void;
   savingsPercent?: number;
 }) {
+  const tr = useT();
   return (
     <div className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-1)] p-1 text-sm">
       {(["monthly", "yearly"] as BillingInterval[]).map((opt) => (
@@ -26,14 +30,14 @@ export default function BillingIntervalToggle({
               : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
           }`}
         >
-          {opt === "monthly" ? "Monthly" : "Yearly"}
+          {opt === "monthly" ? tr("Monthly") : tr("Yearly")}
           {opt === "yearly" && savingsPercent ? (
             <span
               className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
                 value === "yearly" ? "bg-white/20 text-white" : "bg-[var(--status-good)]/15 text-[var(--status-good)]"
               }`}
             >
-              Save {savingsPercent}%
+              {tr("Save")} {savingsPercent}%
             </span>
           ) : null}
         </button>

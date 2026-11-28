@@ -6,8 +6,9 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 import RequireAuth from "@/components/RequireAuth";
 import { ADMIN_CARD, AdminPage, StatusDot, timeAgo } from "@/components/AdminShell";
 import { api, ApiError, type AdminOverview } from "@/lib/api";
+import { useT, uiLocaleTag } from "@/i18n/ui";
 
-const nf = new Intl.NumberFormat();
+const nf = new Intl.NumberFormat(uiLocaleTag());
 
 function Kpi({ label, value, sub, href }: { label: string; value: number | string; sub?: string; href?: string }) {
   const body = (
@@ -29,6 +30,7 @@ function Kpi({ label, value, sub, href }: { label: string; value: number | strin
 }
 
 function Overview() {
+  const tr = useT();
   const [data, setData] = useState<AdminOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,8 +38,8 @@ function Overview() {
     api
       .get<AdminOverview>("/admin/overview")
       .then(setData)
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Couldn't load the overview."));
-  }, []);
+      .catch((err) => setError(err instanceof ApiError ? err.message : tr("Couldn't load the overview.")));
+  }, [tr]);
 
   const k = data?.kpis;
   const signups30 = data?.signups_30d.reduce((s, d) => s + d.signups, 0) ?? 0;
@@ -45,7 +47,7 @@ function Overview() {
   const issues = data?.health.filter((h) => h.status !== "ok") ?? [];
 
   return (
-    <AdminPage title="Overview" description="How the Daha BI platform is doing right now.">
+    <AdminPage title={tr("Overview")} description={tr("How the Daha BI platform is doing right now.")}>
       {error && <p className="mb-4 rounded-lg bg-[var(--status-critical)]/10 px-3 py-2 text-sm text-[var(--status-critical)]">{error}</p>}
 
       {data && issues.length > 0 && (
@@ -54,23 +56,23 @@ function Overview() {
           className="mb-5 flex items-center gap-2 rounded-xl border border-[var(--status-warning)]/30 bg-[var(--status-warning)]/10 px-4 py-2.5 text-sm text-[var(--text-secondary)] hover:border-[var(--status-warning)]/60"
         >
           <StatusDot status={issues.some((i) => i.status === "fail") ? "fail" : "warn"} />
-          {issues.length} item{issues.length === 1 ? " needs" : "s need"} attention: {issues.map((i) => i.label).join(", ")}
-          <span className="ml-auto font-medium text-[var(--accent)]">View →</span>
+          {issues.length} {tr("item")}{issues.length === 1 ? tr(" needs") : tr("s need")} attention: {issues.map((i) => i.label).join(", ")}
+          <span className="ms-auto font-medium text-[var(--accent)]">{tr("View →")}</span>
         </Link>
       )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi label="Users" value={k?.users ?? "—"} sub={k ? `+${k.users_new_7d} this week · ${k.users_active_7d} active` : undefined} href="/admin/users" />
-        <Kpi label="Workspaces" value={k?.workspaces ?? "—"} sub={k ? `${k.paying_workspaces} paying` : undefined} href="/admin/workspaces" />
-        <Kpi label="Dashboards" value={k?.dashboards ?? "—"} sub={k ? `${nf.format(k.company_shares)} company shares · ${nf.format(k.embeds)} embeds` : undefined} />
-        <Kpi label="Data" value={k ? `${nf.format(k.rows_stored)} rows` : "—"} sub={k ? `${k.data_sources} data sources` : undefined} />
+        <Kpi label={tr("Users")} value={k?.users ?? "—"} sub={k ? `+${k.users_new_7d} this week · ${k.users_active_7d} active` : undefined} href="/admin/users" />
+        <Kpi label={tr("Workspaces")} value={k?.workspaces ?? "—"} sub={k ? `${k.paying_workspaces} paying` : undefined} href="/admin/workspaces" />
+        <Kpi label={tr("Dashboards")} value={k?.dashboards ?? "—"} sub={k ? `${nf.format(k.company_shares)} company shares · ${nf.format(k.embeds)} embeds` : undefined} />
+        <Kpi label={tr("Data")} value={k ? `${nf.format(k.rows_stored)} rows` : "—"} sub={k ? `${k.data_sources} data sources` : undefined} />
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <section className={`${ADMIN_CARD} p-5 lg:col-span-2`}>
           <div className="flex items-baseline justify-between">
-            <h2 className="text-sm font-semibold text-[var(--text-primary)]">Sign-ups, last 30 days</h2>
-            <span className="text-xs text-[var(--text-muted)]">{signups30} total</span>
+            <h2 className="text-sm font-semibold text-[var(--text-primary)]">{tr("Sign-ups, last 30 days")}</h2>
+            <span className="text-xs text-[var(--text-muted)]">{signups30} {tr("total")}</span>
           </div>
           <div className="mt-3 h-[220px]">
             {data && (
@@ -85,7 +87,7 @@ function Overview() {
                   <CartesianGrid stroke="var(--gridline)" vertical={false} />
                   <XAxis
                     dataKey="date"
-                    tickFormatter={(d: string) => new Date(d).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+                    tickFormatter={(d: string) => new Date(d).toLocaleDateString(uiLocaleTag(), { day: "numeric", month: "short" })}
                     tick={{ fontSize: 11, fill: "var(--text-muted)" }}
                     axisLine={false}
                     tickLine={false}
@@ -94,8 +96,8 @@ function Overview() {
                   <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />
                   <Tooltip
                     contentStyle={{ background: "var(--surface-1)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
-                    labelFormatter={(d) => new Date(String(d)).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}
-                    formatter={(v) => [v, "Sign-ups"]}
+                    labelFormatter={(d) => new Date(String(d)).toLocaleDateString(uiLocaleTag(), { weekday: "short", day: "numeric", month: "short" })}
+                    formatter={(v) => [v, tr("Sign-ups")]}
                   />
                   <Area type="monotone" dataKey="signups" stroke="var(--series-1)" strokeWidth={2} fill="url(#su)" />
                 </AreaChart>
@@ -105,7 +107,7 @@ function Overview() {
         </section>
 
         <section className={`${ADMIN_CARD} p-5`}>
-          <h2 className="text-sm font-semibold text-[var(--text-primary)]">Workspaces by plan</h2>
+          <h2 className="text-sm font-semibold text-[var(--text-primary)]">{tr("Workspaces by plan")}</h2>
           <ul className="mt-4 flex flex-col gap-3.5">
             {(data?.plan_mix ?? []).map((p) => (
               <li key={p.plan}>
@@ -120,12 +122,12 @@ function Overview() {
             ))}
           </ul>
           <div className="mt-5 grid grid-cols-2 gap-2 border-t border-[var(--border)] pt-4 text-xs text-[var(--text-secondary)]">
-            <span>AI chats</span>
-            <span className="text-right font-medium tabular-nums text-[var(--text-primary)]">{k ? nf.format(k.ai_conversations) : "—"}</span>
-            <span>Comments</span>
-            <span className="text-right font-medium tabular-nums text-[var(--text-primary)]">{k ? nf.format(k.comments) : "—"}</span>
-            <span>Suspended users</span>
-            <span className="text-right font-medium tabular-nums text-[var(--text-primary)]">{k?.suspended ?? "—"}</span>
+            <span>{tr("AI chats")}</span>
+            <span className="text-end font-medium tabular-nums text-[var(--text-primary)]">{k ? nf.format(k.ai_conversations) : "—"}</span>
+            <span>{tr("Comments")}</span>
+            <span className="text-end font-medium tabular-nums text-[var(--text-primary)]">{k ? nf.format(k.comments) : "—"}</span>
+            <span>{tr("Suspended users")}</span>
+            <span className="text-end font-medium tabular-nums text-[var(--text-primary)]">{k?.suspended ?? "—"}</span>
           </div>
         </section>
       </div>
@@ -133,9 +135,9 @@ function Overview() {
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <section className={`${ADMIN_CARD} lg:col-span-2`}>
           <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-3.5">
-            <h2 className="text-sm font-semibold text-[var(--text-primary)]">Newest users</h2>
+            <h2 className="text-sm font-semibold text-[var(--text-primary)]">{tr("Newest users")}</h2>
             <Link href="/admin/users" className="text-xs font-medium text-[var(--accent)] hover:underline">
-              All users →
+              {tr("All users →")}
             </Link>
           </div>
           <ul className="divide-y divide-[var(--border)]">
@@ -145,34 +147,34 @@ function Overview() {
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-1.5 text-sm font-medium text-[var(--text-primary)]">
                       <span className="truncate">{u.name}</span>
-                      {u.is_admin && <span className="rounded bg-[var(--accent-soft)] px-1.5 text-[10px] font-semibold text-[var(--accent)]">ADMIN</span>}
-                      {u.suspended_at && <span className="rounded bg-[var(--status-critical)]/12 px-1.5 text-[10px] font-semibold text-[var(--status-critical)]">SUSPENDED</span>}
+                      {u.is_admin && <span className="rounded bg-[var(--accent-soft)] px-1.5 text-[10px] font-semibold text-[var(--accent)]">{tr("ADMIN")}</span>}
+                      {u.suspended_at && <span className="rounded bg-[var(--status-critical)]/12 px-1.5 text-[10px] font-semibold text-[var(--status-critical)]">{tr("SUSPENDED")}</span>}
                     </span>
                     <span className="block truncate text-xs text-[var(--text-muted)]">{u.email}</span>
                   </span>
-                  <span className="shrink-0 text-right text-xs text-[var(--text-muted)]">
-                    Joined {timeAgo(u.created_at)}
-                    <span className="block">Active {timeAgo(u.last_active_at)}</span>
+                  <span className="shrink-0 text-end text-xs text-[var(--text-muted)]">
+                    {tr("Joined")} {timeAgo(u.created_at)}
+                    <span className="block">{tr("Active")} {timeAgo(u.last_active_at)}</span>
                   </span>
                 </Link>
               </li>
             ))}
-            {data?.recent_users.length === 0 && <li className="px-5 py-6 text-sm text-[var(--text-muted)]">No users yet.</li>}
+            {data?.recent_users.length === 0 && <li className="px-5 py-6 text-sm text-[var(--text-muted)]">{tr("No users yet.")}</li>}
           </ul>
         </section>
 
         <section className={ADMIN_CARD}>
           <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-3.5">
-            <h2 className="text-sm font-semibold text-[var(--text-primary)]">System health</h2>
+            <h2 className="text-sm font-semibold text-[var(--text-primary)]">{tr("System health")}</h2>
             <Link href="/admin/health" className="text-xs font-medium text-[var(--accent)] hover:underline">
-              Details →
+              {tr("Details →")}
             </Link>
           </div>
           <ul className="divide-y divide-[var(--border)]">
             {data?.health.map((h) => (
               <li key={h.key} className="flex items-center gap-2.5 px-5 py-2.5 text-sm">
                 <StatusDot status={h.status} />
-                <span className="text-[var(--text-primary)]">{h.label}</span>
+                <span className="text-[var(--text-primary)]">{tr(h.label)}</span>
               </li>
             ))}
           </ul>

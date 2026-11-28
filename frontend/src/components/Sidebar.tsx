@@ -12,6 +12,7 @@ import { BrandMark } from "./BrandMark";
 import NotificationBell from "./NotificationBell";
 import { BrandLogo, BrandStyle } from "./BrandStyle";
 import { useEffect, useState, type ReactNode } from "react";
+import { useT } from "@/i18n/ui";
 
 function DashboardIcon() {
   return (
@@ -255,6 +256,7 @@ const THEME_OPTIONS = [
 ];
 
 export default function Sidebar({ children }: { children: ReactNode }) {
+  const tr = useT();
   const t = useTranslations("nav");
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
@@ -345,7 +347,7 @@ export default function Sidebar({ children }: { children: ReactNode }) {
             // A logo usually carries the name — give it the room instead of squeezing both.
             <span className={`min-w-0 ${collapsed ? "md:hidden" : ""}`}>
               <BrandLogo branding={branding} size={30} />
-              {!branding.hide_powered_by && <span className="mt-0.5 block text-[10px] text-[var(--text-muted)]">Powered by Daha BI</span>}
+              {!branding.hide_powered_by && <span className="mt-0.5 block text-[10px] text-[var(--text-muted)]">{tr("Powered by Daha BI")}</span>}
             </span>
           ) : (
             mark(32)
@@ -361,18 +363,18 @@ export default function Sidebar({ children }: { children: ReactNode }) {
               {branded ? branding!.name : "Daha BI"}
             </span>
             <span className="block max-w-[9.5rem] truncate text-[11px] text-[var(--text-muted)]">
-              {branded ? (branding!.hide_powered_by ? "Analytics" : "Powered by Daha BI") : (user.current_organization?.name ?? "Workspace")}
+              {branded ? (branding!.hide_powered_by ? tr("Analytics") : tr("Powered by Daha BI")) : (user.current_organization?.name ?? tr("Workspace"))}
             </span>
           </span>
         </Link>
         <button
           onClick={() => setMobileOpen(false)}
           className="rounded-md p-1 text-[var(--text-muted)] hover:bg-[var(--surface-2)] md:hidden"
-          aria-label="Close menu"
+          aria-label={tr("Close menu")}
         >
           <CloseIcon />
         </button>
-        <span className={`ml-auto mr-0.5 hidden md:block ${collapsed ? "md:hidden" : ""}`}>
+        <span className={`ms-auto me-0.5 hidden md:block ${collapsed ? "md:hidden" : ""}`}>
           <NotificationBell />
         </span>
         <button
@@ -380,8 +382,8 @@ export default function Sidebar({ children }: { children: ReactNode }) {
           className={`hidden rounded-md p-1.5 text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)] md:block ${
             collapsed ? "md:hidden" : ""
           }`}
-          title="Collapse sidebar"
-          aria-label="Collapse sidebar"
+          title={tr("Collapse sidebar")}
+          aria-label={tr("Collapse sidebar")}
         >
           <CollapseIcon collapsed={false} />
         </button>
@@ -391,8 +393,8 @@ export default function Sidebar({ children }: { children: ReactNode }) {
         <button
           onClick={toggleCollapsed}
           className="mx-auto mb-2 hidden rounded-md p-1.5 text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)] md:block"
-          title="Expand sidebar"
-          aria-label="Expand sidebar"
+          title={tr("Expand sidebar")}
+          aria-label={tr("Expand sidebar")}
         >
           <CollapseIcon collapsed />
         </button>
@@ -429,14 +431,14 @@ export default function Sidebar({ children }: { children: ReactNode }) {
                   }`}
                 >
                   {active && (
-                    <span className="absolute inset-y-1.5 left-0 w-[3px] rounded-r-full bg-[var(--accent)]" aria-hidden />
+                    <span className="absolute inset-y-1.5 start-0 w-[3px] rounded-e-full bg-[var(--accent)]" aria-hidden />
                   )}
                   <Icon />
                   <span className={collapsed ? "md:hidden" : ""}>{t(labelKey)}</span>
                   {href === "/alerts" && breachedCount > 0 && (
                     <span
                       className={`rounded-full bg-[var(--status-critical)] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white ${
-                        collapsed ? "md:absolute md:right-1 md:top-1" : "ml-auto"
+                        collapsed ? "md:absolute md:end-1 md:top-1" : "ms-auto"
                       }`}
                     >
                       {breachedCount}
@@ -488,7 +490,7 @@ export default function Sidebar({ children }: { children: ReactNode }) {
         {notice && (
           <Link
             href="/settings"
-            title={collapsed ? notice.text : undefined}
+            title={collapsed ? tr(notice.text) : undefined}
             className={`mb-2 flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium ${
               collapsed ? "md:justify-center md:px-2" : ""
             } ${
@@ -498,12 +500,12 @@ export default function Sidebar({ children }: { children: ReactNode }) {
             }`}
           >
             <WarningIcon />
-            <span className={collapsed ? "md:hidden" : ""}>{notice.text}</span>
+            <span className={collapsed ? "md:hidden" : ""}>{tr(notice.text)}</span>
           </Link>
         )}
         <Link
           href="/settings"
-          title={collapsed ? user.email : "Account settings"}
+          title={collapsed ? user.email : tr("Account settings")}
           className={`mb-2 flex items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-colors ${
             collapsed ? "md:justify-center md:border-transparent md:px-1" : ""
           } ${
@@ -568,7 +570,7 @@ export default function Sidebar({ children }: { children: ReactNode }) {
           <button
             onClick={() => setMobileOpen(true)}
             className="rounded-md p-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-2)]"
-            aria-label="Open menu"
+            aria-label={tr("Open menu")}
           >
             <MenuIcon />
           </button>
@@ -583,9 +585,9 @@ export default function Sidebar({ children }: { children: ReactNode }) {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col overflow-x-hidden border-r border-[var(--border)] bg-[var(--surface-1)] transition-[transform,width] md:sticky md:top-0 md:z-auto md:h-screen md:translate-x-0 ${
+        className={`fixed inset-y-0 start-0 z-50 flex w-64 shrink-0 flex-col overflow-x-hidden border-e border-[var(--border)] bg-[var(--surface-1)] transition-[transform,width] md:sticky md:top-0 md:z-auto md:h-screen md:translate-x-0 ${
           collapsed ? "md:w-[68px]" : "md:w-60"
-        } ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
+        } ${mobileOpen ? "translate-x-0" : "-translate-x-full rtl:max-md:translate-x-full"}`}
       >
         {navContent}
       </aside>

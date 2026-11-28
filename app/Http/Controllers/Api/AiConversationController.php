@@ -70,7 +70,7 @@ class AiConversationController extends Controller
 
         if (! $this->ai->isConfigured()) {
             return response()->json([
-                'message' => 'AI features are not set up yet. Add a free GEMINI_API_KEY (from Google AI Studio) to the backend .env to enable this.',
+                'message' => __('AI features are not set up yet. Add a free GEMINI_API_KEY (from Google AI Studio) to the backend .env to enable this.'),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
@@ -284,7 +284,7 @@ class AiConversationController extends Controller
         $this->authorize('view', $conversation);
 
         abort_unless($message->response_type === 'chart', Response::HTTP_UNPROCESSABLE_ENTITY);
-        abort_if($message->chart_id, Response::HTTP_UNPROCESSABLE_ENTITY, 'This chart has already been saved.');
+        abort_if($message->chart_id, Response::HTTP_UNPROCESSABLE_ENTITY, __('This chart has already been saved.'));
 
         $validated = $request->validate(['dashboard_id' => ['required', 'exists:dashboards,id']]);
 
@@ -314,7 +314,7 @@ class AiConversationController extends Controller
         $this->authorize('view', $conversation);
 
         abort_unless($message->response_type === 'dashboard', Response::HTTP_UNPROCESSABLE_ENTITY);
-        abort_if($message->dashboard_id, Response::HTTP_UNPROCESSABLE_ENTITY, 'This dashboard has already been created.');
+        abort_if($message->dashboard_id, Response::HTTP_UNPROCESSABLE_ENTITY, __('This dashboard has already been created.'));
 
         $validated = $request->validate(['name' => ['nullable', 'string', 'max:255']]);
         PlanGate::newDashboard($request->user()->current_organization_id, $request->user());

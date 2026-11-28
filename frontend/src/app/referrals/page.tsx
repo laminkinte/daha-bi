@@ -6,6 +6,7 @@ import { StatCard } from "@/components/StatCard";
 import { EmptyState } from "@/components/EmptyState";
 import { api, ApiError, type ReferralsSummary } from "@/lib/api";
 import { PageHeader, PAGE_CONTAINER } from "@/components/PageHeader";
+import { useT, uiLocaleTag } from "@/i18n/ui";
 
 function GiftIcon() {
   return (
@@ -20,6 +21,7 @@ function GiftIcon() {
 }
 
 function Referrals() {
+  const tr = useT();
   const [summary, setSummary] = useState<ReferralsSummary | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -28,8 +30,8 @@ function Referrals() {
     api
       .getRetrying<ReferralsSummary>("/referrals")
       .then(setSummary)
-      .catch((err) => setLoadError(err instanceof ApiError ? err.message : "Failed to load referrals."));
-  }, []);
+      .catch((err) => setLoadError(err instanceof ApiError ? err.message : tr("Failed to load referrals.")));
+  }, [tr]);
 
   const referralLink =
     summary && typeof window !== "undefined"
@@ -47,26 +49,26 @@ function Referrals() {
     <div className={`${PAGE_CONTAINER} max-w-3xl`}>
       <PageHeader
         icon="gift"
-        title="Refer & Earn"
-        description="Share your link. Everyone who signs up through it is tracked here."
+        title={tr("Refer & Earn")}
+        description={tr("Share your link. Everyone who signs up through it is tracked here.")}
       />
 
       {loadError && <p className="mt-6 text-sm text-[var(--status-critical)]">{loadError}</p>}
 
       {!loadError && !summary && (
-        <p className="mt-6 text-sm text-[var(--text-muted)]">Loading...</p>
+        <p className="mt-6 text-sm text-[var(--text-muted)]">{tr("Loading...")}</p>
       )}
 
       {summary && (
         <>
           <div className="mt-6 grid grid-cols-2 gap-3">
-            <StatCard label="Referral code" value={summary.referral_code} />
-            <StatCard label="People referred" value={summary.referral_count} />
+            <StatCard label={tr("Referral code")} value={summary.referral_code} />
+            <StatCard label={tr("People referred")} value={summary.referral_count} />
           </div>
 
           <div className="mt-6 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-4">
             <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">
-              Your invite link
+              {tr("Your invite link")}
             </label>
             <div className="flex items-center gap-2">
               <input
@@ -78,19 +80,19 @@ function Referrals() {
                 onClick={copyLink}
                 className="shrink-0 rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white"
               >
-                {copied ? "Copied!" : "Copy"}
+                {copied ? tr("Copied!") : tr("Copy")}
               </button>
             </div>
           </div>
 
           <div className="mt-6">
-            <h2 className="text-sm font-medium text-[var(--text-primary)]">Your referrals</h2>
+            <h2 className="text-sm font-medium text-[var(--text-primary)]">{tr("Your referrals")}</h2>
             {summary.referrals.length === 0 ? (
               <div className="mt-3">
                 <EmptyState
                   icon={<GiftIcon />}
-                  title="No referrals yet"
-                  description="Share your link above — anyone who signs up through it will show up here."
+                  title={tr("No referrals yet")}
+                  description={tr("Share your link above — anyone who signs up through it will show up here.")}
                 />
               </div>
             ) : (
@@ -102,7 +104,7 @@ function Referrals() {
                   >
                     <span className="text-[var(--text-primary)]">{r.name}</span>
                     <span className="text-[var(--text-muted)]">
-                      {new Date(r.created_at).toLocaleDateString()}
+                      {new Date(r.created_at).toLocaleDateString(uiLocaleTag())}
                     </span>
                   </div>
                 ))}

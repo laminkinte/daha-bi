@@ -109,7 +109,7 @@ class PythonExecutionService
             usleep(150_000);
         }
 
-        throw new RuntimeException('The Python service is busy right now. Please try again in a moment.');
+        throw new RuntimeException(__('The Python service is busy right now. Please try again in a moment.'));
     }
 
     /** @return string[] */

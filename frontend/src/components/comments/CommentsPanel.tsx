@@ -12,15 +12,16 @@ import {
   type Mentionable,
 } from "@/lib/api";
 import MentionInput, { initials, mentionedIds } from "./MentionInput";
+import { useT, translate, uiLocaleTag } from "@/i18n/ui";
 
 function timeAgo(iso: string): string {
   const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return translate("just now");
+  if (mins < 60) return translate("{mins}m ago", { mins: mins });
   const h = Math.round(mins / 60);
-  if (h < 24) return `${h}h ago`;
+  if (h < 24) return translate("{h}h ago", { h: h });
   const d = Math.round(h / 24);
-  return d < 30 ? `${d}d ago` : new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  return d < 30 ? translate("{d}d ago", { d: d }) : new Date(iso).toLocaleDateString(uiLocaleTag(), { day: "numeric", month: "short" });
 }
 
 /** Threads for one dashboard, loaded once and shared by the panel and the chart badges. */
@@ -99,24 +100,25 @@ function Message({
   onDelete: (id: number) => void;
   extra?: ReactNode;
 }) {
-  const name = c.user?.name ?? "Deleted user";
+  const tr = useT();
+  const name = c.user?.name ?? tr("Deleted user");
   return (
     <div className="flex gap-2.5">
       <Avatar name={name} />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
           <span className="truncate text-sm font-semibold text-[var(--text-primary)]">{name}</span>
-          <span className="shrink-0 text-[11px] text-[var(--text-muted)]" title={new Date(c.created_at).toLocaleString()}>
+          <span className="shrink-0 text-[11px] text-[var(--text-muted)]" title={new Date(c.created_at).toLocaleString(uiLocaleTag())}>
             {timeAgo(c.created_at)}
-            {c.edited_at && " · edited"}
+            {c.edited_at && tr(" · edited")}
           </span>
           {c.can_delete && (
             <button
               onClick={() => onDelete(c.id)}
-              className="ml-auto shrink-0 text-[11px] text-[var(--text-muted)] hover:text-[var(--status-critical)]"
-              aria-label="Delete comment"
+              className="ms-auto shrink-0 text-[11px] text-[var(--text-muted)] hover:text-[var(--status-critical)]"
+              aria-label={tr("Delete comment")}
             >
-              Delete
+              {tr("Delete")}
             </button>
           )}
         </div>
@@ -153,6 +155,7 @@ export default function CommentsPanel({
   /** The owning company's name, when the viewer is a partner it shared with. */
   sharedBy?: string | null;
 }) {
+  const tr = useT();
   const { threads, setThreads, spaces, mySpace } = state;
   // Owner side: which conversation a new thread goes to (null = internal, team only).
   const [space, setSpace] = useState<number | null>(null);
@@ -239,7 +242,7 @@ export default function CommentsPanel({
         listRef.current?.scrollTo({ top: 0, behavior: "smooth" });
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't post your comment.");
+      setError(err instanceof ApiError ? err.message : tr("Couldn't post your comment."));
     } finally {
       setBusy(false);
     }
@@ -250,12 +253,12 @@ export default function CommentsPanel({
     try {
       upsert(await api.patch<CommentThread>(`/comments/${t.id}`, { resolved }));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't update the thread.");
+      setError(err instanceof ApiError ? err.message : tr("Couldn't update the thread."));
     }
   }
 
   async function remove(id: number) {
-    if (!confirm("Delete this comment?")) return;
+    if (!confirm(tr("Delete this comment?"))) return;
     setError(null);
     try {
       await api.del(`/comments/${id}`);
@@ -265,7 +268,7 @@ export default function CommentsPanel({
           .map((t) => ({ ...t, replies: t.replies.filter((r) => r.id !== id) }))
       );
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't delete the comment.");
+      setError(err instanceof ApiError ? err.message : tr("Couldn't delete the comment."));
     }
   }
 
@@ -275,13 +278,13 @@ export default function CommentsPanel({
     <>
       <div className="fixed inset-0 z-40 bg-black/20 sm:hidden" onClick={onClose} aria-hidden />
       <aside
-        className="fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-[var(--border)] bg-[var(--surface-1)] shadow-[var(--shadow-pop)] sm:w-[400px]"
+        className="fixed inset-y-0 end-0 z-50 flex w-full flex-col border-s border-[var(--border)] bg-[var(--surface-1)] shadow-[var(--shadow-pop)] sm:w-[400px]"
         style={{ animation: "fadeIn 140ms ease-out" }}
-        aria-label="Comments"
+        aria-label={tr("Comments")}
       >
         <header className="flex items-center gap-2 border-b border-[var(--border)] px-4 py-3">
-          <h2 className="text-[15px] font-semibold tracking-tight text-[var(--text-primary)]">Comments</h2>
-          <div className="ml-2 inline-flex rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-0.5 text-xs">
+          <h2 className="text-[15px] font-semibold tracking-tight text-[var(--text-primary)]">{tr("Comments")}</h2>
+          <div className="ms-2 inline-flex rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-0.5 text-xs">
             {(["open", "resolved"] as const).map((k) => (
               <button
                 key={k}
@@ -294,8 +297,8 @@ export default function CommentsPanel({
           </div>
           <button
             onClick={onClose}
-            className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
-            aria-label="Close comments"
+            className="ms-auto flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
+            aria-label={tr("Close comments")}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M18 6 6 18M6 6l12 12" />
@@ -306,10 +309,10 @@ export default function CommentsPanel({
         {chartFilter !== null && (
           <div className="flex items-center gap-2 border-b border-[var(--border)] bg-[var(--surface-2)] px-4 py-2 text-xs text-[var(--text-secondary)]">
             <span className="min-w-0 truncate">
-              On chart <span className="font-semibold text-[var(--text-primary)]">{chartTitle(chartFilter)}</span>
+              {tr("On chart")} <span className="font-semibold text-[var(--text-primary)]">{chartTitle(chartFilter)}</span>
             </span>
-            <button onClick={() => onChartFilter(null)} className="ml-auto shrink-0 font-medium text-[var(--accent)] hover:underline">
-              Show all
+            <button onClick={() => onChartFilter(null)} className="ms-auto shrink-0 font-medium text-[var(--accent)] hover:underline">
+              {tr("Show all")}
             </button>
           </div>
         )}
@@ -324,12 +327,12 @@ export default function CommentsPanel({
           {threads !== null && visible.length === 0 && (
             <div className="px-4 py-12 text-center">
               <p className="text-sm font-medium text-[var(--text-primary)]">
-                {tab === "open" ? "No open comments" : "Nothing resolved yet"}
+                {tab === "open" ? tr("No open comments") : tr("Nothing resolved yet")}
               </p>
               <p className="mx-auto mt-1 max-w-[16rem] text-xs text-[var(--text-muted)]">
                 {tab === "open"
-                  ? "Ask a question or flag a number — type @ to mention a teammate or partner and they'll get notified."
-                  : "Resolved threads end up here."}
+                  ? tr("Ask a question or flag a number — type @ to mention a teammate or partner and they'll get notified.")
+                  : tr("Resolved threads end up here.")}
               </p>
             </div>
           )}
@@ -356,13 +359,13 @@ export default function CommentsPanel({
                   </button>
                 )}
                 {t.space && !mySpace && (
-                  <span className="mb-2 ml-1 inline-flex items-center gap-1 rounded-md bg-[var(--status-warning)]/12 px-1.5 py-0.5 text-[11px] font-medium text-[var(--text-secondary)]">
-                    With {t.space.name ?? "partner"}
+                  <span className="mb-2 ms-1 inline-flex items-center gap-1 rounded-md bg-[var(--status-warning)]/12 px-1.5 py-0.5 text-[11px] font-medium text-[var(--text-secondary)]">
+                    {tr("With")} {t.space.name ?? tr("partner")}
                   </span>
                 )}
                 <Message c={t} people={people} onDelete={remove} />
                 {t.replies.length > 0 && (
-                  <div className="mt-3 flex flex-col gap-3 border-l-2 border-[var(--border)] pl-3">
+                  <div className="mt-3 flex flex-col gap-3 border-s-2 border-[var(--border)] ps-3">
                     {t.replies.map((r) => (
                       <Message key={r.id} c={r} people={people} onDelete={remove} />
                     ))}
@@ -375,20 +378,20 @@ export default function CommentsPanel({
                       onChange={setReplyDraft}
                       onSubmit={() => post(replyDraft, t.id)}
                       people={people}
-                      placeholder="Reply… (@ to mention)"
+                      placeholder={tr("Reply… (@ to mention)")}
                       autoFocus
                       disabled={busy}
                     />
                     <div className="mt-1.5 flex justify-end gap-2">
                       <button onClick={() => setReplyTo(null)} className="px-2 py-1 text-xs text-[var(--text-secondary)]">
-                        Cancel
+                        {tr("Cancel")}
                       </button>
                       <button
                         onClick={() => post(replyDraft, t.id)}
                         disabled={busy || !replyDraft.trim()}
                         className="rounded-md bg-[var(--accent)] px-2.5 py-1 text-xs font-medium text-white disabled:opacity-50"
                       >
-                        Reply
+                        {tr("Reply")}
                       </button>
                     </div>
                   </div>
@@ -401,24 +404,24 @@ export default function CommentsPanel({
                       }}
                       className="font-medium text-[var(--accent)] hover:underline"
                     >
-                      Reply
+                      {tr("Reply")}
                     </button>
                     {t.can_resolve &&
                       (t.resolved_at ? (
                         <button onClick={() => setResolved(t, false)} className="font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
-                          Reopen
+                          {tr("Reopen")}
                         </button>
                       ) : (
                         <button onClick={() => setResolved(t, true)} className="inline-flex items-center gap-1 font-medium text-[var(--text-secondary)] hover:text-[var(--status-good)]">
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M5 12l5 5L20 7" />
                           </svg>
-                          Resolve
+                          {tr("Resolve")}
                         </button>
                       ))}
                     {t.resolved_at && (
-                      <span className="ml-auto text-[11px] text-[var(--status-good)]">
-                        ✓ Resolved{t.resolved_by ? ` by ${t.resolved_by}` : ""}
+                      <span className="ms-auto text-[11px] text-[var(--status-good)]">
+                        {tr("✓ Resolved")}{t.resolved_by ? tr(" by {resolved_by}", { resolved_by: t.resolved_by }) : ""}
                       </span>
                     )}
                   </div>
@@ -432,21 +435,21 @@ export default function CommentsPanel({
           {error && <p className="mb-2 text-xs text-[var(--status-critical)]">{error}</p>}
           {mySpace && (
             <p className="mb-2 text-[11px] text-[var(--text-muted)]">
-              Private between {mySpace.name ?? "your company"} and {sharedBy ?? "the dashboard owner"}. Other companies can&apos;t see it.
+              {tr("Private between")} {mySpace.name ?? tr("your company")} {tr("and")} {sharedBy ?? tr("the dashboard owner")}{tr(". Other companies can't see it.")}
             </p>
           )}
           {!mySpace && spaces.length > 0 && (
             <label className="mb-2 flex items-center gap-2 text-[11px] text-[var(--text-muted)]">
-              Visible to
+              {tr("Visible to")}
               <select
                 value={space ?? ""}
                 onChange={(e) => setSpace(e.target.value ? Number(e.target.value) : null)}
                 className="min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 text-xs font-medium text-[var(--text-primary)]"
               >
-                <option value="">Your team only (internal)</option>
+                <option value="">{tr("Your team only (internal)")}</option>
                 {spaces.map((sp) => (
                   <option key={sp.id} value={sp.id}>
-                    Your team + {sp.name ?? "partner"}
+                    {tr("Your team +")} {sp.name ?? tr("partner")}
                   </option>
                 ))}
               </select>
@@ -457,17 +460,17 @@ export default function CommentsPanel({
             onChange={setDraft}
             onSubmit={() => post(draft)}
             people={people}
-            placeholder={chartFilter !== null ? `Comment on “${chartTitle(chartFilter)}”… (@ to mention)` : "Comment on this dashboard… (@ to mention)"}
+            placeholder={chartFilter !== null ? tr("Comment on “{v0}”… (@ to mention)", { v0: chartTitle(chartFilter) }) : tr("Comment on this dashboard… (@ to mention)")}
             disabled={busy}
           />
           <div className="mt-2 flex items-center justify-between gap-2">
-            <span className="text-[11px] text-[var(--text-muted)]">Enter to send · Shift+Enter for a new line</span>
+            <span className="text-[11px] text-[var(--text-muted)]">{tr("Enter to send · Shift+Enter for a new line")}</span>
             <button
               onClick={() => post(draft)}
               disabled={busy || !draft.trim()}
               className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
             >
-              {busy ? "Posting…" : "Comment"}
+              {busy ? tr("Posting…") : tr("Comment")}
             </button>
           </div>
         </footer>

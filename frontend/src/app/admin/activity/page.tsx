@@ -5,6 +5,7 @@ import RequireAuth from "@/components/RequireAuth";
 import DataTable, { type Column } from "@/components/admin/DataTable";
 import { ADMIN_CARD, AdminPage } from "@/components/AdminShell";
 import { api, ApiError, type AdminAction } from "@/lib/api";
+import { useT, translate, uiLocaleTag } from "@/i18n/ui";
 
 const COLUMNS: Column<AdminAction>[] = [
   {
@@ -13,20 +14,20 @@ const COLUMNS: Column<AdminAction>[] = [
     value: (a) => a.created_at,
     render: (a) => (
       <span className="whitespace-nowrap text-[var(--text-secondary)]">
-        {new Date(a.created_at).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+        {new Date(a.created_at).toLocaleString(uiLocaleTag(), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
       </span>
     ),
   },
-  { key: "admin", label: "Admin", value: (a) => a.admin?.name ?? "Deleted admin" },
+  { key: "admin", label: "Admin", value: (a) => a.admin?.name ?? translate("Deleted admin") },
   {
     key: "what",
     label: "What happened",
     value: (a) => a.description,
     render: (a) => (
       <>
-        <span className="text-[var(--text-primary)]">{a.description}</span>
-        {typeof a.metadata?.note === "string" && a.metadata.note && <span className="block text-xs text-[var(--text-muted)]">Note: {a.metadata.note}</span>}
-        {typeof a.metadata?.reason === "string" && a.metadata.reason && <span className="block text-xs text-[var(--text-muted)]">Reason: {a.metadata.reason}</span>}
+        <span className="text-[var(--text-primary)]">{translate(a.description)}</span>
+        {typeof a.metadata?.note === "string" && a.metadata.note && <span className="block text-xs text-[var(--text-muted)]">{translate("Note:")} {translate(a.metadata.note)}</span>}
+        {typeof a.metadata?.reason === "string" && a.metadata.reason && <span className="block text-xs text-[var(--text-muted)]">{translate("Reason:")} {a.metadata.reason}</span>}
       </>
     ),
   },
@@ -40,6 +41,7 @@ const COLUMNS: Column<AdminAction>[] = [
 ];
 
 function ActivityView() {
+  const tr = useT();
   const [rows, setRows] = useState<AdminAction[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,14 +49,14 @@ function ActivityView() {
     api
       .get<AdminAction[]>("/admin/actions")
       .then(setRows)
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Couldn't load the admin log."));
-  }, []);
+      .catch((err) => setError(err instanceof ApiError ? err.message : tr("Couldn't load the admin log.")));
+  }, [tr]);
 
   return (
-    <AdminPage title="Admin log" description="Every action taken in this console — who, what, when and from where.">
+    <AdminPage title={tr("Admin log")} description={tr("Every action taken in this console — who, what, when and from where.")}>
       <div className={`${ADMIN_CARD} p-4`}>
         {error && <p className="mb-3 text-sm text-[var(--status-critical)]">{error}</p>}
-        <DataTable columns={COLUMNS} rows={rows} getRowKey={(a) => a.id} filename="daha-bi-admin-log" emptyMessage="No admin actions recorded yet." />
+        <DataTable columns={COLUMNS} rows={rows} getRowKey={(a) => a.id} filename="daha-bi-admin-log" emptyMessage={tr("No admin actions recorded yet.")} />
       </div>
     </AdminPage>
   );

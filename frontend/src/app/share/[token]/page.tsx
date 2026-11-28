@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { AuthShell } from "@/components/AuthShell";
 import { useAuth } from "@/lib/auth-context";
 import { api, ApiError, type Organization } from "@/lib/api";
+import { useT } from "@/i18n/ui";
 
 type Preview = {
   dashboard: string;
@@ -23,6 +24,7 @@ const BTN_GHOST =
 
 /** A partner company accepts a dashboard another company shared with it. */
 export default function ShareAcceptPage({ params }: { params: Promise<{ token: string }> }) {
+  const tr = useT();
   const { token } = use(params);
   const router = useRouter();
   const { user, loading } = useAuth();
@@ -37,8 +39,8 @@ export default function ShareAcceptPage({ params }: { params: Promise<{ token: s
     api
       .get<Preview>(`/public/shares/${token}`)
       .then(setPreview)
-      .catch((err) => setLoadError(err instanceof ApiError ? err.message : "Couldn't load this share."));
-  }, [token]);
+      .catch((err) => setLoadError(err instanceof ApiError ? err.message : tr("Couldn't load this share.")));
+  }, [token, tr]);
 
   useEffect(() => {
     if (!user) return;
@@ -61,16 +63,16 @@ export default function ShareAcceptPage({ params }: { params: Promise<{ token: s
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.href = `/dashboards/${res.dashboard_id}`;
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't accept the share.");
+      setError(err instanceof ApiError ? err.message : tr("Couldn't accept the share."));
       setBusy(false);
     }
   }
 
   if (loadError) {
     return (
-      <AuthShell title="Share link not found" subtitle={loadError}>
+      <AuthShell title={tr("Share link not found")} subtitle={loadError}>
         <Link href="/dashboards" className="text-sm font-medium text-[var(--accent)] hover:underline">
-          Go to Daha BI
+          {tr("Go to Daha BI")}
         </Link>
       </AuthShell>
     );
@@ -78,7 +80,7 @@ export default function ShareAcceptPage({ params }: { params: Promise<{ token: s
 
   if (!preview || loading) {
     return (
-      <AuthShell title="Loading…">
+      <AuthShell title={tr("Loading…")}>
         <div className="h-40 animate-pulse rounded-xl bg-[var(--surface-2)]" />
       </AuthShell>
     );
@@ -87,16 +89,16 @@ export default function ShareAcceptPage({ params }: { params: Promise<{ token: s
   const from = preview.from_company ?? "A company";
   const summary = (
     <div className="mb-6 rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">Shared dashboard</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{tr("Shared dashboard")}</p>
       <p className="mt-1.5 text-base font-semibold text-[var(--text-primary)]">{preview.dashboard}</p>
       <p className="mt-1 text-sm text-[var(--text-secondary)]">
-        From <span className="font-medium text-[var(--text-primary)]">{from}</span>
-        {preview.shared_by && <> · sent by {preview.shared_by}</>}
+        {tr("From")} <span className="font-medium text-[var(--text-primary)]">{from}</span>
+        {preview.shared_by && <> {tr("· sent by")} {preview.shared_by}</>}
       </p>
       <ul className="mt-3 flex flex-col gap-1.5 text-xs text-[var(--text-secondary)]">
-        <li>✓ Everyone in your workspace can view it — live, always up to date</li>
-        <li>✓ View only: {from} keeps ownership and can stop sharing at any time</li>
-        {preview.filtered && <li>✓ Shows only the part of the data {from} chose to share with you</li>}
+        <li>{tr("✓ Everyone in your workspace can view it — live, always up to date")}</li>
+        <li>{tr("✓ View only:")} {from} {tr("keeps ownership and can stop sharing at any time")}</li>
+        {preview.filtered && <li>{tr("✓ Shows only the part of the data")} {from} {tr("chose to share with you")}</li>}
       </ul>
     </div>
   );
@@ -104,12 +106,12 @@ export default function ShareAcceptPage({ params }: { params: Promise<{ token: s
   if (preview.status !== "pending") {
     return (
       <AuthShell
-        title={preview.status === "accepted" ? "Already accepted" : "This link has expired"}
-        subtitle={preview.status === "accepted" ? "This dashboard is already in a workspace." : `Ask ${from} to share it again.`}
+        title={preview.status === "accepted" ? tr("Already accepted") : tr("This link has expired")}
+        subtitle={preview.status === "accepted" ? tr("This dashboard is already in a workspace.") : tr("Ask {from} to share it again.", { from: from })}
       >
         {summary}
         <Link href="/dashboards" className={BTN}>
-          Go to your dashboards
+          {tr("Go to your dashboards")}
         </Link>
       </AuthShell>
     );
@@ -118,34 +120,34 @@ export default function ShareAcceptPage({ params }: { params: Promise<{ token: s
   if (!user) {
     const next = encodeURIComponent(`/share/${token}`);
     return (
-      <AuthShell title={`${from} shared a dashboard with you`} subtitle="Sign in to add it to your company's workspace.">
+      <AuthShell title={tr("{from} shared a dashboard with you", { from: from })} subtitle={tr("Sign in to add it to your company's workspace.")}>
         {summary}
         <div className="flex flex-col gap-2.5">
           <Link href={`/login?next=${next}`} className={BTN}>
-            Sign in to accept
+            {tr("Sign in to accept")}
           </Link>
           <Link href={`/register?next=${next}`} className={BTN_GHOST}>
-            Create a free account
+            {tr("Create a free account")}
           </Link>
         </div>
-        <p className="mt-4 text-center text-xs text-[var(--text-muted)]">Sent to {preview.email}</p>
+        <p className="mt-4 text-center text-xs text-[var(--text-muted)]">{tr("Sent to")} {preview.email}</p>
       </AuthShell>
     );
   }
 
   return (
-    <AuthShell title={`Add “${preview.dashboard}” to your workspace`}>
+    <AuthShell title={tr("Add “{dashboard}” to your workspace", { dashboard: preview.dashboard })}>
       {summary}
       {orgs === null ? (
         <div className="h-12 animate-pulse rounded-lg bg-[var(--surface-2)]" />
       ) : manageable.length === 0 ? (
         <p className="rounded-lg bg-[var(--status-warning)]/12 px-3 py-2.5 text-sm text-[var(--text-secondary)]">
-          You need to be an owner or admin of a workspace to accept for your company. Ask your workspace admin to open this link.
+          {tr("You need to be an owner or admin of a workspace to accept for your company. Ask your workspace admin to open this link.")}
         </p>
       ) : (
         <div className="flex flex-col gap-3">
           <label className="text-sm font-medium text-[var(--text-secondary)]">
-            Add it to
+            {tr("Add it to")}
             <select
               value={chosen ?? ""}
               onChange={(e) => setOrgId(Number(e.target.value))}
@@ -160,10 +162,10 @@ export default function ShareAcceptPage({ params }: { params: Promise<{ token: s
           </label>
           {error && <p className="rounded-lg bg-[var(--status-critical)]/10 px-3 py-2 text-sm text-[var(--status-critical)]">{error}</p>}
           <button onClick={accept} disabled={busy || !chosen} className={BTN}>
-            {busy ? "Adding…" : "Accept for my company"}
+            {busy ? tr("Adding…") : tr("Accept for my company")}
           </button>
           <button onClick={() => router.push("/dashboards")} className="text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)]">
-            Not now
+            {tr("Not now")}
           </button>
         </div>
       )}

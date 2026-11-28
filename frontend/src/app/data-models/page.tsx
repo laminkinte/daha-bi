@@ -15,6 +15,7 @@ import {
   type PipelineStep,
 } from "@/lib/api";
 import { PageHeader, PAGE_CONTAINER } from "@/components/PageHeader";
+import { useT, uiLocaleTag } from "@/i18n/ui";
 
 const FILTER_OPERATORS = ["=", "!=", ">", "<", ">=", "<=", "contains"];
 const DERIVE_OPERATORS: DeriveOperator[] = ["+", "-", "*", "/"];
@@ -64,10 +65,11 @@ function FieldInput({
   placeholder?: string;
   columnOptions: string[] | null;
 }) {
+  const tr = useT();
   if (columnOptions) {
     return (
       <select value={value} onChange={(e) => onSet(e.target.value)} className={selectClass}>
-        <option value="">Select field...</option>
+        <option value="">{tr("Select field...")}</option>
         {columnOptions.map((c) => (
           <option key={c} value={c}>
             {c}
@@ -80,7 +82,7 @@ function FieldInput({
     <input
       value={value}
       onChange={(e) => onSet(e.target.value)}
-      placeholder={placeholder ?? "field name"}
+      placeholder={placeholder ?? tr("field name")}
       className={selectClass}
     />
   );
@@ -101,6 +103,7 @@ function StepEditor({
   onChange: (patch: Partial<PipelineStep>) => void;
   onRemove: () => void;
 }) {
+  const tr = useT();
   const columnOptions = sourceColumns.length > 0 ? sourceColumns : null;
 
   return (
@@ -110,20 +113,20 @@ function StepEditor({
           {index + 1}. {step.type}
         </span>
         <button type="button" onClick={onRemove} className="text-[var(--text-muted)] hover:text-[var(--status-critical)]">
-          Remove
+          {tr("Remove")}
         </button>
       </div>
 
       {step.type === "join" && (
         <div className="mt-2 grid grid-cols-2 gap-2">
           <div>
-            <label className={labelClass}>Join dataset</label>
+            <label className={labelClass}>{tr("Join dataset")}</label>
             <select
               value={step.dataset_id ?? ""}
               onChange={(e) => onChange({ dataset_id: Number(e.target.value) })}
               className={selectClass}
             >
-              <option value="">Select...</option>
+              <option value="">{tr("Select...")}</option>
               {datasets.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name}
@@ -132,35 +135,35 @@ function StepEditor({
             </select>
           </div>
           <div>
-            <label className={labelClass}>Join type</label>
+            <label className={labelClass}>{tr("Join type")}</label>
             <select
               value={step.join_type ?? "inner"}
               onChange={(e) => onChange({ join_type: e.target.value as JoinType })}
               className={selectClass}
             >
-              <option value="inner">Inner</option>
-              <option value="left">Left</option>
+              <option value="inner">{tr("Inner")}</option>
+              <option value="left">{tr("Left")}</option>
             </select>
           </div>
           <div>
-            <label className={labelClass}>Left field (this pipeline)</label>
+            <label className={labelClass}>{tr("Left field (this pipeline)")}</label>
             <FieldInput value={step.left_field ?? ""} onSet={(v) => onChange({ left_field: v })} columnOptions={columnOptions} />
           </div>
           <div>
-            <label className={labelClass}>Right field (joined dataset)</label>
+            <label className={labelClass}>{tr("Right field (joined dataset)")}</label>
             <input
               value={step.right_field ?? ""}
               onChange={(e) => onChange({ right_field: e.target.value })}
-              placeholder="e.g. id"
+              placeholder={tr("e.g. id")}
               className={selectClass}
             />
           </div>
           <div className="col-span-2">
-            <label className={labelClass}>Column prefix (optional)</label>
+            <label className={labelClass}>{tr("Column prefix (optional)")}</label>
             <input
               value={step.prefix ?? ""}
               onChange={(e) => onChange({ prefix: e.target.value })}
-              placeholder="e.g. customer"
+              placeholder={tr("e.g. customer")}
               className={selectClass}
             />
           </div>
@@ -170,11 +173,11 @@ function StepEditor({
       {step.type === "filter" && (
         <div className="mt-2 grid grid-cols-3 gap-2">
           <div>
-            <label className={labelClass}>Field</label>
+            <label className={labelClass}>{tr("Field")}</label>
             <FieldInput value={step.field ?? ""} onSet={(v) => onChange({ field: v })} columnOptions={columnOptions} />
           </div>
           <div>
-            <label className={labelClass}>Operator</label>
+            <label className={labelClass}>{tr("Operator")}</label>
             <select value={step.operator ?? "="} onChange={(e) => onChange({ operator: e.target.value })} className={selectClass}>
               {FILTER_OPERATORS.map((op) => (
                 <option key={op} value={op}>
@@ -184,7 +187,7 @@ function StepEditor({
             </select>
           </div>
           <div>
-            <label className={labelClass}>Value</label>
+            <label className={labelClass}>{tr("Value")}</label>
             <input value={step.value ?? ""} onChange={(e) => onChange({ value: e.target.value })} className={selectClass} />
           </div>
         </div>
@@ -193,11 +196,11 @@ function StepEditor({
       {step.type === "rename" && (
         <div className="mt-2 grid grid-cols-2 gap-2">
           <div>
-            <label className={labelClass}>From</label>
+            <label className={labelClass}>{tr("From")}</label>
             <FieldInput value={step.from ?? ""} onSet={(v) => onChange({ from: v })} columnOptions={columnOptions} />
           </div>
           <div>
-            <label className={labelClass}>To</label>
+            <label className={labelClass}>{tr("To")}</label>
             <input value={step.to ?? ""} onChange={(e) => onChange({ to: e.target.value })} className={selectClass} />
           </div>
         </div>
@@ -205,11 +208,11 @@ function StepEditor({
 
       {step.type === "select" && (
         <div className="mt-2">
-          <label className={labelClass}>Fields to keep (comma-separated)</label>
+          <label className={labelClass}>{tr("Fields to keep (comma-separated)")}</label>
           <input
             value={(step.fields ?? []).join(", ")}
             onChange={(e) => onChange({ fields: e.target.value.split(",").map((f) => f.trim()).filter(Boolean) })}
-            placeholder="e.g. order_id, amount, customer.name"
+            placeholder={tr("e.g. order_id, amount, customer.name")}
             className={selectClass}
           />
         </div>
@@ -218,11 +221,11 @@ function StepEditor({
       {step.type === "derive" && (
         <div className="mt-2 grid grid-cols-2 gap-2">
           <div>
-            <label className={labelClass}>New column name</label>
+            <label className={labelClass}>{tr("New column name")}</label>
             <input value={step.name ?? ""} onChange={(e) => onChange({ name: e.target.value })} className={selectClass} />
           </div>
           <div>
-            <label className={labelClass}>Operator</label>
+            <label className={labelClass}>{tr("Operator")}</label>
             <select
               value={step.operator ?? "+"}
               onChange={(e) => onChange({ operator: e.target.value as DeriveOperator })}
@@ -236,16 +239,16 @@ function StepEditor({
             </select>
           </div>
           <div>
-            <label className={labelClass}>Left field</label>
+            <label className={labelClass}>{tr("Left field")}</label>
             <FieldInput value={step.left_field ?? ""} onSet={(v) => onChange({ left_field: v })} columnOptions={columnOptions} />
           </div>
           <div>
-            <label className={labelClass}>Right field (or leave blank to use a constant)</label>
+            <label className={labelClass}>{tr("Right field (or leave blank to use a constant)")}</label>
             <FieldInput value={step.right_field ?? ""} onSet={(v) => onChange({ right_field: v || undefined })} columnOptions={columnOptions} />
           </div>
           {!step.right_field && (
             <div>
-              <label className={labelClass}>Constant</label>
+              <label className={labelClass}>{tr("Constant")}</label>
               <input
                 type="number"
                 value={step.constant ?? ""}
@@ -271,6 +274,7 @@ function PipelineBuilder({
   onDone: () => void;
   onCancel: () => void;
 }) {
+  const tr = useT();
   const [name, setName] = useState(editing?.name ?? "");
   const [schedule, setSchedule] = useState<DataModelSchedule>(editing?.schedule ?? "manual");
   const [steps, setSteps] = useState<PipelineStep[]>(
@@ -308,7 +312,7 @@ function PipelineBuilder({
       }
       onDone();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to save this data model.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to save this data model."));
     } finally {
       setSubmitting(false);
     }
@@ -316,18 +320,18 @@ function PipelineBuilder({
 
   return (
     <form onSubmit={onSubmit} className="rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-4 text-sm">
-      <h3 className="mb-3 font-medium text-[var(--text-primary)]">{editing ? "Edit data model" : "New data model"}</h3>
+      <h3 className="mb-3 font-medium text-[var(--text-primary)]">{editing ? tr("Edit data model") : tr("New data model")}</h3>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className={labelClass}>Name</label>
+          <label className={labelClass}>{tr("Name")}</label>
           <input value={name} onChange={(e) => setName(e.target.value)} required className={selectClass} />
         </div>
         <div>
-          <label className={labelClass}>Schedule</label>
+          <label className={labelClass}>{tr("Schedule")}</label>
           <select value={schedule} onChange={(e) => setSchedule(e.target.value as DataModelSchedule)} className={selectClass}>
             {SCHEDULES.map((s) => (
               <option key={s} value={s}>
-                {s === "manual" ? "Manual (run on demand)" : `Auto-refresh ${s}`}
+                {s === "manual" ? tr("Manual (run on demand)") : tr("Auto-refresh {s}", { s: s })}
               </option>
             ))}
           </select>
@@ -335,14 +339,14 @@ function PipelineBuilder({
       </div>
 
       <div className="mt-4">
-        <label className={labelClass}>Source dataset</label>
+        <label className={labelClass}>{tr("Source dataset")}</label>
         <select
           value={steps[0]?.dataset_id ?? ""}
           onChange={(e) => updateStep(0, { dataset_id: Number(e.target.value) })}
           className={selectClass}
           required
         >
-          <option value="">Select...</option>
+          <option value="">{tr("Select...")}</option>
           {datasets.map((d) => (
             <option key={d.id} value={d.id}>
               {d.name}
@@ -350,7 +354,7 @@ function PipelineBuilder({
           ))}
         </select>
         {sourceColumns.length > 0 && (
-          <p className="mt-1 text-xs text-[var(--text-muted)]">Columns: {sourceColumns.join(", ")}</p>
+          <p className="mt-1 text-xs text-[var(--text-muted)]">{tr("Columns:")} {sourceColumns.join(", ")}</p>
         )}
       </div>
 
@@ -385,7 +389,7 @@ function PipelineBuilder({
 
       {editing?.output_dataset && (
         <p className="mt-3 text-xs text-[var(--text-muted)]">
-          Current output has {editing.output_dataset.row_count} row(s) with columns:{" "}
+          {tr("Current output has")} {editing.output_dataset.row_count} {tr("row(s) with columns:")}{" "}
           {editing.output_dataset.columns.map((c) => c.name).join(", ")}
         </p>
       )}
@@ -398,10 +402,10 @@ function PipelineBuilder({
           disabled={submitting}
           className="rounded-md bg-[var(--accent)] px-4 py-2 font-medium text-white disabled:opacity-60"
         >
-          {submitting ? "Running..." : "Save & Run"}
+          {submitting ? tr("Running...") : tr("Save & Run")}
         </button>
         <button type="button" onClick={onCancel} className="rounded-md border border-[var(--border)] px-4 py-2 text-[var(--text-secondary)]">
-          Cancel
+          {tr("Cancel")}
         </button>
       </div>
     </form>
@@ -409,6 +413,7 @@ function PipelineBuilder({
 }
 
 function DataModelsList() {
+  const tr = useT();
   const [models, setModels] = useState<DataModel[] | null>(null);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [showBuilder, setShowBuilder] = useState(false);
@@ -431,7 +436,7 @@ function DataModelsList() {
     try {
       await api.post(`/data-models/${id}/run`, {});
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : "Failed to run this data model.");
+      setActionError(err instanceof ApiError ? err.message : tr("Failed to run this data model."));
     } finally {
       setRunningId(null);
       load();
@@ -439,13 +444,13 @@ function DataModelsList() {
   }
 
   async function onDelete(id: number) {
-    if (!confirm("Delete this data model and its output dataset?")) return;
+    if (!confirm(tr("Delete this data model and its output dataset?"))) return;
     setActionError(null);
     try {
       await api.del(`/data-models/${id}`);
       load();
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : "Failed to delete this data model.");
+      setActionError(err instanceof ApiError ? err.message : tr("Failed to delete this data model."));
     }
   }
 
@@ -453,8 +458,8 @@ function DataModelsList() {
     <div className={`${PAGE_CONTAINER} max-w-4xl`}>
       <PageHeader
         icon="flow"
-        title="Data Models"
-        description="Join datasets together, filter and reshape them, and derive new columns — the result becomes a normal, chartable dataset."
+        title={tr("Data Models")}
+        description={tr("Join datasets together, filter and reshape them, and derive new columns — the result becomes a normal, chartable dataset.")}
       />
 
       <div className="mt-6">
@@ -477,7 +482,7 @@ function DataModelsList() {
             onClick={() => setShowBuilder(true)}
             className="rounded-md border border-dashed border-[var(--border)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
           >
-            + New data model
+            {tr("+ New data model")}
           </button>
         )}
       </div>
@@ -494,8 +499,8 @@ function DataModelsList() {
         {models?.length === 0 && (
           <EmptyState
             icon={<FlowIcon />}
-            title="No data models yet"
-            description="Build one above to join or transform your datasets into a new chartable dataset."
+            title={tr("No data models yet")}
+            description={tr("Build one above to join or transform your datasets into a new chartable dataset.")}
           />
         )}
         {models?.map((m) => (
@@ -507,9 +512,9 @@ function DataModelsList() {
                   <StatusBadge status={m.status} />
                 </div>
                 <div className="text-xs text-[var(--text-muted)]">
-                  {m.pipeline.length} step(s) &middot; {m.schedule}
-                  {m.output_dataset ? ` · ${m.output_dataset.row_count} rows` : ""}
-                  {m.last_run_at ? ` · last run ${new Date(m.last_run_at).toLocaleString()}` : ""}
+                  {m.pipeline.length} {tr("step(s) ·")} {m.schedule}
+                  {m.output_dataset ? tr(" · {row_count} rows", { row_count: m.output_dataset.row_count }) : ""}
+                  {m.last_run_at ? tr(" · last run {v0}", { v0: new Date(m.last_run_at).toLocaleString(uiLocaleTag()) }) : ""}
                 </div>
                 {m.error_message && <div className="text-xs text-[var(--status-critical)]">{m.error_message}</div>}
               </div>
@@ -519,19 +524,19 @@ function DataModelsList() {
                   disabled={runningId === m.id}
                   className="rounded-md border border-[var(--border)] px-3 py-1 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-60"
                 >
-                  {runningId === m.id ? "Running..." : "Run now"}
+                  {runningId === m.id ? tr("Running...") : tr("Run now")}
                 </button>
                 <button
                   onClick={() => setEditing(m)}
                   className="rounded-md border border-[var(--border)] px-3 py-1 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                 >
-                  Edit
+                  {tr("Edit")}
                 </button>
                 <button
                   onClick={() => onDelete(m.id)}
                   className="rounded-md border border-[var(--border)] px-3 py-1 text-sm text-[var(--status-critical)]"
                 >
-                  Delete
+                  {tr("Delete")}
                 </button>
               </div>
             </div>

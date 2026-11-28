@@ -128,7 +128,7 @@ class DataIngestionService
 
         $table = $config['table'];
         if (! preg_match('/^[A-Za-z0-9_]+$/', $table)) {
-            throw new RuntimeException('Invalid table name.');
+            throw new RuntimeException(__('Invalid table name.'));
         }
 
         $driver = $this->driver($config);
@@ -237,7 +237,7 @@ class DataIngestionService
         $exists = $pdo->prepare('SELECT 1 FROM information_schema.tables WHERE table_schema = ? AND table_name = ?');
         $exists->execute([$this->schemaFilter($driver, $config), $table]);
         if (! $exists->fetchColumn()) {
-            throw new RuntimeException("Table \"{$table}\" does not exist in this database.");
+            throw new RuntimeException(__('Table ":table" does not exist in this database.', ['table' => $table]));
         }
 
         $sql = $this->selectWithLimit($driver, $this->quoteIdentifier($driver, $table), max(1, min($limit, 100)));
@@ -261,7 +261,7 @@ class DataIngestionService
         $config = $dataSource->config ?? [];
 
         if (empty($config['url'])) {
-            throw new RuntimeException('Missing required field: url.');
+            throw new RuntimeException(__('Missing required field: url.'));
         }
 
         $records = $this->fetchRestApiRecords($config);
@@ -338,7 +338,7 @@ class DataIngestionService
         $url = (string) ($config['url'] ?? '');
         $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
         if (! in_array($scheme, ['http', 'https'], true)) {
-            throw new RuntimeException('API URL must start with http:// or https://.');
+            throw new RuntimeException(__('API URL must start with http:// or https://.'));
         }
         $this->assertAllowedHost((string) parse_url($url, PHP_URL_HOST));
 
@@ -378,7 +378,7 @@ class DataIngestionService
         }
 
         if (! is_array($json)) {
-            throw new RuntimeException('The response at the given JSON path is not an array of records.');
+            throw new RuntimeException(__('The response at the given JSON path is not an array of records.'));
         }
 
         return array_values($json);
@@ -457,17 +457,17 @@ class DataIngestionService
 
         $host = trim($host, "[] \t");
         if ($host === '') {
-            throw new RuntimeException('A host is required.');
+            throw new RuntimeException(__('A host is required.'));
         }
 
         $ips = filter_var($host, FILTER_VALIDATE_IP) ? [$host] : (gethostbynamel($host) ?: []);
         if ($ips === []) {
-            throw new RuntimeException("Could not resolve host \"{$host}\".");
+            throw new RuntimeException(__('Could not resolve host ":host".', ['host' => $host]));
         }
 
         foreach ($ips as $ip) {
             if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-                throw new RuntimeException("Connections to private or internal addresses ({$host}) are not allowed.");
+                throw new RuntimeException(__('Connections to private or internal addresses (:host) are not allowed.', ['host' => $host]));
             }
         }
     }
@@ -491,7 +491,7 @@ class DataIngestionService
         $samePort = $port === (int) ($app['port'] ?? $port);
 
         if ($sameDatabase && $sameServer && $samePort) {
-            throw new RuntimeException('This connection points at Daha BI\'s own application database, which is not allowed.');
+            throw new RuntimeException(__('This connection points at Daha BI\'s own application database, which is not allowed.'));
         }
     }
 
@@ -554,11 +554,11 @@ class DataIngestionService
         $withoutComments = preg_replace('/--[^\n]*|\/\*.*?\*\//s', '', $trimmed) ?? $trimmed;
 
         if (str_contains($withoutComments, ';')) {
-            throw new RuntimeException('Only a single SELECT statement is allowed.');
+            throw new RuntimeException(__('Only a single SELECT statement is allowed.'));
         }
 
         if (! preg_match('/^\s*SELECT\s/i', $withoutComments)) {
-            throw new RuntimeException('Query must start with SELECT.');
+            throw new RuntimeException(__('Query must start with SELECT.'));
         }
 
         // A few of these are engine-specific (INTO OUTFILE is MySQL, COPY/OPENROWSET etc. are
@@ -571,7 +571,7 @@ class DataIngestionService
         ];
         foreach ($forbidden as $keyword) {
             if (preg_match('/\b' . preg_quote($keyword, '/') . '\b/i', $withoutComments)) {
-                throw new RuntimeException("Query must not contain {$keyword}.");
+                throw new RuntimeException(__('Query must not contain :keyword.', ['keyword' => $keyword]));
             }
         }
 

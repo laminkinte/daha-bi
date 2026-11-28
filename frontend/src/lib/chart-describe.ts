@@ -1,4 +1,5 @@
 import type { Chart, ChartType, DatasetColumn } from "@/lib/api";
+import { translate } from "@/i18n/ui";
 
 export type ColumnKind = "number" | "date" | "text";
 
@@ -28,12 +29,13 @@ export function inferColumnKinds(columns: DatasetColumn[], rows: Record<string, 
   return kinds;
 }
 
-const AGG_WORD: Record<string, string> = {
-  sum: "Total",
-  avg: "Average",
-  min: "Lowest",
-  max: "Highest",
-  count_distinct: "Distinct",
+// Whole phrases (not "word + field") so other languages can put the field where it belongs.
+const AGG_PHRASE: Record<string, string> = {
+  sum: "Total {field}",
+  avg: "Average {field}",
+  min: "Lowest {field}",
+  max: "Highest {field}",
+  count_distinct: "Distinct {field}",
 };
 
 function label(columns: DatasetColumn[] | undefined, name: string | undefined) {
@@ -45,8 +47,10 @@ function label(columns: DatasetColumn[] | undefined, name: string | undefined) {
 export function measurePhrase(config: Chart["config"], columns?: DatasetColumn[], type?: ChartType): string {
   const agg = config.agg ?? "count";
   const field = type === "heatmap" ? config.value_field : config.y_field;
-  if (agg === "count" || !field) return "Number of records";
-  return `${AGG_WORD[agg] ?? agg} ${label(columns, field).toLowerCase()}`;
+  if (agg === "count" || !field) return translate("Number of records");
+  const phrase = AGG_PHRASE[agg];
+  const fieldText = label(columns, field).toLowerCase();
+  return phrase ? translate(phrase, { field: fieldText }) : `${agg} ${fieldText}`;
 }
 
 /** A readable default title for a chart definition, e.g. "Total revenue by country". */
@@ -54,25 +58,28 @@ export function suggestTitle(type: ChartType, config: Chart["config"], columns?:
   const x = label(columns, config.x_field).toLowerCase();
   switch (type) {
     case "table":
-      return "Data table";
+      return translate("Data table");
     case "scatter":
       return config.x_field && config.y_field
-        ? `${label(columns, config.y_field)} vs ${label(columns, config.x_field).toLowerCase()}`
-        : "Scatter plot";
+        ? translate("{y} vs {x}", { y: label(columns, config.y_field), x: label(columns, config.x_field).toLowerCase() })
+        : translate("Scatter plot");
     case "heatmap":
       return config.x_field && config.y_field
-        ? `${measurePhrase(config, columns, type)} by ${label(columns, config.y_field).toLowerCase()} and ${x}`
-        : "Heatmap";
+        ? translate("{measure} by {y} and {x}", { measure: measurePhrase(config, columns, type), y: label(columns, config.y_field).toLowerCase(), x })
+        : translate("Heatmap");
     case "kpi":
     case "gauge":
       return measurePhrase(config, columns, type);
     case "feed":
-      return config.label_field ? `Latest ${label(columns, config.label_field).toLowerCase()} activity` : "Recent activity";
+      return config.label_field ? translate("Latest {field} activity", { field: label(columns, config.label_field).toLowerCase() }) : translate("Recent activity");
     case "line":
-      return x ? `${measurePhrase(config, columns, type)} over ${x}` : measurePhrase(config, columns, type);
+      return x ? translate("{measure} over {x}", { measure: measurePhrase(config, columns, type), x }) : measurePhrase(config, columns, type);
     default: {
-      const split = config.series_field ? ` and ${label(columns, config.series_field).toLowerCase()}` : "";
-      return x ? `${measurePhrase(config, columns, type)} by ${x}${split}` : measurePhrase(config, columns, type);
+      if (!x) return measurePhrase(config, columns, type);
+      const measure = measurePhrase(config, columns, type);
+      return config.series_field
+        ? translate("{measure} by {x} and {y}", { measure, x, y: label(columns, config.series_field).toLowerCase() })
+        : translate("{measure} by {x}", { measure, x });
     }
   }
 }
@@ -83,21 +90,22 @@ export function describeChart(chart: Chart): string {
   let what: string;
   switch (chart.type) {
     case "table":
-      what = "Raw rows";
+      what = translate("Raw rows");
       break;
     case "scatter":
-      what = `${label(cols, chart.config.y_field)} vs ${label(cols, chart.config.x_field)}`;
+      what = translate("{y} vs {x}", { y: label(cols, chart.config.y_field), x: label(cols, chart.config.x_field) });
       break;
     case "kpi":
     case "gauge":
       what = measurePhrase(chart.config, cols, chart.type);
       break;
     case "feed":
-      what = `Newest ${label(cols, chart.config.label_field).toLowerCase()} by ${label(cols, chart.config.x_field).toLowerCase()}`;
+      what = translate("Newest {field} by {x}", { field: label(cols, chart.config.label_field).toLowerCase(), x: label(cols, chart.config.x_field).toLowerCase() });
       break;
     default: {
       const x = label(cols, chart.config.x_field).toLowerCase();
-      what = x ? `${measurePhrase(chart.config, cols, chart.type)} ${chart.type === "line" ? "over" : "by"} ${x}` : measurePhrase(chart.config, cols, chart.type);
+      const measure = measurePhrase(chart.config, cols, chart.type);
+      what = x ? translate(chart.type === "line" ? "{measure} over {x}" : "{measure} by {x}", { measure, x }) : measure;
     }
   }
   return chart.dataset?.name ? `${what} · ${chart.dataset.name}` : what;

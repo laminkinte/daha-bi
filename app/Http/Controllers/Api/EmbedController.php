@@ -138,7 +138,7 @@ class EmbedController extends Controller
     protected function live(string $token): DashboardEmbed
     {
         $embed = DashboardEmbed::findByToken($token);
-        abort_unless($embed && $embed->isLive(), Response::HTTP_NOT_FOUND, 'This embed is no longer available.');
+        abort_unless($embed && $embed->isLive(), Response::HTTP_NOT_FOUND, __('This embed is no longer available.'));
 
         return $embed;
     }
@@ -160,7 +160,7 @@ class EmbedController extends Controller
         abort_unless(
             $share && in_array($user->roleInOrganization($orgId), ['owner', 'admin'], true),
             Response::HTTP_FORBIDDEN,
-            'Only a dashboard manager, or an admin of a company it was shared with, can embed it.'
+            __('Only a dashboard manager, or an admin of a company it was shared with, can embed it.')
         );
 
         return [$orgId, $share];
@@ -176,7 +176,7 @@ class EmbedController extends Controller
             ->filter()
             ->each(function ($d) {
                 if (! preg_match('/^(\*\.)?([a-z0-9-]+\.)*[a-z0-9-]+(:\d{1,5})?$/', $d)) {
-                    throw ValidationException::withMessages(['allowed_domains' => ["Not a valid domain: {$d}"]]);
+                    throw ValidationException::withMessages(['allowed_domains' => [__('Not a valid domain: :domain', ['domain' => $d])]]);
                 }
             })
             ->unique()->values()->all();
@@ -189,11 +189,11 @@ class EmbedController extends Controller
             ->unique()->all();
 
         return collect($filters)->map(function (array $f) use ($columns) {
-            abort_unless(in_array($f['field'], $columns, true), Response::HTTP_UNPROCESSABLE_ENTITY, "Unknown field: {$f['field']}");
+            abort_unless(in_array($f['field'], $columns, true), Response::HTTP_UNPROCESSABLE_ENTITY, __('Unknown field: :field', ['field' => $f['field']]));
             $value = $f['operator'] === 'in'
                 ? array_values(array_filter(array_map('strval', (array) $f['value']), 'strlen'))
                 : (string) (is_array($f['value']) ? reset($f['value']) : $f['value']);
-            abort_if($value === '' || $value === [], Response::HTTP_UNPROCESSABLE_ENTITY, 'Each row filter needs a value.');
+            abort_if($value === '' || $value === [], Response::HTTP_UNPROCESSABLE_ENTITY, __('Each row filter needs a value.'));
 
             return ['field' => $f['field'], 'operator' => $f['operator'], 'value' => $value];
         })->values()->all();

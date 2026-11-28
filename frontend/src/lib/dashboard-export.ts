@@ -1,5 +1,6 @@
 import { getFontEmbedCSS, toCanvas } from "html-to-image";
 import jsPDF from "jspdf";
+import { translate, uiLocaleTag } from "@/i18n/ui";
 
 /** Rows a table chart contributes to the PDF; the rest are scrolled out of view anyway. */
 const MAX_TABLE_ROWS = 25;
@@ -72,7 +73,7 @@ export async function downloadDashboardPdf(
   }
   pdf.setFontSize(8);
   pdf.setTextColor(150);
-  pdf.text(`Exported ${new Date().toLocaleString()}`, margin, y + 6);
+  pdf.text(translate("Exported {when}", { when: new Date().toLocaleString(uiLocaleTag()) }), margin, y + 6);
   y += 18;
 
   const contentWidth = pageWidth - margin * 2;

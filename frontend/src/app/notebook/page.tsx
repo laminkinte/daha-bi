@@ -5,6 +5,7 @@ import RequireAuth from "@/components/RequireAuth";
 import { EmptyState } from "@/components/EmptyState";
 import { api, ApiError, type DataSource, type Dataset, type MysqlTable } from "@/lib/api";
 import { PageHeader, PAGE_CONTAINER } from "@/components/PageHeader";
+import { useT, uiLocaleTag } from "@/i18n/ui";
 
 /* ───────────────────────────── icons ───────────────────────────── */
 
@@ -87,15 +88,16 @@ function errorText(err: unknown, fallback: string) {
 
 /** Data grid with a row-number gutter, sticky header and right-aligned numbers. */
 function DataGrid({ grid }: { grid: GridData }) {
+  const tr = useT();
   if (grid.rows.length === 0) {
-    return <p className="px-4 py-10 text-center text-sm text-[var(--text-muted)]">No rows returned.</p>;
+    return <p className="px-4 py-10 text-center text-sm text-[var(--text-muted)]">{tr("No rows returned.")}</p>;
   }
   return (
     <div className="max-h-[28rem] overflow-auto">
-      <table className="w-full border-separate border-spacing-0 text-left text-[13px] tabular-nums">
+      <table className="w-full border-separate border-spacing-0 text-start text-[13px] tabular-nums">
         <thead>
           <tr>
-            <th className="sticky left-0 top-0 z-20 w-10 border-b border-r border-[var(--border)] bg-[var(--surface-2)] px-2 py-2 text-right font-mono text-[11px] font-normal text-[var(--text-muted)]">
+            <th className="sticky start-0 top-0 z-20 w-10 border-b border-e border-[var(--border)] bg-[var(--surface-2)] px-2 py-2 text-end font-mono text-[11px] font-normal text-[var(--text-muted)]">
               #
             </th>
             {grid.columns.map((col) => (
@@ -103,7 +105,7 @@ function DataGrid({ grid }: { grid: GridData }) {
                 key={col.key}
                 className="sticky top-0 z-10 whitespace-nowrap border-b border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]"
               >
-                {col.label}
+                {tr(col.label)}
               </th>
             ))}
           </tr>
@@ -111,7 +113,7 @@ function DataGrid({ grid }: { grid: GridData }) {
         <tbody>
           {grid.rows.map((row, i) => (
             <tr key={i} className="hover:bg-[var(--accent-soft)]/40">
-              <td className="sticky left-0 border-b border-r border-[var(--gridline)] bg-[var(--surface-1)] px-2 py-1.5 text-right font-mono text-[11px] text-[var(--text-muted)]">
+              <td className="sticky start-0 border-b border-e border-[var(--gridline)] bg-[var(--surface-1)] px-2 py-1.5 text-end font-mono text-[11px] text-[var(--text-muted)]">
                 {i + 1}
               </td>
               {grid.columns.map((col) => {
@@ -121,10 +123,10 @@ function DataGrid({ grid }: { grid: GridData }) {
                   <td
                     key={col.key}
                     className={`whitespace-nowrap border-b border-[var(--gridline)] px-3 py-1.5 ${
-                      numeric ? "text-right" : ""
+                      numeric ? "text-end" : ""
                     } ${v === null || v === undefined ? "italic text-[var(--text-muted)]" : "text-[var(--text-primary)]"}`}
                   >
-                    {v === null || v === undefined ? "null" : String(v)}
+                    {v === null || v === undefined ? tr("null") : String(v)}
                   </td>
                 );
               })}
@@ -138,6 +140,7 @@ function DataGrid({ grid }: { grid: GridData }) {
 
 /** A Python cell's result: error, printed output, the `result` value, and any charts. */
 function PythonRunView({ run }: { run: PyRun }) {
+  const tr = useT();
   const r = run.result;
   const nothing = run.ok && !r && !run.stdout && run.figures.length === 0;
   return (
@@ -153,7 +156,7 @@ function PythonRunView({ run }: { run: PyRun }) {
             </p>
           ))}
           {run.error.type === "KeyError" && (
-            <p className="mt-2 text-xs text-[var(--text-muted)]">Tip: column names are case-sensitive. Check the list on the left.</p>
+            <p className="mt-2 text-xs text-[var(--text-muted)]">{tr("Tip: column names are case-sensitive. Check the list on the left.")}</p>
           )}
         </div>
       )}
@@ -165,13 +168,13 @@ function PythonRunView({ run }: { run: PyRun }) {
         <div className="grid gap-3 p-4 md:grid-cols-2">
           {run.figures.map((png, i) => (
             // eslint-disable-next-line @next/next/no-img-element -- base64 chart rendered by matplotlib
-            <img key={i} src={`data:image/png;base64,${png}`} alt={`Chart ${i + 1}`} className="w-full rounded-lg border border-[var(--border)] bg-white" />
+            <img key={i} src={`data:image/png;base64,${png}`} alt={tr("Chart {v0}", { v0: i + 1 })} className="w-full rounded-lg border border-[var(--border)] bg-white" />
           ))}
         </div>
       )}
       {nothing && (
         <p className="p-4 text-sm text-[var(--text-muted)]">
-          Ran fine, but there is nothing to show. Assign a value to <code>result</code>, use print(), or draw a chart with plt.
+          {tr("Ran fine, but there is nothing to show. Assign a value to")} <code>{tr("result")}</code>{tr(", use print(), or draw a chart with plt.")}
         </p>
       )}
     </div>
@@ -192,19 +195,20 @@ function OutputPanel({
   emptyHint: string;
   actions?: ReactNode;
 }) {
-  let label = "Results";
+  const tr = useT();
+  let label = tr("Results");
   let meta: string | null = null;
   if (output?.kind === "result") meta = `${output.grid.rows.length} row${output.grid.rows.length === 1 ? "" : "s"} · ${output.grid.columns.length} columns · ${output.ms} ms`;
   if (output?.kind === "text") {
-    label = "Output";
+    label = tr("Output");
     meta = `${output.ms} ms`;
   }
   if (output?.kind === "python") {
-    label = output.run.ok ? "Output" : "Error";
+    label = output.run.ok ? tr("Output") : tr("Error");
     const r = output.run.result;
     meta = [
-      r?.type === "table" ? `${r.total_rows.toLocaleString()} row${r.total_rows === 1 ? "" : "s"}${r.truncated ? ` (showing ${r.rows.length})` : ""}` : null,
-      `ran on ${output.run.rows_loaded.toLocaleString()} rows`,
+      r?.type === "table" ? `${r.total_rows.toLocaleString(uiLocaleTag())} row${r.total_rows === 1 ? "" : "s"}${r.truncated ? ` (showing ${r.rows.length})` : ""}` : null,
+      `ran on ${output.run.rows_loaded.toLocaleString(uiLocaleTag())} rows`,
       `${output.ms} ms`,
     ]
       .filter(Boolean)
@@ -237,7 +241,7 @@ function OutputPanel({
       </header>
 
       {running ? (
-        <div className="space-y-2 p-4" aria-label="Running">
+        <div className="space-y-2 p-4" aria-label={tr("Running")}>
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="h-5 rounded bg-[var(--surface-2)]" style={{ width: `${90 - i * 12}%` }} />
           ))}
@@ -251,20 +255,20 @@ function OutputPanel({
           <span className="text-[var(--text-muted)]">{svg(22, <path d="M4 5h16M4 12h16M4 19h10" />)}</span>
           <p className="text-sm text-[var(--text-secondary)]">{emptyHint}</p>
           <p className="hidden text-xs text-[var(--text-muted)] sm:block">
-            Tip: press <kbd className="rounded border border-[var(--border)] bg-[var(--surface-2)] px-1 font-mono">Ctrl</kbd> +{" "}
-            <kbd className="rounded border border-[var(--border)] bg-[var(--surface-2)] px-1 font-mono">Enter</kbd> in the editor
+            {tr("Tip: press")} <kbd className="rounded border border-[var(--border)] bg-[var(--surface-2)] px-1 font-mono">{tr("Ctrl")}</kbd> +{" "}
+            <kbd className="rounded border border-[var(--border)] bg-[var(--surface-2)] px-1 font-mono">{tr("Enter")}</kbd> {tr("in the editor")}
           </p>
         </div>
       ) : output.kind === "python" ? (
         <PythonRunView run={output.run} />
       ) : output.kind === "text" ? (
         <pre className="max-h-[28rem] overflow-auto p-4 font-mono text-xs leading-5 text-[var(--text-primary)]">
-          {output.text || "(no output — assign to `result` or use print())"}
+          {tr(output.text) || tr("(no output — assign to `result` or use print())")}
         </pre>
       ) : output.kind === "preview" && output.error ? (
         <p className="p-4 text-sm text-[var(--status-critical)]">{output.error}</p>
       ) : output.kind === "preview" && !output.grid ? (
-        <p className="p-4 text-sm text-[var(--text-muted)]">Loading preview…</p>
+        <p className="p-4 text-sm text-[var(--text-muted)]">{tr("Loading preview…")}</p>
       ) : (
         <DataGrid grid={output.grid!} />
       )}
@@ -299,6 +303,7 @@ function CodeCell({
   onGenerate: (prompt: string) => Promise<void>;
   disabledReason?: string;
 }) {
+  const tr = useT();
   const gutter = useRef<HTMLDivElement>(null);
   const lineCount = Math.max(1, value.split("\n").length);
   const height = Math.min(432, Math.max(216, (lineCount + 1) * 24 + 24));
@@ -316,7 +321,7 @@ function CodeCell({
       await onGenerate(prompt.trim());
       setPrompt("");
     } catch (err) {
-      setAiError(errorText(err, "Failed to generate."));
+      setAiError(errorText(err, tr("Failed to generate.")));
     } finally {
       setGenerating(false);
     }
@@ -330,7 +335,7 @@ function CodeCell({
             {language}
           </span>
           <span className="truncate text-[11px] text-[var(--text-muted)]">
-            {lineCount} line{lineCount === 1 ? "" : "s"}
+            {lineCount} {tr("line")}{lineCount === 1 ? "" : tr("s")}
           </span>
         </div>
         <button
@@ -346,9 +351,9 @@ function CodeCell({
           ) : (
             <PlayIcon />
           )}
-          {running ? "Running…" : runLabel}
+          {running ? tr("Running…") : runLabel}
           {!running && !disabledReason && (
-            <kbd className="ml-1 hidden rounded bg-white/20 px-1 font-mono text-[10px] sm:inline">Ctrl ↵</kbd>
+            <kbd className="ms-1 hidden rounded bg-white/20 px-1 font-mono text-[10px] sm:inline">{tr("Ctrl ↵")}</kbd>
           )}
         </button>
       </header>
@@ -368,7 +373,7 @@ function CodeCell({
           disabled={!prompt.trim() || generating}
           className="shrink-0 rounded-md border border-[var(--accent)]/40 px-2.5 py-1 text-xs font-medium text-[var(--accent)] hover:bg-[var(--accent-soft)] disabled:opacity-50"
         >
-          {generating ? "Writing…" : "Ask AI"}
+          {generating ? tr("Writing…") : tr("Ask AI")}
         </button>
       </form>
       {aiError && <p className="border-b border-[var(--border)] px-3 py-1.5 text-xs text-[var(--status-critical)]">{aiError}</p>}
@@ -377,7 +382,7 @@ function CodeCell({
         <div
           ref={gutter}
           aria-hidden
-          className="shrink-0 select-none overflow-hidden border-r border-[var(--gridline)] bg-[var(--surface-2)]/60 py-3 pl-3 pr-2.5 text-right font-mono text-[12px] leading-6 text-[var(--text-muted)]"
+          className="shrink-0 select-none overflow-hidden border-e border-[var(--gridline)] bg-[var(--surface-2)]/60 py-3 ps-3 pe-2.5 text-end font-mono text-[12px] leading-6 text-[var(--text-muted)]"
         >
           {Array.from({ length: lineCount }, (_, i) => (
             <div key={i}>{i + 1}</div>
@@ -404,7 +409,7 @@ function CodeCell({
           placeholder={placeholder}
           wrap="off"
           spellCheck={false}
-          aria-label={`${language} editor`}
+          aria-label={tr("{language} editor", { language: language })}
           className="block min-w-0 flex-1 resize-none overflow-auto bg-transparent px-3 py-3 font-mono text-[13px] leading-6 text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus-visible:outline-none"
         />
       </div>
@@ -419,7 +424,7 @@ function Explorer({ title, summary, children }: { title: string; summary: string
     <aside className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-1)] shadow-sm lg:sticky lg:top-6 lg:self-start">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--surface-2)] px-3 py-2.5 text-left lg:pointer-events-none"
+        className="flex w-full items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--surface-2)] px-3 py-2.5 text-start lg:pointer-events-none"
       >
         <span className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">{title}</span>
         <span className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
@@ -436,7 +441,7 @@ function Explorer({ title, summary, children }: { title: string; summary: string
 
 function ColumnChips({ columns }: { columns: string[] }) {
   return (
-    <div className="flex flex-wrap gap-1 px-3 pb-2.5 pl-9">
+    <div className="flex flex-wrap gap-1 px-3 pb-2.5 ps-9">
       {columns.map((c) => (
         <span
           key={c}
@@ -462,6 +467,7 @@ FROM information_schema.columns
 ORDER BY table_schema, table_name, ordinal_position`;
 
 function SqlWorkbench() {
+  const tr = useT();
   const [sources, setSources] = useState<DataSource[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [dataSourceId, setDataSourceId] = useState<number | "">("");
@@ -509,7 +515,7 @@ FROM ${list[0].table}` : SQL_DEFAULT;
           loadTables(databaseSources[0].id);
         }
       })
-      .catch((err) => setLoadError(errorText(err, "Failed to load data sources.")));
+      .catch((err) => setLoadError(errorText(err, tr("Failed to load data sources."))));
     api.getRetrying<Dataset[]>("/datasets").then(setAllDatasets).catch(() => {});
   }, []);
 
@@ -541,7 +547,7 @@ FROM ${list[0].table}` : SQL_DEFAULT;
         ms: Math.round(now() - started),
       });
     } catch (err) {
-      setError(errorText(err, "Query failed."));
+      setError(errorText(err, tr("Query failed.")));
       setOutput(null);
     } finally {
       setRunning(false);
@@ -589,7 +595,7 @@ FROM ${list[0].table}` : SQL_DEFAULT;
       setSaveName("");
       api.get<Dataset[]>("/datasets").then(setAllDatasets).catch(() => {});
     } catch (err) {
-      setError(errorText(err, "Failed to save dataset."));
+      setError(errorText(err, tr("Failed to save dataset.")));
     } finally {
       setSaving(false);
     }
@@ -601,17 +607,17 @@ FROM ${list[0].table}` : SQL_DEFAULT;
     return (
       <EmptyState
         icon={<CodeIcon />}
-        title="No database data sources yet"
-        description="The SQL workbench needs a connected MySQL, PostgreSQL, or SQL Server data source to run queries against."
+        title={tr("No database data sources yet")}
+        description={tr("The SQL workbench needs a connected MySQL, PostgreSQL, or SQL Server data source to run queries against.")}
       />
     );
   }
 
   return (
     <div className={WORKBENCH_GRID}>
-      <Explorer title="Explorer" summary={tables ? `${tables.length} tables` : source?.name ?? ""}>
+      <Explorer title={tr("Explorer")} summary={tables ? tr("{length} tables", { length: tables.length }) : source?.name ?? ""}>
         <div className="border-b border-[var(--border)] p-3">
-          <label className="mb-1 block text-[11px] font-medium text-[var(--text-muted)]">Connection</label>
+          <label className="mb-1 block text-[11px] font-medium text-[var(--text-muted)]">{tr("Connection")}</label>
           <select value={dataSourceId} onChange={(e) => selectSource(Number(e.target.value))} className={SELECT_CLASS}>
             {sources.map((s) => (
               <option key={s.id} value={s.id}>
@@ -625,7 +631,7 @@ FROM ${list[0].table}` : SQL_DEFAULT;
         </div>
 
         <div className="max-h-[22rem] overflow-y-auto py-1 lg:max-h-[calc(100vh-20rem)]">
-          <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">Tables</p>
+          <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">{tr("Tables")}</p>
           {tablesError && <p className="px-3 py-2 text-xs text-[var(--status-critical)]">{tablesError}</p>}
           {!tables && !tablesError && (
             <div className="space-y-1.5 px-3 py-1">
@@ -634,15 +640,15 @@ FROM ${list[0].table}` : SQL_DEFAULT;
               ))}
             </div>
           )}
-          {tables?.length === 0 && <p className="px-3 py-2 text-xs text-[var(--text-muted)]">No tables in this database.</p>}
+          {tables?.length === 0 && <p className="px-3 py-2 text-xs text-[var(--text-muted)]">{tr("No tables in this database.")}</p>}
           {tables?.map((t) => {
             const open = expanded === t.table;
             return (
               <div key={t.table} className={open ? "bg-[var(--surface-2)]/50" : ""}>
-                <div className="group flex items-center gap-1 pr-2">
+                <div className="group flex items-center gap-1 pe-2">
                   <button
                     onClick={() => setExpanded(open ? null : t.table)}
-                    className="flex min-w-0 flex-1 items-center gap-1.5 px-3 py-1.5 text-left text-sm text-[var(--text-primary)] hover:text-[var(--accent)]"
+                    className="flex min-w-0 flex-1 items-center gap-1.5 px-3 py-1.5 text-start text-sm text-[var(--text-primary)] hover:text-[var(--accent)]"
                     aria-expanded={open}
                   >
                     <span className="text-[var(--text-muted)]">
@@ -652,24 +658,24 @@ FROM ${list[0].table}` : SQL_DEFAULT;
                       <TableIcon />
                     </span>
                     <span className="truncate font-mono text-[13px]">{t.table}</span>
-                    <span className="ml-auto shrink-0 text-[11px] text-[var(--text-muted)]">{t.columns.length}</span>
+                    <span className="ms-auto shrink-0 text-[11px] text-[var(--text-muted)]">{t.columns.length}</span>
                   </button>
                 </div>
                 {open && (
                   <>
                     <ColumnChips columns={t.columns} />
-                    <div className="flex gap-1.5 px-3 pb-3 pl-9">
+                    <div className="flex gap-1.5 px-3 pb-3 ps-9">
                       <button
                         onClick={() => queryTable(t.table)}
                         className="inline-flex items-center gap-1 rounded-md bg-[var(--accent)] px-2 py-1 text-[11px] font-medium text-white"
                       >
-                        <PlayIcon /> Query
+                        <PlayIcon /> {tr("Query")}
                       </button>
                       <button
                         onClick={() => previewTable(t.table)}
                         className="rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2 py-1 text-[11px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                       >
-                        Preview rows
+                        {tr("Preview rows")}
                       </button>
                     </div>
                   </>
@@ -681,20 +687,20 @@ FROM ${list[0].table}` : SQL_DEFAULT;
           {datasetsForSource.length > 0 && (
             <>
               <p className="mt-2 border-t border-[var(--border)] px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                Saved datasets
+                {tr("Saved datasets")}
               </p>
               {datasetsForSource.map((d) => (
                 <button
                   key={d.id}
                   onClick={() => previewDataset(d)}
-                  className="flex w-full items-center gap-1.5 px-3 py-1.5 text-left text-sm text-[var(--text-primary)] hover:text-[var(--accent)]"
-                  title="Preview this dataset"
+                  className="flex w-full items-center gap-1.5 px-3 py-1.5 text-start text-sm text-[var(--text-primary)] hover:text-[var(--accent)]"
+                  title={tr("Preview this dataset")}
                 >
-                  <span className="pl-[18px] text-[var(--text-muted)]">
+                  <span className="ps-[18px] text-[var(--text-muted)]">
                     <LayersIcon />
                   </span>
                   <span className="truncate">{d.name}</span>
-                  <span className="ml-auto shrink-0 text-[11px] text-[var(--text-muted)]">{d.row_count.toLocaleString()}</span>
+                  <span className="ms-auto shrink-0 text-[11px] text-[var(--text-muted)]">{d.row_count.toLocaleString(uiLocaleTag())}</span>
                 </button>
               ))}
             </>
@@ -709,9 +715,9 @@ FROM ${list[0].table}` : SQL_DEFAULT;
           onChange={setQuery}
           onRun={() => run()}
           running={running}
-          runLabel="Run"
-          placeholder="Write a SELECT query…"
-          aiPlaceholder='Describe the query, e.g. "total revenue per region, highest first"'
+          runLabel={tr("Run")}
+          placeholder={tr("Write a SELECT query…")}
+          aiPlaceholder={tr("Describe the query, e.g. \"total revenue per region, highest first\"")}
           onGenerate={async (prompt) => {
             const res = await api.post<{ sql: string }>(`/data-sources/${dataSourceId}/notebook/suggest-sql`, { prompt });
             setQuery(res.sql);
@@ -722,7 +728,7 @@ FROM ${list[0].table}` : SQL_DEFAULT;
           output={output}
           running={running}
           error={error}
-          emptyHint="Run a query to see results here."
+          emptyHint={tr("Run a query to see results here.")}
           actions={
             output?.kind === "result" && output.grid.rows.length > 0 ? (
               <form
@@ -733,13 +739,13 @@ FROM ${list[0].table}` : SQL_DEFAULT;
                 className="flex items-center gap-1.5"
               >
                 {saved ? (
-                  <span className="text-xs font-medium text-[var(--status-good)]">Saved as dataset ✓</span>
+                  <span className="text-xs font-medium text-[var(--status-good)]">{tr("Saved as dataset ✓")}</span>
                 ) : (
                   <>
                     <input
                       value={saveName}
                       onChange={(e) => setSaveName(e.target.value)}
-                      placeholder="Dataset name"
+                      placeholder={tr("Dataset name")}
                       className="w-32 rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2 py-1 text-xs outline-none focus:border-[var(--accent)] sm:w-40"
                     />
                     <button
@@ -747,7 +753,7 @@ FROM ${list[0].table}` : SQL_DEFAULT;
                       disabled={saving || !saveName.trim()}
                       className="rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-50"
                     >
-                      {saving ? "Saving…" : "Save as dataset"}
+                      {saving ? tr("Saving…") : tr("Save as dataset")}
                     </button>
                   </>
                 )}
@@ -800,6 +806,7 @@ function pythonExamples(cols: string[]): { label: string; code: string }[] {
 }
 
 function PythonWorkbench() {
+  const tr = useT();
   const [datasets, setDatasets] = useState<Dataset[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [datasetId, setDatasetId] = useState<number | "">("");
@@ -837,7 +844,7 @@ function PythonWorkbench() {
           preview(all[0]);
         }
       })
-      .catch((err) => setLoadError(errorText(err, "Failed to load datasets.")));
+      .catch((err) => setLoadError(errorText(err, tr("Failed to load datasets."))));
   }, []);
 
   function selectDataset(d: Dataset) {
@@ -858,7 +865,7 @@ function PythonWorkbench() {
           : { kind: "text", text: res.output, ms: Math.round(now() - started) },
       );
     } catch (err) {
-      setError(errorText(err, "Python execution failed."));
+      setError(errorText(err, tr("Python execution failed.")));
     } finally {
       setRunning(false);
     }
@@ -870,8 +877,8 @@ function PythonWorkbench() {
     return (
       <EmptyState
         icon={<CodeIcon />}
-        title="No datasets yet"
-        description="Upload a CSV or connect a data source to have something for Python to analyze."
+        title={tr("No datasets yet")}
+        description={tr("Upload a CSV or connect a data source to have something for Python to analyze.")}
       />
     );
   }
@@ -880,7 +887,7 @@ function PythonWorkbench() {
 
   return (
     <div className={WORKBENCH_GRID}>
-      <Explorer title="Datasets" summary={`${datasets.length} available`}>
+      <Explorer title={tr("Datasets")} summary={tr("{length} available", { length: datasets.length })}>
         <div className="max-h-[22rem] overflow-y-auto py-1 lg:max-h-[calc(100vh-14rem)]">
           {datasets.map((d) => {
             const active = d.id === datasetId;
@@ -888,7 +895,7 @@ function PythonWorkbench() {
               <div key={d.id} className={active ? "bg-[var(--accent-soft)]/60" : ""}>
                 <button
                   onClick={() => selectDataset(d)}
-                  className={`flex w-full items-center gap-2 border-l-2 px-3 py-2 text-left text-sm ${
+                  className={`flex w-full items-center gap-2 border-s-2 px-3 py-2 text-start text-sm ${
                     active
                       ? "border-[var(--accent)] font-medium text-[var(--accent)]"
                       : "border-transparent text-[var(--text-primary)] hover:text-[var(--accent)]"
@@ -898,8 +905,8 @@ function PythonWorkbench() {
                     <LayersIcon />
                   </span>
                   <span className="truncate">{d.name}</span>
-                  <span className="ml-auto shrink-0 text-[11px] font-normal text-[var(--text-muted)]">
-                    {d.row_count.toLocaleString()} rows
+                  <span className="ms-auto shrink-0 text-[11px] font-normal text-[var(--text-muted)]">
+                    {d.row_count.toLocaleString(uiLocaleTag())} {tr("rows")}
                   </span>
                 </button>
                 {active && <ColumnChips columns={d.columns.map((c) => c.name)} />}
@@ -917,22 +924,22 @@ function PythonWorkbench() {
             </span>
             <p>
               <strong className="font-semibold text-[var(--text-primary)]">
-                {status.reason === "disabled" ? "Python is turned off on this server." : "Python is limited to platform administrators on this server."}
+                {status.reason === "disabled" ? tr("Python is turned off on this server.") : tr("Python is limited to platform administrators on this server.")}
               </strong>{" "}
-              You can still explore and preview datasets here, and use the SQL tab or AI Chat to analyze your data.
+              {tr("You can still explore and preview datasets here, and use the SQL tab or AI Chat to analyze your data.")}
             </p>
           </div>
         )}
         {status?.allowed && selected && (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-[var(--text-muted)]">Try:</span>
+            <span className="text-xs text-[var(--text-muted)]">{tr("Try:")}</span>
             {pythonExamples(selected.columns.map((c) => c.name)).map((ex) => (
               <button
                 key={ex.label}
                 onClick={() => setCode(ex.code)}
                 className="max-w-[16rem] truncate rounded-full border border-[var(--border)] bg-[var(--surface-1)] px-3 py-1 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
               >
-                {ex.label}
+                {tr(ex.label)}
               </button>
             ))}
           </div>
@@ -944,9 +951,9 @@ function PythonWorkbench() {
           onChange={setCode}
           onRun={run}
           running={running}
-          runLabel="Run"
-          placeholder="Write Python… your data is available as the pandas DataFrame `df`"
-          aiPlaceholder='Describe the analysis, e.g. "average revenue per product, sorted descending"'
+          runLabel={tr("Run")}
+          placeholder={tr("Write Python… your data is available as the pandas DataFrame `df`")}
+          aiPlaceholder={tr("Describe the analysis, e.g. \"average revenue per product, sorted descending\"")}
           onGenerate={async (prompt) => {
             const res = await api.post<{ code: string }>(`/datasets/${datasetId}/notebook/suggest-python`, { prompt });
             setCode(res.code);
@@ -957,14 +964,14 @@ function PythonWorkbench() {
           output={output}
           running={running}
           error={error}
-          emptyHint={selected ? `Run your code against “${selected.name}”.` : "Pick a dataset to start."}
+          emptyHint={selected ? tr("Run your code against “{name}”.", { name: selected.name }) : tr("Pick a dataset to start.")}
           actions={
             (output?.kind === "text" || output?.kind === "python") && selected ? (
               <button
                 onClick={() => preview(selected)}
                 className="rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               >
-                Show data
+                {tr("Show data")}
               </button>
             ) : undefined
           }
@@ -989,6 +996,7 @@ function WorkbenchSkeleton() {
 /* ─────────────────────────────── page ─────────────────────────────── */
 
 function Notebook() {
+  const tr = useT();
   const [mode, setMode] = useState<"sql" | "python">("sql");
 
   const tab = (value: "sql" | "python", label: string) => (
@@ -1009,8 +1017,8 @@ function Notebook() {
     <div className={`${PAGE_CONTAINER} max-w-7xl`}>
       <PageHeader
         icon="notebook"
-        title="Notebook"
-        description="Query a connected database with SQL, or analyze any dataset with Python."
+        title={tr("Notebook")}
+        description={tr("Query a connected database with SQL, or analyze any dataset with Python.")}
         actions={
           <div className="inline-flex gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-1">
             {tab("sql", "SQL")}

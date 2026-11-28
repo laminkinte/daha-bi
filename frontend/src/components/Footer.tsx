@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { BrandMark } from "./BrandMark";
+import { useT } from "@/i18n/ui";
 
 const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
   {
@@ -24,6 +27,7 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
 ];
 
 export default function Footer() {
+  const tr = useT();
   return (
     <footer className="border-t border-[var(--border)] bg-[var(--surface-1)]">
       <div className="mx-auto max-w-6xl px-6 py-14">
@@ -34,21 +38,20 @@ export default function Footer() {
               <span className="font-semibold text-[var(--text-primary)]">Daha BI</span>
             </Link>
             <p className="mt-3 max-w-xs text-sm text-[var(--text-muted)]">
-              Mobile-first business intelligence, built for the way growing businesses actually work — anywhere in
-              the world.
+              {tr("Mobile-first business intelligence, built for the way growing businesses actually work — anywhere in the world.")}
             </p>
           </div>
 
           {COLUMNS.map((col) => (
             <div key={col.title}>
               <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                {col.title}
+                {tr(col.title)}
               </h3>
               <ul className="mt-3 flex flex-col gap-2.5 text-sm">
                 {col.links.map((link) => (
                   <li key={link.label}>
                     <Link href={link.href} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
-                      {link.label}
+                      {tr(link.label)}
                     </Link>
                   </li>
                 ))}
@@ -58,8 +61,8 @@ export default function Footer() {
         </div>
 
         <div className="mt-12 flex flex-col gap-3 border-t border-[var(--border)] pt-6 text-xs text-[var(--text-muted)] sm:flex-row sm:items-center sm:justify-between">
-          <span>&copy; {new Date().getFullYear()} Daha BI. All rights reserved.</span>
-          <span>Built for growing businesses everywhere, from Lagos to London to Lima.</span>
+          <span>&copy; {new Date().getFullYear()} {tr("Daha BI. All rights reserved.")}</span>
+          <span>{tr("Built for growing businesses everywhere, from Lagos to London to Lima.")}</span>
         </div>
       </div>
     </footer>

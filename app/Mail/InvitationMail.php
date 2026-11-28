@@ -17,12 +17,12 @@ class InvitationMail extends Mailable
 
     public function build(): self
     {
-        $inviter = $this->invitation->invitedBy?->name ?? 'A teammate';
+        $inviter = $this->invitation->invitedBy?->name ?? __('A teammate');
         $target = $this->invitation->dashboard
-            ? "the \"{$this->invitation->dashboard->name}\" dashboard"
+            ? __('the ":name" dashboard', ['name' => $this->invitation->dashboard->name])
             : $this->invitation->organization->name;
 
-        return $this->sentBy($this->invitation->invitedBy)->subject("{$inviter} invited you to {$target} on Daha BI")
+        return $this->sentBy($this->invitation->invitedBy)->subject(__(':inviter invited you to :target on Daha BI', ['inviter' => $inviter, 'target' => $target]))
             ->view('mail.invitation', [
                 'inviter' => $inviter,
                 'target' => $target,

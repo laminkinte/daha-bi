@@ -111,7 +111,7 @@ class DataModelController extends Controller
             );
         } catch (Throwable $e) {
             return response()->json([
-                'message' => 'Failed to run this data model.',
+                'message' => __('Failed to run this data model.'),
                 'error' => $e->getMessage(),
                 'data_model' => $dataModel->fresh()->load('outputDataset:id,name,row_count,columns'),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -165,7 +165,7 @@ class DataModelController extends Controller
 
             if ($ownedCount !== $referencedIds->count()) {
                 throw ValidationException::withMessages([
-                    'pipeline' => ['One or more referenced datasets do not belong to your organization.'],
+                    'pipeline' => [__('One or more referenced datasets do not belong to your organization.')],
                 ]);
             }
         }

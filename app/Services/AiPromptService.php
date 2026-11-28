@@ -340,8 +340,33 @@ class AiPromptService
      * (the last one gets whatever time is left), and a model that just failed is skipped for
      * two minutes, so later requests go straight to one that works instead of waiting again.
      */
+    /**
+     * People using the app in French or Arabic get the AI's words in that language too.
+     * Code, JSON keys and the dataset's own field names and values stay exactly as they are,
+     * since the app reads those back.
+     */
+    public static function withAnswerLanguage(array $body): array
+    {
+        $language = ['fr' => 'French', 'ar' => 'Arabic'][app()->getLocale()] ?? null;
+        if (! $language) {
+            return $body;
+        }
+
+        $rule = "\n\nLANGUAGE: The user reads this app in {$language}. Write every piece of natural-language text you return "
+            ."(answers, explanations, insights, chart and dashboard titles, descriptions, suggested follow-up questions, "
+            ."recommendations, code comments) in {$language}. Do NOT translate JSON keys, enum values, SQL or Python code, "
+            ."or the dataset's column names and data values: copy those exactly as given.";
+
+        $parts = $body['system_instruction']['parts'] ?? [];
+        $parts[] = ['text' => $rule];
+        $body['system_instruction'] = ['parts' => $parts];
+
+        return $body;
+    }
+
     protected function generate(array $body, int $timeout): \Illuminate\Http\Client\Response
     {
+        $body = self::withAnswerLanguage($body);
         $models = array_values(array_unique(array_filter([
             config('services.gemini.model'),
             config('services.gemini.fallback_model'),

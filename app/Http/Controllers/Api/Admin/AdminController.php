@@ -96,7 +96,7 @@ class AdminController extends Controller
 
     public function setAdmin(Request $request, User $user)
     {
-        abort_if($user->id === $request->user()->id, Response::HTTP_UNPROCESSABLE_ENTITY, "You can't change your own admin status.");
+        abort_if($user->id === $request->user()->id, Response::HTTP_UNPROCESSABLE_ENTITY, __("You can't change your own admin status."));
 
         $validated = $request->validate(['is_admin' => ['required', 'boolean']]);
 
@@ -112,7 +112,7 @@ class AdminController extends Controller
 
     public function destroyUser(Request $request, User $user)
     {
-        abort_if($user->id === $request->user()->id, Response::HTTP_UNPROCESSABLE_ENTITY, "You can't delete your own account here.");
+        abort_if($user->id === $request->user()->id, Response::HTTP_UNPROCESSABLE_ENTITY, __("You can't delete your own account here."));
 
         \App\Models\AdminAction::record($request->user(), 'user.deleted', "Deleted {$user->email}", $user, ['name' => $user->name]);
         $user->delete();

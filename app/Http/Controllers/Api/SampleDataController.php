@@ -28,7 +28,7 @@ class SampleDataController extends Controller
     {
         $user = $request->user();
         $orgId = $user->current_organization_id;
-        abort_unless($user->canEditOrg($orgId), Response::HTTP_FORBIDDEN, 'Viewers can’t add data. Ask an admin of this workspace.');
+        abort_unless($user->canEditOrg($orgId), Response::HTTP_FORBIDDEN, __('Viewers can’t add data. Ask an admin of this workspace.'));
 
         $existing = DataSource::where('organization_id', $orgId)->where('name', self::NAME)->with('datasets')->first();
         if ($existing && $existing->datasets->isNotEmpty()) {
@@ -52,7 +52,7 @@ class SampleDataController extends Controller
         } catch (Throwable $e) {
             $dataSource->update(['status' => 'failed', 'error_message' => $e->getMessage()]);
 
-            return response()->json(['message' => 'Couldn’t create the sample data.', 'error' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return response()->json(['message' => __('Couldn’t create the sample data.'), 'error' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
         } finally {
             @unlink($path);
         }

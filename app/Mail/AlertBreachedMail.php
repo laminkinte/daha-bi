@@ -24,8 +24,8 @@ class AlertBreachedMail extends Mailable
         $chart = $this->alert->chart;
 
         $subject = $this->alert->condition === 'anomaly'
-            ? "Alert: {$chart->title} looks unusual"
-            : "Alert: {$chart->title} is {$this->alert->condition} {$this->alert->threshold}";
+            ? __('Alert: :title looks unusual', ['title' => $chart->title])
+            : __('Alert: :title is :condition :threshold', ['title' => $chart->title, 'condition' => __($this->alert->condition), 'threshold' => $this->alert->threshold]);
 
         return $this->subject($subject)
             ->view('mail.alert-breached', [

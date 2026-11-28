@@ -28,6 +28,13 @@ export function setToken(token: string | null) {
   }
 }
 
+/** The interface language (set by the language switcher), so the API answers in it too. */
+function uiLanguage(): string {
+  if (typeof document === "undefined") return "en";
+  const m = document.cookie.match(/(?:^|; )daha_bi_locale=(en|fr|ar)/);
+  return m ? m[1] : "en";
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {}
@@ -37,6 +44,7 @@ async function request<T>(
 
   const headers: Record<string, string> = {
     Accept: "application/json",
+    "Accept-Language": uiLanguage(),
     ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers as Record<string, string> | undefined),
@@ -91,7 +99,7 @@ export const api = {
   download: async (path: string, filename: string) => {
     const token = getToken();
     const res = await fetch(`${API_URL}${path}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers: { "Accept-Language": uiLanguage(), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     });
 
     if (!res.ok) {

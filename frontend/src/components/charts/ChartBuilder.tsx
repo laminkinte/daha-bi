@@ -6,6 +6,7 @@ import { CURRENCIES, type ValueFormat } from "@/lib/format-value";
 import { inferColumnKinds, suggestTitle, type ColumnKind } from "@/lib/chart-describe";
 import { Modal, BTN_PRIMARY, BTN_SECONDARY, FIELD_INPUT, FIELD_LABEL } from "@/components/Modal";
 import ChartRenderer from "./ChartRenderer";
+import { useT, translate, uiLocaleTag } from "@/i18n/ui";
 
 /* ───────────────────────── chart type catalogue ───────────────────────── */
 
@@ -161,6 +162,7 @@ function FieldSelect({
   placeholder?: string;
   optional?: string;
 }) {
+  const tr = useT();
   const order: ColumnKind[] = [...prefer, ...(["text", "date", "number"] as ColumnKind[]).filter((k) => !prefer.includes(k))];
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)} className={FIELD_INPUT}>
@@ -169,10 +171,10 @@ function FieldSelect({
         const cols = dataset.columns.filter((c) => (kinds[c.name] ?? "text") === kind);
         if (cols.length === 0) return null;
         return (
-          <optgroup key={kind} label={KIND_GROUP[kind]}>
+          <optgroup key={kind} label={tr(KIND_GROUP[kind])}>
             {cols.map((c) => (
               <option key={c.name} value={c.name}>
-                {c.label}
+                {tr(c.label)}
               </option>
             ))}
           </optgroup>
@@ -360,19 +362,19 @@ function missing(type: ChartType, f: Fields): string | null {
     case "table":
       return null;
     case "scatter":
-      return !f.x || !f.y ? "Pick two numeric fields to plot against each other." : null;
+      return !f.x || !f.y ? translate("Pick two numeric fields to plot against each other.") : null;
     case "heatmap":
-      if (!f.x || !f.rows) return "Pick the column and row categories.";
-      return needsMeasure ? "Pick the value to measure." : null;
+      if (!f.x || !f.rows) return translate("Pick the column and row categories.");
+      return needsMeasure ? translate("Pick the value to measure.") : null;
     case "kpi":
     case "gauge":
-      return needsMeasure ? "Pick the value to measure." : null;
+      return needsMeasure ? translate("Pick the value to measure.") : null;
     case "feed":
-      if (!f.x) return "Pick the date that orders the activity (newest first).";
-      return !f.label ? "Pick what each item is called." : null;
+      if (!f.x) return translate("Pick the date that orders the activity (newest first).");
+      return !f.label ? translate("Pick what each item is called.") : null;
     default:
-      if (!f.x) return type === "line" ? "Pick what the line runs over (usually a date)." : "Pick a field to group by.";
-      return needsMeasure ? "Pick the value to measure." : null;
+      if (!f.x) return type === "line" ? translate("Pick what the line runs over (usually a date).") : translate("Pick a field to group by.");
+      return needsMeasure ? translate("Pick the value to measure.") : null;
   }
 }
 
@@ -406,6 +408,7 @@ export default function ChartBuilder({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const tr = useT();
   const editing = !!chart;
   const [datasetId, setDatasetId] = useState<number | "">(chart?.dataset_id ?? datasets[0]?.id ?? "");
   const [type, setType] = useState<ChartType>(chart?.type ?? "bar");
@@ -448,7 +451,7 @@ export default function ChartBuilder({
 
   const config = useMemo(() => buildConfig(type, fields, format, currency), [type, fields, format, currency]);
   const gap = missing(type, fields);
-  const autoTitle = dataset ? suggestTitle(type, config, dataset.columns) : "New chart";
+  const autoTitle = dataset ? suggestTitle(type, config, dataset.columns) : tr("New chart");
   const previewKey = JSON.stringify([datasetId, type, config]);
 
   // Live preview, debounced so clicking through options doesn't fire a request per click.
@@ -459,7 +462,7 @@ export default function ChartBuilder({
       api
         .post<ChartData>(`/dashboards/${dashboardId}/charts/preview`, { dataset_id: datasetId, type, config })
         .then((data) => !cancelled && setPreview({ key: previewKey, data }))
-        .catch((err) => !cancelled && setPreview({ key: previewKey, error: err instanceof ApiError ? err.message : "Couldn't draw this chart." }));
+        .catch((err) => !cancelled && setPreview({ key: previewKey, error: err instanceof ApiError ? err.message : tr("Couldn't draw this chart.") }));
     }, 350);
     return () => {
       cancelled = true;
@@ -532,7 +535,7 @@ export default function ChartBuilder({
       onSaved();
       onClose();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to save chart.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to save chart."));
       setSaving(false);
     }
   }
@@ -564,41 +567,41 @@ export default function ChartBuilder({
   const showMeasure = type !== "table" && type !== "scatter" && type !== "feed";
   const xLabel = (
     {
-      line: "Over",
-      geo_map: "Region",
-      heatmap: "Columns",
-      pie: "Slices",
-      list: "Rows",
-      funnel: "Stages",
-      treemap: "Blocks",
-      radar: "Spokes",
+      line: tr("Over"),
+      geo_map: tr("Region"),
+      heatmap: tr("Columns"),
+      pie: tr("Slices"),
+      list: tr("Rows"),
+      funnel: tr("Stages"),
+      treemap: tr("Blocks"),
+      radar: tr("Spokes"),
     } as Partial<Record<ChartType, string>>
-  )[type] ?? "Group by";
+  )[type] ?? tr("Group by");
 
   return (
     <Modal
       open
       onClose={onClose}
       size="xl"
-      title={editing ? "Edit chart" : "Add a chart"}
-      description={editing ? "Change what this chart shows. Its styling is kept." : "Pick your data and a visual — the preview updates as you go."}
+      title={editing ? tr("Edit chart") : tr("Add a chart")}
+      description={editing ? tr("Change what this chart shows. Its styling is kept.") : tr("Pick your data and a visual — the preview updates as you go.")}
       icon={TYPE_ICONS.bar}
       footer={
         <>
-          {error && <p className="mr-auto text-sm text-[var(--status-critical)]">{error}</p>}
+          {error && <p className="me-auto text-sm text-[var(--status-critical)]">{error}</p>}
           <button onClick={onClose} className={BTN_SECONDARY}>
-            Cancel
+            {tr("Cancel")}
           </button>
           <button onClick={save} disabled={saving || !!gap || !datasetId} className={BTN_PRIMARY}>
-            {saving ? "Saving…" : editing ? "Save changes" : "Add to dashboard"}
+            {saving ? tr("Saving…") : editing ? tr("Save changes") : tr("Add to dashboard")}
           </button>
         </>
       }
     >
       <div className="grid lg:h-[min(72vh,700px)] lg:grid-cols-[400px_minmax(0,1fr)]">
         {/* ── configuration ── */}
-        <div className="overflow-y-auto border-[var(--border)] lg:border-r">
-          <Step n={1} title="Data">
+        <div className="overflow-y-auto border-[var(--border)] lg:border-e">
+          <Step n={1} title={tr("Data")}>
             <select
               value={datasetId}
               onChange={(e) => chooseDataset(Number(e.target.value))}
@@ -613,13 +616,13 @@ export default function ChartBuilder({
             </select>
             {dataset && (
               <p className="mt-1.5 text-xs text-[var(--text-muted)]">
-                {dataset.row_count.toLocaleString()} rows · {dataset.columns.length} columns
-                {editing && " · a chart's dataset can't be changed"}
+                {dataset.row_count.toLocaleString(uiLocaleTag())} {tr("rows ·")} {dataset.columns.length} {tr("columns")}
+                {editing && tr(" · a chart's dataset can't be changed")}
               </p>
             )}
           </Step>
 
-          <Step n={2} title="Visual">
+          <Step n={2} title={tr("Visual")}>
             <div className="grid grid-cols-4 gap-2">
               {TYPES.map((t) => {
                 const active = t.value === type;
@@ -629,7 +632,7 @@ export default function ChartBuilder({
                     type="button"
                     onClick={() => chooseType(t.value)}
                     aria-pressed={active}
-                    title={t.hint}
+                    title={tr(t.hint)}
                     className={`flex flex-col items-center gap-1 rounded-xl border px-1 pb-2 pt-2.5 text-[11.5px] font-medium transition-colors ${
                       active
                         ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)] ring-1 ring-[var(--accent)]"
@@ -637,21 +640,21 @@ export default function ChartBuilder({
                     }`}
                   >
                     <span className={active ? "" : "text-[var(--text-muted)]"}>{TYPE_ICONS[t.value]}</span>
-                    {t.label}
+                    {tr(t.label)}
                   </button>
                 );
               })}
             </div>
-            <p className="mt-2 text-xs text-[var(--text-muted)]">{TYPES.find((t) => t.value === type)?.hint}</p>
+            <p className="mt-2 text-xs text-[var(--text-muted)]">{tr(TYPES.find((t) => t.value === type)?.hint)}</p>
           </Step>
 
-          <Step n={3} title="Fields">
+          <Step n={3} title={tr("Fields")}>
             {!dataset ? (
-              <p className="text-sm text-[var(--text-muted)]">Choose a dataset first.</p>
+              <p className="text-sm text-[var(--text-muted)]">{tr("Choose a dataset first.")}</p>
             ) : type === "table" ? (
               <div className="space-y-3">
                 <div>
-                  <label className={FIELD_LABEL}>Columns</label>
+                  <label className={FIELD_LABEL}>{tr("Columns")}</label>
                   <div className="flex flex-wrap gap-1.5">
                     {dataset.columns.map((c) => {
                       const on = fields.columns.length === 0 || fields.columns.includes(c.name);
@@ -675,20 +678,20 @@ export default function ChartBuilder({
                               : "border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                           }`}
                         >
-                          {c.label}
+                          {tr(c.label)}
                         </button>
                       );
                     })}
                   </div>
-                  <p className="mt-1.5 text-xs text-[var(--text-muted)]">Status columns (Active, Overdue, Paid…) show as coloured badges.</p>
+                  <p className="mt-1.5 text-xs text-[var(--text-muted)]">{tr("Status columns (Active, Overdue, Paid…) show as coloured badges.")}</p>
                 </div>
                 <div>
-                  <label className={FIELD_LABEL}>Order rows by</label>
+                  <label className={FIELD_LABEL}>{tr("Order rows by")}</label>
                   <div className="grid grid-cols-[minmax(0,1fr)_8rem] gap-2">
-                    <FieldSelect value={fields.sortField} onChange={(v) => set("sortField", v)} dataset={dataset} kinds={kinds} prefer={["date", "number"]} optional="As loaded" />
+                    <FieldSelect value={fields.sortField} onChange={(v) => set("sortField", v)} dataset={dataset} kinds={kinds} prefer={["date", "number"]} optional={tr("As loaded")} />
                     <select value={fields.sortDir} onChange={(e) => set("sortDir", e.target.value as Fields["sortDir"])} disabled={!fields.sortField} className={`${FIELD_INPUT} disabled:opacity-50`}>
-                      <option value="desc">Newest / largest first</option>
-                      <option value="asc">Oldest / smallest first</option>
+                      <option value="desc">{tr("Newest / largest first")}</option>
+                      <option value="asc">{tr("Oldest / smallest first")}</option>
                     </select>
                   </div>
                 </div>
@@ -697,30 +700,30 @@ export default function ChartBuilder({
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className={FIELD_LABEL}>When</label>
+                    <label className={FIELD_LABEL}>{tr("When")}</label>
                     <FieldSelect value={fields.x} onChange={(v) => set("x", v)} dataset={dataset} kinds={kinds} prefer={["date"]} />
                   </div>
                   <div>
-                    <label className={FIELD_LABEL}>What (headline)</label>
+                    <label className={FIELD_LABEL}>{tr("What (headline)")}</label>
                     <FieldSelect value={fields.label} onChange={(v) => set("label", v)} dataset={dataset} kinds={kinds} prefer={["text"]} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className={FIELD_LABEL}>Status</label>
+                    <label className={FIELD_LABEL}>{tr("Status")}</label>
                     <FieldSelect value={fields.series} onChange={(v) => set("series", v)} dataset={dataset} kinds={kinds} prefer={["text"]} optional="None" />
                   </div>
                   <div>
-                    <label className={FIELD_LABEL}>Amount</label>
+                    <label className={FIELD_LABEL}>{tr("Amount")}</label>
                     <FieldSelect value={fields.y} onChange={(v) => set("y", v)} dataset={dataset} kinds={kinds} prefer={["number"]} optional="None" />
                   </div>
                 </div>
                 <div>
-                  <label className={FIELD_LABEL}>Show</label>
+                  <label className={FIELD_LABEL}>{tr("Show")}</label>
                   <select value={fields.limit} onChange={(e) => set("limit", Number(e.target.value))} className={FIELD_INPUT}>
                     {[5, 8, 10, 15, 25].map((n) => (
                       <option key={n} value={n}>
-                        Latest {n}
+                        {tr("Latest")} {n}
                       </option>
                     ))}
                   </select>
@@ -732,16 +735,16 @@ export default function ChartBuilder({
                   <>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className={FIELD_LABEL}>Horizontal (X)</label>
+                        <label className={FIELD_LABEL}>{tr("Horizontal (X)")}</label>
                         <FieldSelect value={fields.x} onChange={(v) => set("x", v)} dataset={dataset} kinds={kinds} prefer={["number"]} />
                       </div>
                       <div>
-                        <label className={FIELD_LABEL}>Vertical (Y)</label>
+                        <label className={FIELD_LABEL}>{tr("Vertical (Y)")}</label>
                         <FieldSelect value={fields.y} onChange={(v) => set("y", v)} dataset={dataset} kinds={kinds} prefer={["number"]} />
                       </div>
                     </div>
                     <div>
-                      <label className={FIELD_LABEL}>Point label</label>
+                      <label className={FIELD_LABEL}>{tr("Point label")}</label>
                       <FieldSelect value={fields.label} onChange={(v) => set("label", v)} dataset={dataset} kinds={kinds} prefer={["text"]} optional="None" />
                     </div>
                   </>
@@ -761,24 +764,24 @@ export default function ChartBuilder({
                     )}
                     {type === "heatmap" && (
                       <div>
-                        <label className={FIELD_LABEL}>Rows</label>
+                        <label className={FIELD_LABEL}>{tr("Rows")}</label>
                         <FieldSelect value={fields.rows} onChange={(v) => set("rows", v)} dataset={dataset} kinds={kinds} prefer={["text", "date"]} />
                       </div>
                     )}
                     {showMeasure && (
                       <div>
-                        <label className={FIELD_LABEL}>Measure</label>
+                        <label className={FIELD_LABEL}>{tr("Measure")}</label>
                         <div className="grid grid-cols-[8.5rem_minmax(0,1fr)] gap-2">
                           <select value={fields.agg} onChange={(e) => set("agg", e.target.value)} className={FIELD_INPUT}>
                             {AGGS.map((a) => (
                               <option key={a.value} value={a.value}>
-                                {a.label}
+                                {tr(a.label)}
                               </option>
                             ))}
                           </select>
                           {fields.agg === "count" ? (
                             <div className="flex items-center rounded-lg border border-dashed border-[var(--border)] px-3 text-xs text-[var(--text-muted)]">
-                              counts every row
+                              {tr("counts every row")}
                             </div>
                           ) : (
                             <FieldSelect
@@ -794,27 +797,27 @@ export default function ChartBuilder({
                     )}
                     {SPLITTABLE.includes(type) && (
                       <div>
-                        <label className={FIELD_LABEL}>{type === "line" ? "One line per" : "Split by"}</label>
-                        <FieldSelect value={fields.series} onChange={(v) => set("series", v)} dataset={dataset} kinds={kinds} prefer={["text"]} optional={type === "line" ? "Nothing — one line" : "Nothing — one series"} />
+                        <label className={FIELD_LABEL}>{type === "line" ? tr("One line per") : tr("Split by")}</label>
+                        <FieldSelect value={fields.series} onChange={(v) => set("series", v)} dataset={dataset} kinds={kinds} prefer={["text"]} optional={type === "line" ? tr("Nothing — one line") : tr("Nothing — one series")} />
                       </div>
                     )}
                     {type === "gauge" && (
                       <div>
-                        <label className={FIELD_LABEL}>Target</label>
+                        <label className={FIELD_LABEL}>{tr("Target")}</label>
                         <input
                           type="number"
                           min={0}
                           value={fields.target}
                           onChange={(e) => set("target", e.target.value)}
-                          placeholder="End of the dial, e.g. 100000"
+                          placeholder={tr("End of the dial, e.g. 100000")}
                           className={FIELD_INPUT}
                         />
-                        <p className="mt-1 text-xs text-[var(--text-muted)]">Leave empty to scale the dial to the value.</p>
+                        <p className="mt-1 text-xs text-[var(--text-muted)]">{tr("Leave empty to scale the dial to the value.")}</p>
                       </div>
                     )}
                     {showGrain && (
                       <div>
-                        <label className={FIELD_LABEL}>Group dates by</label>
+                        <label className={FIELD_LABEL}>{tr("Group dates by")}</label>
                         <div className="inline-flex rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-0.5">
                           {GRAINS.map((g) => (
                             <button
@@ -825,7 +828,7 @@ export default function ChartBuilder({
                                 fields.grain === g.value ? "bg-[var(--surface-1)] text-[var(--text-primary)] shadow-sm" : "text-[var(--text-secondary)]"
                               }`}
                             >
-                              {g.label}
+                              {tr(g.label)}
                             </button>
                           ))}
                         </div>
@@ -833,8 +836,8 @@ export default function ChartBuilder({
                     )}
                     {type === "kpi" && (
                       <div>
-                        <label className={FIELD_LABEL}>Trend over</label>
-                        <FieldSelect value={fields.trend} onChange={(v) => set("trend", v)} dataset={dataset} kinds={kinds} prefer={["date"]} optional="No trend — number only" />
+                        <label className={FIELD_LABEL}>{tr("Trend over")}</label>
+                        <FieldSelect value={fields.trend} onChange={(v) => set("trend", v)} dataset={dataset} kinds={kinds} prefer={["date"]} optional={tr("No trend — number only")} />
                       </div>
                     )}
                   </>
@@ -843,13 +846,13 @@ export default function ChartBuilder({
             )}
           </Step>
 
-          <Step n={4} title="Display">
-            <label className={FIELD_LABEL}>Title</label>
+          <Step n={4} title={tr("Display")}>
+            <label className={FIELD_LABEL}>{tr("Title")}</label>
             <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={autoTitle} className={FIELD_INPUT} />
-            {!title && <p className="mt-1 text-xs text-[var(--text-muted)]">Leave empty to use the suggested title.</p>}
+            {!title && <p className="mt-1 text-xs text-[var(--text-muted)]">{tr("Leave empty to use the suggested title.")}</p>}
             {type === "kpi" && (
               <div className="mt-3">
-                <label className={FIELD_LABEL}>Look</label>
+                <label className={FIELD_LABEL}>{tr("Look")}</label>
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="inline-flex rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-0.5">
                     {(["tile", "card"] as const).map((look) => (
@@ -861,19 +864,19 @@ export default function ChartBuilder({
                           kpiLook === look ? "bg-[var(--surface-1)] text-[var(--text-primary)] shadow-sm" : "text-[var(--text-secondary)]"
                         }`}
                       >
-                        {look === "tile" ? "Coloured tile" : "Plain card"}
+                        {look === "tile" ? tr("Coloured tile") : tr("Plain card")}
                       </button>
                     ))}
                   </div>
                   {kpiLook === "tile" && (
-                    <div className="flex items-center gap-1.5" role="radiogroup" aria-label="Tile colour">
+                    <div className="flex items-center gap-1.5" role="radiogroup" aria-label={tr("Tile colour")}>
                       {TILE_SWATCHES.map((c) => (
                         <button
                           key={c}
                           type="button"
                           role="radio"
                           aria-checked={tileColor === c}
-                          aria-label={`Colour ${c}`}
+                          aria-label={tr("Colour {c}", { c: c })}
                           onClick={() => setTileColor(c)}
                           className={`h-6 w-6 rounded-full ring-offset-2 ring-offset-[var(--surface-1)] ${tileColor === c ? "ring-2 ring-[var(--text-primary)]" : ""}`}
                           style={{ background: c }}
@@ -883,7 +886,7 @@ export default function ChartBuilder({
                         type="color"
                         value={tileColor}
                         onChange={(e) => setTileColor(e.target.value)}
-                        aria-label="Custom tile colour"
+                        aria-label={tr("Custom tile colour")}
                         className="h-6 w-7 cursor-pointer rounded border border-[var(--border)] bg-transparent p-0"
                       />
                     </div>
@@ -893,7 +896,7 @@ export default function ChartBuilder({
             )}
             {type !== "table" && (
               <div className="mt-3">
-                <label className={FIELD_LABEL}>Values shown as</label>
+                <label className={FIELD_LABEL}>{tr("Values shown as")}</label>
                 <div className="flex gap-2">
                   <div className="inline-flex shrink-0 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-0.5">
                     {(["number", "currency", "percent"] as ValueFormat[]).map((f) => (
@@ -905,7 +908,7 @@ export default function ChartBuilder({
                           format === f ? "bg-[var(--surface-1)] text-[var(--text-primary)] shadow-sm" : "text-[var(--text-secondary)]"
                         }`}
                       >
-                        {f === "number" ? "1,234" : f === "currency" ? "Money" : "%"}
+                        {f === "number" ? "1,234" : f === "currency" ? tr("Money") : "%"}
                       </button>
                     ))}
                   </div>
@@ -913,7 +916,7 @@ export default function ChartBuilder({
                     <select value={currency} onChange={(e) => setCurrency(e.target.value)} className={`${FIELD_INPUT} min-w-0`}>
                       {CURRENCIES.map((c) => (
                         <option key={c.code} value={c.code}>
-                          {c.label}
+                          {tr(c.label)}
                         </option>
                       ))}
                     </select>
@@ -927,16 +930,16 @@ export default function ChartBuilder({
         {/* ── live preview ── */}
         <div className="flex min-h-[22rem] flex-col bg-[var(--page-plane)] p-4 sm:p-6">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">Live preview</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{tr("Live preview")}</span>
             {!gap && !previewReady && datasetId && (
               <span className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
                 <span className="h-3 w-3 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--accent)]" />
-                Updating
+                {tr("Updating")}
               </span>
             )}
           </div>
           <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-4 shadow-sm sm:p-5">
-            <h4 className="truncate text-[15px] font-semibold tracking-tight text-[var(--text-primary)]">{previewChart.title}</h4>
+            <h4 className="truncate text-[15px] font-semibold tracking-tight text-[var(--text-primary)]">{tr(previewChart.title)}</h4>
             <p className="truncate text-xs text-[var(--text-muted)]">{dataset?.name}</p>
             <div className="mt-4 min-h-[16rem] flex-1">
               {gap ? (

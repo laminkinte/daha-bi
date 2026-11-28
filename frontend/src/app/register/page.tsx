@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api";
 import { AuthShell, AUTH_INPUT } from "@/components/AuthShell";
 import PasswordInput from "@/components/PasswordInput";
+import { useT } from "@/i18n/ui";
 
 function CheckIcon() {
   return (
@@ -32,6 +33,7 @@ function passwordStrength(password: string): { label: string; score: number; col
 }
 
 function RegisterForm() {
+  const tr = useT();
   const t = useTranslations("auth.register");
   const tCommon = useTranslations("common");
   const { register } = useAuth();
@@ -88,7 +90,7 @@ function RegisterForm() {
 
           <form onSubmit={onSubmit} className="flex flex-col gap-4">
             <fieldset>
-              <legend className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">Account type</legend>
+              <legend className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">{tr("Account type")}</legend>
               <div className="grid grid-cols-2 gap-2">
                 {(
                   [
@@ -112,8 +114,8 @@ function RegisterForm() {
                         onChange={() => setAccountType(o.value)}
                         className="sr-only"
                       />
-                      <span className={`text-sm font-semibold ${on ? "text-[var(--accent)]" : "text-[var(--text-primary)]"}`}>{o.title}</span>
-                      <span className="text-xs text-[var(--text-muted)]">{o.hint}</span>
+                      <span className={`text-sm font-semibold ${on ? "text-[var(--accent)]" : "text-[var(--text-primary)]"}`}>{tr(o.title)}</span>
+                      <span className="text-xs text-[var(--text-muted)]">{tr(o.hint)}</span>
                     </label>
                   );
                 })}
@@ -122,7 +124,7 @@ function RegisterForm() {
             {accountType === "organization" && (
               <div>
                 <label htmlFor="organization_name" className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">
-                  Organization name
+                  {tr("Organization name")}
                 </label>
                 <input
                   id="organization_name"
@@ -132,7 +134,7 @@ function RegisterForm() {
                   maxLength={255}
                   value={organizationName}
                   onChange={(e) => setOrganizationName(e.target.value)}
-                  placeholder="e.g. Acme Trading Ltd"
+                  placeholder={tr("e.g. Acme Trading Ltd")}
                   className={AUTH_INPUT}
                 />
               </div>
@@ -189,7 +191,7 @@ function RegisterForm() {
                     ))}
                   </div>
                   <p className="mt-1 text-xs" style={{ color: strength.color }}>
-                    {strength.label} password
+                    {tr(strength.label)} {tr("password")}
                   </p>
                 </div>
               )}

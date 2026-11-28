@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { useRouter } from "next/navigation";
 import { Modal, BTN_PRIMARY, BTN_SECONDARY, FIELD_INPUT, FIELD_LABEL } from "@/components/Modal";
 import { api, ApiError, type DashboardTemplate, type DataSource, type Dashboard, type Dataset } from "@/lib/api";
+import { useT, translate } from "@/i18n/ui";
 
 function PlusIcon() {
   return (
@@ -38,7 +39,7 @@ function DbIcon() {
 
 function greeting() {
   const h = new Date().getHours();
-  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+  return h < 12 ? translate("Good morning") : h < 18 ? translate("Good afternoon") : translate("Good evening");
 }
 
 function timeAgo(iso: string) {
@@ -53,8 +54,11 @@ function timeAgo(iso: string) {
     if (value < size) break;
     value /= size;
   }
-  if (unit === "s") return "just now";
-  return `${Math.floor(value)}${unit} ago`;
+  if (unit === "s") return translate("just now");
+  const n = Math.floor(value);
+  // Whole phrases per unit so each language can word them its own way.
+  const phrase: Record<string, string> = { m: "{n}m ago", h: "{n}h ago", d: "{n}d ago", w: "{n}w ago", mo: "{n}mo ago" };
+  return translate(phrase[unit] ?? "{n}{unit} ago", { n, unit });
 }
 
 /**
@@ -63,6 +67,7 @@ function timeAgo(iso: string) {
  * illustration, not data, so it must not borrow chart-series colors.
  */
 function DashboardThumbnail({ seed, charts }: { seed: number; charts: number }) {
+  const tr = useT();
   const rand = (n: number) => {
     const x = Math.sin(seed * 9301 + n * 49297) * 233280;
     return x - Math.floor(x);
@@ -73,7 +78,7 @@ function DashboardThumbnail({ seed, charts }: { seed: number; charts: number }) 
     <div className="relative h-28 border-b border-[var(--border)] bg-[var(--surface-2)] p-3">
       {charts === 0 ? (
         <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-[var(--border)] text-xs text-[var(--text-muted)]">
-          Empty dashboard
+          {tr("Empty dashboard")}
         </div>
       ) : (
         <div className="grid h-full grid-cols-5 gap-2">
@@ -144,6 +149,7 @@ function CreateDashboardDialog({
   onClose: () => void;
   onCreated: (dashboardId: number) => void;
 }) {
+  const tr = useT();
   const [mode, setMode] = useState<CreateMode>(initialMode);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -184,7 +190,7 @@ function CreateDashboardDialog({
           : await api.post<{ id: number }>("/dashboard-templates", { template: template!.key, dataset_id: datasetId, name: name.trim() });
       onCreated(dashboard.id);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to create dashboard.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to create dashboard."));
       setCreating(false);
     }
   }
@@ -194,7 +200,7 @@ function CreateDashboardDialog({
       type="button"
       onClick={() => setMode(value)}
       aria-pressed={mode === value}
-      className={`flex items-start gap-3 rounded-xl border p-3.5 text-left transition-colors ${
+      className={`flex items-start gap-3 rounded-xl border p-3.5 text-start transition-colors ${
         mode === value
           ? "border-[var(--accent)] bg-[var(--accent-soft)] ring-1 ring-[var(--accent)]"
           : "border-[var(--border)] hover:border-[var(--accent)]/50"
@@ -214,29 +220,29 @@ function CreateDashboardDialog({
       onClose={onClose}
       size="lg"
       icon={<GridIcon size={18} />}
-      title="New dashboard"
-      description="Start from scratch, or let a template lay out the first charts for you."
+      title={tr("New dashboard")}
+      description={tr("Start from scratch, or let a template lay out the first charts for you.")}
       footer={
         <>
-          {error && <p className="mr-auto text-sm text-[var(--status-critical)]">{error}</p>}
+          {error && <p className="me-auto text-sm text-[var(--status-critical)]">{error}</p>}
           <button onClick={onClose} className={BTN_SECONDARY}>
-            Cancel
+            {tr("Cancel")}
           </button>
           <button onClick={() => create()} disabled={!canCreate || creating} className={BTN_PRIMARY}>
-            {creating ? "Creating…" : "Create dashboard"}
+            {creating ? tr("Creating…") : tr("Create dashboard")}
           </button>
         </>
       }
     >
       <form onSubmit={create} className="space-y-5 p-5">
         <div className="grid gap-2.5 sm:grid-cols-2">
-          {modeCard("blank", "Blank dashboard", "An empty canvas — add charts one by one.", <PlusIcon />)}
-          {modeCard("template", "From a template", "Starter charts picked from your data.", <TemplateIcon icon="sprout" />)}
+          {modeCard("blank", tr("Blank dashboard"), tr("An empty canvas — add charts one by one."), <PlusIcon />)}
+          {modeCard("template", tr("From a template"), tr("Starter charts picked from your data."), <TemplateIcon icon="sprout" />)}
         </div>
 
         {mode === "template" && (
           <div>
-            <label className={FIELD_LABEL}>Template</label>
+            <label className={FIELD_LABEL}>{tr("Template")}</label>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {templates === null &&
                 [0, 1, 2].map((i) => <div key={i} className="h-24 animate-pulse rounded-xl bg-[var(--surface-2)]" />)}
@@ -245,7 +251,7 @@ function CreateDashboardDialog({
                   key={t.key}
                   type="button"
                   onClick={() => pickTemplate(t)}
-                  className={`flex flex-col items-start gap-1 rounded-xl border p-3 text-left transition-colors ${
+                  className={`flex flex-col items-start gap-1 rounded-xl border p-3 text-start transition-colors ${
                     template?.key === t.key
                       ? "border-[var(--accent)] bg-[var(--accent-soft)] ring-1 ring-[var(--accent)]"
                       : "border-[var(--border)] hover:border-[var(--accent)]/50"
@@ -255,7 +261,7 @@ function CreateDashboardDialog({
                     <TemplateIcon icon={t.icon} />
                   </span>
                   <span className="text-[13px] font-semibold text-[var(--text-primary)]">{t.name}</span>
-                  <span className="line-clamp-2 text-[11.5px] leading-4 text-[var(--text-muted)]">{t.description}</span>
+                  <span className="line-clamp-2 text-[11.5px] leading-4 text-[var(--text-muted)]">{tr(t.description)}</span>
                 </button>
               ))}
             </div>
@@ -264,12 +270,12 @@ function CreateDashboardDialog({
 
         <div className={mode === "template" ? "grid gap-4 sm:grid-cols-2" : "space-y-4"}>
           <div>
-            <label className={FIELD_LABEL}>Name</label>
+            <label className={FIELD_LABEL}>{tr("Name")}</label>
             <input
               data-autofocus
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder={mode === "template" ? template?.name ?? "Pick a template" : "e.g. Weekly sales review"}
+              placeholder={mode === "template" ? template?.name ?? tr("Pick a template") : tr("e.g. Weekly sales review")}
               className={FIELD_INPUT}
               maxLength={255}
             />
@@ -277,22 +283,22 @@ function CreateDashboardDialog({
           {mode === "blank" ? (
             <div>
               <label className={FIELD_LABEL}>
-                Description <span className="font-normal text-[var(--text-muted)]">(optional)</span>
+                {tr("Description")} <span className="font-normal text-[var(--text-muted)]">{tr("(optional)")}</span>
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={2}
                 maxLength={255}
-                placeholder="What is this dashboard for?"
+                placeholder={tr("What is this dashboard for?")}
                 className={`${FIELD_INPUT} resize-none`}
               />
             </div>
           ) : (
             <div>
-              <label className={FIELD_LABEL}>Build it from</label>
+              <label className={FIELD_LABEL}>{tr("Build it from")}</label>
               <select value={datasetId} onChange={(e) => setDatasetId(e.target.value ? Number(e.target.value) : "")} className={FIELD_INPUT}>
-                {datasets?.length === 0 && <option value="">No datasets yet</option>}
+                {datasets?.length === 0 && <option value="">{tr("No datasets yet")}</option>}
                 {datasets?.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name}
@@ -304,9 +310,9 @@ function CreateDashboardDialog({
         </div>
         {mode === "template" && datasets?.length === 0 && (
           <p className="text-xs text-[var(--text-muted)]">
-            Templates need a dataset to build charts from.{" "}
+            {tr("Templates need a dataset to build charts from.")}{" "}
             <Link href="/data-sources" className="font-medium text-[var(--accent)]">
-              Connect a data source
+              {tr("Connect a data source")}
             </Link>{" "}
             first.
           </p>
@@ -317,6 +323,7 @@ function CreateDashboardDialog({
 }
 
 function DashboardsList() {
+  const tr = useT();
   const t = useTranslations("dashboards");
   const router = useRouter();
   const [dashboards, setDashboards] = useState<Dashboard[] | null>(null);
@@ -335,13 +342,13 @@ function DashboardsList() {
   }, []);
 
   async function onDelete(id: number) {
-    if (!confirm("Delete this dashboard and all its charts?")) return;
+    if (!confirm(tr("Delete this dashboard and all its charts?"))) return;
     setError(null);
     try {
       await api.del(`/dashboards/${id}`);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to delete dashboard.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to delete dashboard."));
     }
   }
 
@@ -351,7 +358,7 @@ function DashboardsList() {
       await api.post(`/dashboards/${id}/duplicate`);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to duplicate dashboard.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to duplicate dashboard."));
     }
   }
 
@@ -376,7 +383,7 @@ function DashboardsList() {
       <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-1)] p-6 sm:p-8">
         <div
           aria-hidden
-          className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full opacity-[0.16] blur-3xl"
+          className="pointer-events-none absolute -end-24 -top-24 h-72 w-72 rounded-full opacity-[0.16] blur-3xl"
           style={{ background: "var(--accent-glow)" }}
         />
         <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
@@ -413,9 +420,9 @@ function DashboardsList() {
       )}
 
       <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
-        <StatCard label="Dashboards" value={dashboards?.length ?? "—"} icon={<GridIcon size={16} />} />
-        <StatCard label="Charts" value={dashboards ? totalCharts : "—"} icon={<BarsIcon />} />
-        <StatCard label="Data Sources" value={dataSources?.length ?? "—"} icon={<DbIcon />} hint={dataSources?.length === 0 ? "Connect one to start building" : undefined} />
+        <StatCard label={tr("Dashboards")} value={dashboards?.length ?? "—"} icon={<GridIcon size={16} />} />
+        <StatCard label={tr("Charts")} value={dashboards ? totalCharts : "—"} icon={<BarsIcon />} />
+        <StatCard label={tr("Data Sources")} value={dataSources?.length ?? "—"} icon={<DbIcon />} hint={dataSources?.length === 0 ? tr("Connect one to start building") : undefined} />
       </div>
 
       {error && <p className="mt-2 text-sm text-[var(--status-critical)]">{error}</p>}
@@ -423,17 +430,17 @@ function DashboardsList() {
       {dashboards && dashboards.length > 0 && (
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-sm font-semibold text-[var(--text-primary)]">
-            All dashboards <span className="ml-1 font-normal text-[var(--text-muted)]">{filtered?.length ?? 0}</span>
+            {tr("All dashboards")} <span className="ms-1 font-normal text-[var(--text-muted)]">{filtered?.length ?? 0}</span>
           </h2>
           <div className="relative w-full sm:max-w-xs">
-            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
+            <span className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
               <SearchIcon />
             </span>
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search dashboards..."
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-1)] py-2 pl-9 pr-3 text-sm outline-none"
+              placeholder={tr("Search dashboards...")}
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-1)] py-2 ps-9 pe-3 text-sm outline-none"
             />
           </div>
         </div>
@@ -467,7 +474,7 @@ function DashboardsList() {
         )}
         {filtered && filtered.length === 0 && dashboards && dashboards.length > 0 && (
           <p className="py-6 text-center text-sm text-[var(--text-muted)] sm:col-span-2 lg:col-span-3">
-            No dashboards match &ldquo;{search}&rdquo;.
+            {tr("No dashboards match “")}{search}&rdquo;.
           </p>
         )}
         {filtered?.map((d) => (
@@ -485,9 +492,9 @@ function DashboardsList() {
                   {d.shared_by ? (
                     <span
                       className="max-w-[9rem] shrink-0 truncate rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--accent)]"
-                      title={`Shared with you by ${d.shared_by}`}
+                      title={tr("Shared with you by {shared_by}", { shared_by: d.shared_by })}
                     >
-                      From {d.shared_by}
+                      {tr("From")} {d.shared_by}
                     </span>
                   ) : (
                     d.role &&
@@ -499,19 +506,19 @@ function DashboardsList() {
                   )}
                   {d.is_shared && (
                     <span className="shrink-0 rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--accent)]">
-                      Public
+                      {tr("Public")}
                     </span>
                   )}
                 </div>
                 <div className="mt-1 line-clamp-2 min-h-[2.5rem] text-[13px] text-[var(--text-muted)]">
-                  {d.description || "No description"}
+                  {tr(d.description) || tr("No description")}
                 </div>
                 <div className="mt-2 flex items-center gap-3 text-xs text-[var(--text-muted)]">
                   <span className="inline-flex items-center gap-1">
                     <BarsIcon size={12} />
-                    {d.charts_count ?? 0} chart{d.charts_count === 1 ? "" : "s"}
+                    {d.charts_count ?? 0} {tr("chart")}{d.charts_count === 1 ? "" : tr("s")}
                   </span>
-                  {d.updated_at && <span>Updated {timeAgo(d.updated_at)}</span>}
+                  {d.updated_at && <span>{tr("Updated")} {timeAgo(d.updated_at)}</span>}
                 </div>
               </div>
             </Link>
@@ -521,19 +528,19 @@ function DashboardsList() {
                   href={`/dashboards/${d.id}`}
                   className="rounded-md px-2.5 py-1 text-xs font-medium text-[var(--accent)] hover:bg-[var(--accent-soft)]"
                 >
-                  Open
+                  {tr("Open")}
                 </Link>
                 <button
                   onClick={() => onDuplicate(d.id)}
                   className="rounded-md px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
                 >
-                  Duplicate
+                  {tr("Duplicate")}
                 </button>
                 <button
                   onClick={() => onDelete(d.id)}
-                  className="ml-auto rounded-md px-2.5 py-1 text-xs font-medium text-[var(--status-critical)] hover:bg-[var(--status-critical)]/10"
+                  className="ms-auto rounded-md px-2.5 py-1 text-xs font-medium text-[var(--status-critical)] hover:bg-[var(--status-critical)]/10"
                 >
-                  Delete
+                  {tr("Delete")}
                 </button>
               </div>
             )}

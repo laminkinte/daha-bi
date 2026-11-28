@@ -41,7 +41,7 @@ class GoalController extends Controller
     {
         $this->authorize('viewInternal', $chart);
 
-        abort_unless($chart->type === 'kpi', Response::HTTP_UNPROCESSABLE_ENTITY, 'Goals can only be set on KPI charts.');
+        abort_unless($chart->type === 'kpi', Response::HTTP_UNPROCESSABLE_ENTITY, __('Goals can only be set on KPI charts.'));
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -93,12 +93,12 @@ class GoalController extends Controller
 
         if (! $this->ai->isConfigured()) {
             return response()->json([
-                'message' => 'AI features are not set up yet. Add a free GEMINI_API_KEY (from Google AI Studio) to the backend .env to enable this.',
+                'message' => __('AI features are not set up yet. Add a free GEMINI_API_KEY (from Google AI Studio) to the backend .env to enable this.'),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         if ($goal->last_value === null) {
-            return response()->json(['message' => 'No computed value yet for this goal.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return response()->json(['message' => __('No computed value yet for this goal.')], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         $recommendation = $this->ai->recommendForGoal(

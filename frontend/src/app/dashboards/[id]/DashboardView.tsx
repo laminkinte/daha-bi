@@ -31,6 +31,7 @@ import CompanySharesDialog from "@/components/dashboard/CompanySharesDialog";
 import EmbedDialog from "@/components/dashboard/EmbedDialog";
 import { BrandLogo } from "@/components/BrandStyle";
 import { downloadDashboardPdf } from "@/lib/dashboard-export";
+import { useT, translate, uiLocaleTag } from "@/i18n/ui";
 
 function ChartIcon() {
   return (
@@ -66,6 +67,7 @@ function AiPromptDialog({
   onCreated: () => void;
   onClose: () => void;
 }) {
+  const tr = useT();
   const [datasetId, setDatasetId] = useState<number | "">(datasets[0]?.id ?? "");
   const [prompt, setPrompt] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -86,7 +88,7 @@ function AiPromptDialog({
         onCreated();
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "AI request failed.");
+      setError(err instanceof ApiError ? err.message : tr("AI request failed."));
     } finally {
       setSubmitting(false);
     }
@@ -98,23 +100,23 @@ function AiPromptDialog({
       onClose={onClose}
       size="lg"
       icon={<SparkleIcon />}
-      title="Ask AI"
-      description="Describe the chart you want, or ask a question about your data."
+      title={tr("Ask AI")}
+      description={tr("Describe the chart you want, or ask a question about your data.")}
       footer={
         <>
           <button onClick={onClose} className={BTN_SECONDARY}>
-            {result?.response_type === "chart" ? "Done" : "Cancel"}
+            {result?.response_type === "chart" ? tr("Done") : tr("Cancel")}
           </button>
           <button onClick={() => onSubmit()} disabled={submitting || !prompt.trim() || !datasetId} className={BTN_PRIMARY}>
             <SparkleIcon />
-            {submitting ? "Thinking…" : "Ask"}
+            {submitting ? tr("Thinking…") : tr("Ask")}
           </button>
         </>
       }
     >
       <form onSubmit={onSubmit} className="space-y-4 p-5">
         <div>
-          <label className={FIELD_LABEL}>Dataset</label>
+          <label className={FIELD_LABEL}>{tr("Dataset")}</label>
           <select value={datasetId} onChange={(e) => setDatasetId(Number(e.target.value))} className={FIELD_INPUT}>
             {datasets.map((d) => (
               <option key={d.id} value={d.id}>
@@ -124,7 +126,7 @@ function AiPromptDialog({
           </select>
         </div>
         <div>
-          <label className={FIELD_LABEL}>Your request</label>
+          <label className={FIELD_LABEL}>{tr("Your request")}</label>
           <textarea
             data-autofocus
             value={prompt}
@@ -136,11 +138,11 @@ function AiPromptDialog({
               }
             }}
             rows={3}
-            placeholder="e.g. revenue by region as a bar chart"
+            placeholder={tr("e.g. revenue by region as a bar chart")}
             className={`${FIELD_INPUT} resize-none`}
           />
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {AI_EXAMPLES.map((ex) => (
+            {AI_EXAMPLES.map((s) => tr(s)).map((ex) => (
               <button
                 key={ex}
                 type="button"
@@ -162,7 +164,7 @@ function AiPromptDialog({
         {result?.response_type === "chart" && (
           <div className="flex items-center gap-2 rounded-lg bg-[var(--status-good)]/10 px-3.5 py-2.5 text-sm text-[var(--text-primary)]">
             <span className="text-[var(--status-good)]">✓</span>
-            Added &ldquo;{result.chart.title}&rdquo; to this dashboard. Ask for another, or close.
+            {tr("Added “")}{tr(result.chart.title)}{tr("” to this dashboard. Ask for another, or close.")}
           </div>
         )}
       </form>
@@ -200,7 +202,7 @@ function slug(name: string): string {
  * under its button from `sm` up.
  */
 const POPOVER =
-  "fixed inset-x-3 top-20 z-40 max-h-[75vh] overflow-y-auto sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:z-30 sm:mt-2 sm:max-h-[70vh]";
+  "fixed inset-x-3 top-20 z-40 max-h-[75vh] overflow-y-auto sm:absolute sm:inset-x-auto sm:end-0 sm:top-full sm:z-30 sm:mt-2 sm:max-h-[70vh]";
 
 const POPOVER_OPEN_EVENT = "daha:toolbar-popover-open";
 let popoverSeq = 0;
@@ -246,6 +248,7 @@ function usePopover() {
 }
 
 function ExportButton({ dashboard, chartsRef }: { dashboard: Dashboard; chartsRef: RefObject<HTMLDivElement | null> }) {
+  const tr = useT();
   const { user } = useAuth();
   const { open, setOpen, popoverProps } = usePopover();
   const [busy, setBusy] = useState<"excel" | "pdf" | null>(null);
@@ -258,7 +261,7 @@ function ExportButton({ dashboard, chartsRef }: { dashboard: Dashboard; chartsRe
       await api.download(`/dashboards/${dashboard.id}/export/excel`, `${slug(dashboard.name)}.xlsx`);
       setOpen(false);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to export Excel.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to export Excel."));
     } finally {
       setBusy(null);
     }
@@ -266,7 +269,7 @@ function ExportButton({ dashboard, chartsRef }: { dashboard: Dashboard; chartsRe
 
   async function exportPdf() {
     if (!chartsRef.current) {
-      setError("Nothing to export yet.");
+      setError(tr("Nothing to export yet."));
       return;
     }
     setBusy("pdf");
@@ -283,7 +286,7 @@ function ExportButton({ dashboard, chartsRef }: { dashboard: Dashboard; chartsRe
     } catch (err) {
       // Keep the real reason in the console for support; tell the user what to try.
       console.error("PDF export failed", err);
-      setError("Couldn't create the PDF. Wait for every chart to finish loading, then try again.");
+      setError(tr("Couldn't create the PDF. Wait for every chart to finish loading, then try again."));
     } finally {
       setBusy(null);
     }
@@ -293,28 +296,28 @@ function ExportButton({ dashboard, chartsRef }: { dashboard: Dashboard; chartsRe
     <div className="relative" {...popoverProps}>
       <button
         onClick={() => setOpen((o) => !o)}
-        aria-label={"Export"}
-        title={"Export"}
+        aria-label={tr("Export")}
+        title={tr("Export")}
         className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-[13px] font-medium text-[var(--text-secondary)] shadow-sm transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
       >
         <DownloadIcon />
-        <span className="hidden sm:inline">Export</span>
+        <span className="hidden sm:inline">{tr("Export")}</span>
       </button>
       {open && (
         <div className={`${POPOVER} sm:w-52 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-2 text-sm shadow-lg`}>
           <button
             onClick={exportExcel}
             disabled={busy !== null}
-            className="block w-full rounded-md px-3 py-2 text-left text-[var(--text-secondary)] hover:bg-[var(--page-plane)] hover:text-[var(--text-primary)] disabled:opacity-60"
+            className="block w-full rounded-md px-3 py-2 text-start text-[var(--text-secondary)] hover:bg-[var(--page-plane)] hover:text-[var(--text-primary)] disabled:opacity-60"
           >
-            {busy === "excel" ? "Exporting..." : "Export as Excel"}
+            {busy === "excel" ? tr("Exporting...") : tr("Export as Excel")}
           </button>
           <button
             onClick={exportPdf}
             disabled={busy !== null}
-            className="block w-full rounded-md px-3 py-2 text-left text-[var(--text-secondary)] hover:bg-[var(--page-plane)] hover:text-[var(--text-primary)] disabled:opacity-60"
+            className="block w-full rounded-md px-3 py-2 text-start text-[var(--text-secondary)] hover:bg-[var(--page-plane)] hover:text-[var(--text-primary)] disabled:opacity-60"
           >
-            {busy === "pdf" ? "Exporting..." : "Export as PDF"}
+            {busy === "pdf" ? tr("Exporting...") : tr("Export as PDF")}
           </button>
           {error && <p className="mt-1 px-3 text-xs text-[var(--status-critical)]">{error}</p>}
         </div>
@@ -330,6 +333,7 @@ function ShareButton({
   dashboard: Dashboard;
   onChanged: () => void;
 }) {
+  const tr = useT();
   const { open, setOpen, popoverProps } = usePopover();
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -347,7 +351,7 @@ function ShareButton({
       await api.post(`/dashboards/${dashboard.id}/share`);
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to enable sharing.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to enable sharing."));
     } finally {
       setBusy(false);
     }
@@ -360,7 +364,7 @@ function ShareButton({
       await api.del(`/dashboards/${dashboard.id}/share`);
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to disable sharing.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to disable sharing."));
     } finally {
       setBusy(false);
     }
@@ -377,12 +381,12 @@ function ShareButton({
     <div className="relative" {...popoverProps}>
       <button
         onClick={() => setOpen((o) => !o)}
-        aria-label={dashboard.is_shared ? "Shared" : "Share"}
-        title={dashboard.is_shared ? "Shared" : "Share"}
+        aria-label={dashboard.is_shared ? tr("Shared") : tr("Share")}
+        title={dashboard.is_shared ? tr("Shared") : tr("Share")}
         className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-[13px] font-medium text-[var(--text-secondary)] shadow-sm transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
       >
         <ShareIcon />
-        <span className="hidden sm:inline">{dashboard.is_shared ? "Shared" : "Share"}</span>
+        <span className="hidden sm:inline">{dashboard.is_shared ? tr("Shared") : tr("Share")}</span>
       </button>
 
       {open && (
@@ -390,19 +394,19 @@ function ShareButton({
           {!dashboard.is_shared ? (
             <>
               <p className="text-[var(--text-secondary)]">
-                Create a public, read-only link anyone can view without logging in.
+                {tr("Create a public, read-only link anyone can view without logging in.")}
               </p>
               <button
                 onClick={enable}
                 disabled={busy}
                 className="mt-3 w-full rounded-md bg-[var(--accent)] px-3 py-1.5 font-medium text-white disabled:opacity-60"
               >
-                {busy ? "Enabling..." : "Enable public link"}
+                {busy ? tr("Enabling...") : tr("Enable public link")}
               </button>
             </>
           ) : (
             <>
-              <p className="text-[var(--text-secondary)]">Anyone with this link can view this dashboard.</p>
+              <p className="text-[var(--text-secondary)]">{tr("Anyone with this link can view this dashboard.")}</p>
               <div className="mt-2 flex items-center gap-2">
                 <input
                   readOnly
@@ -413,7 +417,7 @@ function ShareButton({
                   onClick={copyLink}
                   className="shrink-0 rounded-md border border-[var(--border)] px-2 py-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                 >
-                  {copied ? "Copied!" : "Copy"}
+                  {copied ? tr("Copied!") : tr("Copy")}
                 </button>
               </div>
               <button
@@ -421,7 +425,7 @@ function ShareButton({
                 disabled={busy}
                 className="mt-3 w-full rounded-md border border-[var(--border)] px-3 py-1.5 text-[var(--status-critical)] disabled:opacity-60"
               >
-                {busy ? "Disabling..." : "Disable public link"}
+                {busy ? tr("Disabling...") : tr("Disable public link")}
               </button>
             </>
           )}
@@ -444,6 +448,7 @@ function TeamIcon() {
 }
 
 function CollaboratorsPanel({ dashboard }: { dashboard: Dashboard }) {
+  const tr = useT();
   const { open, setOpen, popoverProps } = usePopover();
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [email, setEmail] = useState("");
@@ -481,7 +486,7 @@ function CollaboratorsPanel({ dashboard }: { dashboard: Dashboard }) {
         load();
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to invite.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to invite."));
     } finally {
       setBusy(false);
     }
@@ -492,7 +497,7 @@ function CollaboratorsPanel({ dashboard }: { dashboard: Dashboard }) {
       await api.del(`/dashboards/${dashboard.id}/collaborators/${id}`);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to remove.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to remove."));
     }
   }
 
@@ -500,19 +505,19 @@ function CollaboratorsPanel({ dashboard }: { dashboard: Dashboard }) {
     <div className="relative" {...popoverProps}>
       <button
         onClick={() => setOpen((o) => !o)}
-        aria-label={"Team"}
-        title={"Team"}
+        aria-label={tr("Team")}
+        title={tr("Team")}
         className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-[13px] font-medium text-[var(--text-secondary)] shadow-sm transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
       >
         <TeamIcon />
-        <span className="hidden sm:inline">Team</span>
+        <span className="hidden sm:inline">{tr("Team")}</span>
       </button>
 
       {open && (
         <div className={`${POPOVER} sm:w-80 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-4 text-sm shadow-lg`}>
-          <p className="font-medium text-[var(--text-primary)]">Share this dashboard</p>
+          <p className="font-medium text-[var(--text-primary)]">{tr("Share this dashboard")}</p>
           <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
-            Invite anyone by email — teammates or people at partner companies. They only see this dashboard.
+            {tr("Invite anyone by email — teammates or people at partner companies. They only see this dashboard.")}
           </p>
 
           {collaborators.length > 0 && (
@@ -527,7 +532,7 @@ function CollaboratorsPanel({ dashboard }: { dashboard: Dashboard }) {
                     <div className="text-[var(--text-muted)]">{c.user.email} &middot; {c.role}</div>
                   </div>
                   <button onClick={() => onRemove(c.id)} className="text-[var(--text-muted)] hover:text-[var(--status-critical)]">
-                    Remove
+                    {tr("Remove")}
                   </button>
                 </div>
               ))}
@@ -538,7 +543,7 @@ function CollaboratorsPanel({ dashboard }: { dashboard: Dashboard }) {
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@company.com"
+              placeholder={tr("name@company.com")}
               type="email"
               className="min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--page-plane)] px-2 py-1.5 text-xs"
             />
@@ -547,15 +552,15 @@ function CollaboratorsPanel({ dashboard }: { dashboard: Dashboard }) {
               onChange={(e) => setRole(e.target.value as "viewer" | "editor")}
               className="rounded-md border border-[var(--border)] bg-[var(--page-plane)] px-1.5 py-1.5 text-xs"
             >
-              <option value="viewer">Viewer</option>
-              <option value="editor">Editor</option>
+              <option value="viewer">{tr("Viewer")}</option>
+              <option value="editor">{tr("Editor")}</option>
             </select>
             <button
               type="submit"
               disabled={busy}
               className="shrink-0 rounded-md bg-[var(--accent)] px-2.5 py-1.5 text-xs font-medium text-white disabled:opacity-60"
             >
-              Invite
+              {tr("Invite")}
             </button>
           </form>
           {error && <p className="mt-2 text-[var(--status-critical)]">{error}</p>}
@@ -572,6 +577,7 @@ function CollaboratorsPanel({ dashboard }: { dashboard: Dashboard }) {
 }
 
 function AiRecommendationsPanel({ dashboard }: { dashboard: Dashboard }) {
+  const tr = useT();
   const { open, setOpen, popoverProps } = usePopover();
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState<string | null>(null);
@@ -586,7 +592,7 @@ function AiRecommendationsPanel({ dashboard }: { dashboard: Dashboard }) {
       const res = await api.post<{ analysis: string }>(`/dashboards/${dashboard.id}/ai-recommendations`, {});
       setAnalysis(res.analysis);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to get recommendations.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to get recommendations."));
     } finally {
       setLoading(false);
     }
@@ -596,16 +602,16 @@ function AiRecommendationsPanel({ dashboard }: { dashboard: Dashboard }) {
     <div className="relative" {...popoverProps}>
       <button
         onClick={() => (open ? setOpen(false) : onOpen())}
-        aria-label={"AI insights"}
-        title={"AI insights"}
+        aria-label={tr("AI insights")}
+        title={tr("AI insights")}
         className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-[13px] font-medium text-[var(--text-secondary)] shadow-sm transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
       >
         <SparkleIcon />
-        <span className="hidden sm:inline">AI insights</span>
+        <span className="hidden sm:inline">{tr("AI insights")}</span>
       </button>
       {open && (
         <div className={`${POPOVER} sm:w-80 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-3 text-sm shadow-lg`}>
-          {loading && <p className="text-[var(--text-muted)]">Analyzing this dashboard...</p>}
+          {loading && <p className="text-[var(--text-muted)]">{tr("Analyzing this dashboard...")}</p>}
           {error && <p className="text-[var(--status-critical)]">{error}</p>}
           {analysis && <p className="whitespace-pre-line text-[var(--text-primary)]">{analysis}</p>}
         </div>
@@ -626,6 +632,7 @@ function ReportIcon() {
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function ReportSchedulesPanel({ dashboard }: { dashboard: Dashboard }) {
+  const tr = useT();
   const { open, setOpen, popoverProps } = usePopover();
   const [schedules, setSchedules] = useState<ReportSchedule[]>([]);
   const [recipients, setRecipients] = useState("");
@@ -667,7 +674,7 @@ function ReportSchedulesPanel({ dashboard }: { dashboard: Dashboard }) {
       setRecipients("");
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to create schedule.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to create schedule."));
     } finally {
       setBusy(false);
     }
@@ -678,10 +685,10 @@ function ReportSchedulesPanel({ dashboard }: { dashboard: Dashboard }) {
     setError(null);
     try {
       await api.post(`/report-schedules/${id}/send-now`);
-      setNotice("Sent. The summary is on its way to the recipients' inboxes.");
+      setNotice(tr("Sent. The summary is on its way to the recipients' inboxes."));
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to send.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to send."));
     }
   }
 
@@ -690,7 +697,7 @@ function ReportSchedulesPanel({ dashboard }: { dashboard: Dashboard }) {
       await api.del(`/report-schedules/${id}`);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to remove.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to remove."));
     }
   }
 
@@ -698,17 +705,17 @@ function ReportSchedulesPanel({ dashboard }: { dashboard: Dashboard }) {
     <div className="relative" {...popoverProps}>
       <button
         onClick={() => setOpen((o) => !o)}
-        aria-label={"Reports"}
-        title={"Reports"}
+        aria-label={tr("Reports")}
+        title={tr("Reports")}
         className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-[13px] font-medium text-[var(--text-secondary)] shadow-sm transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
       >
         <ReportIcon />
-        <span className="hidden sm:inline">Reports</span>
+        <span className="hidden sm:inline">{tr("Reports")}</span>
       </button>
 
       {open && (
         <div className={`${POPOVER} sm:w-96 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-4 text-sm shadow-lg`}>
-          <p className="text-[var(--text-secondary)]">Email a summary of this dashboard on a schedule.</p>
+          <p className="text-[var(--text-secondary)]">{tr("Email a summary of this dashboard on a schedule.")}</p>
 
           {schedules.length > 0 && (
             <div className="mt-3 flex flex-col gap-1.5">
@@ -719,15 +726,15 @@ function ReportSchedulesPanel({ dashboard }: { dashboard: Dashboard }) {
                 >
                   <div className="flex items-center justify-between">
                     <div className="text-[var(--text-primary)]">
-                      {s.frequency === "weekly" ? `Weekly, ${DAY_NAMES[s.day_of_week ?? 0]}` : "Daily"} at{" "}
+                      {s.frequency === "weekly" ? tr("Weekly, {v0}", { v0: tr(DAY_NAMES[s.day_of_week ?? 0]) }) : tr("Daily")} {tr("at")}{" "}
                       {s.time_of_day.slice(0, 5)}
                     </div>
                     <div className="flex items-center gap-2">
                       <button onClick={() => onSendNow(s.id)} className="text-[var(--accent)]">
-                        Send now
+                        {tr("Send now")}
                       </button>
                       <button onClick={() => onRemove(s.id)} className="text-[var(--text-muted)] hover:text-[var(--status-critical)]">
-                        Remove
+                        {tr("Remove")}
                       </button>
                     </div>
                   </div>
@@ -741,7 +748,7 @@ function ReportSchedulesPanel({ dashboard }: { dashboard: Dashboard }) {
             <input
               value={recipients}
               onChange={(e) => setRecipients(e.target.value)}
-              placeholder="recipient1@email.com, recipient2@email.com"
+              placeholder={tr("recipient1@email.com, recipient2@email.com")}
               className="rounded-md border border-[var(--border)] bg-[var(--page-plane)] px-2 py-1.5 text-xs"
             />
             <div className="flex items-center gap-1.5">
@@ -750,8 +757,8 @@ function ReportSchedulesPanel({ dashboard }: { dashboard: Dashboard }) {
                 onChange={(e) => setFrequency(e.target.value as "daily" | "weekly")}
                 className="rounded-md border border-[var(--border)] bg-[var(--page-plane)] px-1.5 py-1.5 text-xs"
               >
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
+                <option value="daily">{tr("Daily")}</option>
+                <option value="weekly">{tr("Weekly")}</option>
               </select>
               {frequency === "weekly" && (
                 <select
@@ -777,7 +784,7 @@ function ReportSchedulesPanel({ dashboard }: { dashboard: Dashboard }) {
                 disabled={busy}
                 className="shrink-0 rounded-md bg-[var(--accent)] px-2.5 py-1.5 text-xs font-medium text-white disabled:opacity-60"
               >
-                Schedule
+                {tr("Schedule")}
               </button>
             </div>
           </form>
@@ -860,6 +867,7 @@ function DraggableChartGrid({
   onEdit: (chart: Chart) => void;
   chartsRef: RefObject<HTMLDivElement | null>;
 }) {
+  const tr = useT();
   const charts = dashboard.charts ?? [];
   const { width, containerRef, mounted } = useContainerWidth();
   const [layout, setLayout] = useState<Layout>(() => chartsToLayout(charts));
@@ -925,7 +933,7 @@ function DraggableChartGrid({
           >
             {charts.map((chart) => (
               <div key={String(chart.id)} className="h-full">
-                <ChartErrorBoundary title={chart.title}>
+                <ChartErrorBoundary title={tr(chart.title)}>
                 <ChartCard
                   chart={chart}
                   onDeleted={onDeleted}
@@ -951,19 +959,20 @@ function DraggableChartGrid({
 
 function timeAgo(iso: string) {
   const minutes = Math.max(0, (Date.now() - new Date(iso).getTime()) / 60000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${Math.floor(minutes)} min ago`;
+  if (minutes < 1) return translate("just now");
+  if (minutes < 60) return translate("{v0} min ago", { v0: Math.floor(minutes) });
   const hours = minutes / 60;
-  if (hours < 24) return `${Math.floor(hours)} h ago`;
+  if (hours < 24) return translate("{v0} h ago", { v0: Math.floor(hours) });
   const days = hours / 24;
-  if (days < 30) return `${Math.floor(days)} d ago`;
-  return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  if (days < 30) return translate("{v0} d ago", { v0: Math.floor(days) });
+  return new Date(iso).toLocaleDateString(uiLocaleTag(), { day: "numeric", month: "short", year: "numeric" });
 }
 
 const ICON_BTN =
   "flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-1)] text-[var(--text-secondary)] shadow-sm transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]";
 
 function DashboardDetail({ dashboardId }: { dashboardId: number }) {
+  const tr = useT();
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [crossFilter, setCrossFilter] = useState<ChartFilter | null>(null);
@@ -1043,7 +1052,7 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
       await api.put(`/dashboards/${dashboard.id}`, { settings: { slicers: fields.map((field) => ({ field })) } });
     } catch (err) {
       setDashboard((d) => (d ? { ...d, settings: previous } : d));
-      setSlicerError(err instanceof ApiError ? err.message : "Couldn't save the filter panel.");
+      setSlicerError(err instanceof ApiError ? err.message : tr("Couldn't save the filter panel."));
     }
   }
 
@@ -1062,10 +1071,10 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
       .catch((err) =>
         setLoadError(
           err instanceof ApiError && err.status === 403
-            ? "You don't have access to this dashboard."
+            ? tr("You don't have access to this dashboard.")
             : err instanceof ApiError && err.status === 404
-              ? "This dashboard doesn't exist."
-              : "Failed to load this dashboard."
+              ? tr("This dashboard doesn't exist.")
+              : tr("Failed to load this dashboard.")
         )
       );
   }
@@ -1082,13 +1091,13 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
         <EmptyState
           icon={<ChartIcon />}
           title={loadError}
-          description="It may have been deleted, or you may not have permission to view it."
+          description={tr("It may have been deleted, or you may not have permission to view it.")}
           action={
             <Link
               href="/dashboards"
               className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white"
             >
-              Back to dashboards
+              {tr("Back to dashboards")}
             </Link>
           }
         />
@@ -1119,7 +1128,7 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
     <div ref={rootRef} className={`mx-auto max-w-[1600px] px-4 py-5 sm:px-6 sm:py-6 ${fullscreen ? "h-full overflow-y-auto bg-[var(--page-plane)]" : ""}`}>
       <nav className="flex items-center gap-1.5 text-[13px] text-[var(--text-muted)]">
         <Link href="/dashboards" className="hover:text-[var(--accent)]">
-          Dashboards
+          {tr("Dashboards")}
         </Link>
         <span aria-hidden>/</span>
         <span className="truncate text-[var(--text-secondary)]">{dashboard.name}</span>
@@ -1131,9 +1140,9 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-[26px] font-semibold leading-tight tracking-tight">{dashboard.name}</h1>
             {dashboard.shared_by ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-soft)] py-0.5 pl-1 pr-2 text-[11px] font-medium text-[var(--accent)]">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-soft)] py-0.5 ps-1 pe-2 text-[11px] font-medium text-[var(--accent)]">
                 <BrandLogo branding={dashboard.shared_by_branding} size={16} />
-                Shared with you by {dashboard.shared_by_branding?.name ?? dashboard.shared_by} · view only
+                {tr("Shared with you by")} {dashboard.shared_by_branding?.name ?? dashboard.shared_by} {tr("· view only")}
               </span>
             ) : (
               role !== "owner" && (
@@ -1144,19 +1153,19 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
             )}
             {dashboard.is_shared && (
               <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--accent)]">
-                Public link on
+                {tr("Public link on")}
               </span>
             )}
           </div>
-          {dashboard.description && <p className="mt-1 line-clamp-2 max-w-3xl text-sm text-[var(--text-secondary)]">{dashboard.description}</p>}
+          {dashboard.description && <p className="mt-1 line-clamp-2 max-w-3xl text-sm text-[var(--text-secondary)]">{tr(dashboard.description)}</p>}
           <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--text-muted)]">
             <span>
-              {dashboard.charts?.length ?? 0} chart{dashboard.charts?.length === 1 ? "" : "s"}
+              {dashboard.charts?.length ?? 0} {tr("chart")}{dashboard.charts?.length === 1 ? "" : tr("s")}
             </span>
             {dashboard.data_refreshed_at && (
-              <span className="flex items-center gap-1.5" title={new Date(dashboard.data_refreshed_at).toLocaleString()}>
+              <span className="flex items-center gap-1.5" title={new Date(dashboard.data_refreshed_at).toLocaleString(uiLocaleTag())}>
                 <span className="h-1.5 w-1.5 rounded-full bg-[var(--status-good)]" />
-                Data refreshed {timeAgo(dashboard.data_refreshed_at)}
+                {tr("Data refreshed")} {timeAgo(dashboard.data_refreshed_at)}
               </span>
             )}
           </p>
@@ -1170,8 +1179,8 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
                   load();
                 }}
                 className={ICON_BTN}
-                title="Refresh data"
-                aria-label="Refresh data"
+                title={tr("Refresh data")}
+                aria-label={tr("Refresh data")}
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" />
@@ -1180,8 +1189,8 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
               <button
                 onClick={toggleFullscreen}
                 className={ICON_BTN}
-                title={fullscreen ? "Exit full screen" : "Full screen"}
-                aria-label={fullscreen ? "Exit full screen" : "Full screen"}
+                title={fullscreen ? tr("Exit full screen") : tr("Full screen")}
+                aria-label={fullscreen ? tr("Exit full screen") : tr("Full screen")}
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   {fullscreen ? <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" /> : <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />}
@@ -1202,13 +1211,13 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
                 ? "border-[var(--accent)]/40 bg-[var(--accent-soft)] text-[var(--accent)]"
                 : "border-[var(--border)] bg-[var(--surface-1)] text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
             }`}
-            aria-label={comments.openTotal ? `Comments, ${comments.openTotal} open` : "Comments"}
-            title="Comments"
+            aria-label={comments.openTotal ? tr("Comments, {openTotal} open", { openTotal: comments.openTotal }) : tr("Comments")}
+            title={tr("Comments")}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" />
             </svg>
-            <span className="hidden 2xl:inline">Comments</span>
+            <span className="hidden 2xl:inline">{tr("Comments")}</span>
             {comments.openTotal > 0 && (
               <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-semibold text-white">
                 {comments.openTotal}
@@ -1220,39 +1229,39 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
             <button
               onClick={() => setEmbedOpen(true)}
               className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-[13px] font-medium text-[var(--text-secondary)] shadow-sm transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
-              title="Embed in a website or app"
-              aria-label="Embed in a website or app"
+              title={tr("Embed in a website or app")}
+              aria-label={tr("Embed in a website or app")}
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16" />
               </svg>
-              <span className="hidden 2xl:inline">Embed</span>
+              <span className="hidden 2xl:inline">{tr("Embed")}</span>
             </button>
           )}
           {role === "owner" && (
             <button
               onClick={() => setCompaniesOpen(true)}
               className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-[13px] font-medium text-[var(--text-secondary)] shadow-sm transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
-              title="Share with another company"
-              aria-label="Share with another company"
+              title={tr("Share with another company")}
+              aria-label={tr("Share with another company")}
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M14 9h1M9 13h1M14 13h1M9 17h1M14 17h1" />
               </svg>
-              <span className="hidden 2xl:inline">Companies</span>
+              <span className="hidden 2xl:inline">{tr("Companies")}</span>
             </button>
           )}
           {role === "owner" && <ShareButton dashboard={dashboard} onChanged={load} />}
           {canEdit && datasets.length > 0 && (
             // The two main actions sit at the end and wrap as one group, never split across lines.
-            <div className="flex items-center gap-2 sm:ml-auto 2xl:ml-0">
+            <div className="flex items-center gap-2 sm:ms-auto 2xl:ms-0">
               <span className="mx-1 hidden h-6 w-px bg-[var(--border)] 2xl:block" aria-hidden />
               <button
                 onClick={() => setAskAi(true)}
                 className="flex items-center gap-1.5 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-3 py-2 text-[13px] font-medium text-[var(--accent)] transition-colors hover:border-[var(--accent)]/60"
               >
                 <SparkleIcon />
-                Ask AI
+                {tr("Ask AI")}
               </button>
               <button
                 onClick={() => setBuilder({})}
@@ -1261,7 +1270,7 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
                   <path d="M12 5v14M5 12h14" />
                 </svg>
-                Add chart
+                {tr("Add chart")}
               </button>
             </div>
           )}
@@ -1270,11 +1279,11 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
 
       {canEdit && datasets.length === 0 && (
         <p className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-4 py-3 text-sm text-[var(--text-secondary)]">
-          No datasets available yet.{" "}
+          {tr("No datasets available yet.")}{" "}
           <Link href="/data-sources" className="font-medium text-[var(--accent)]">
-            Add a data source
+            {tr("Add a data source")}
           </Link>{" "}
-          to start adding charts.
+          {tr("to start adding charts.")}
         </p>
       )}
 
@@ -1286,15 +1295,15 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
             </svg>
           </span>
           <span>
-            Selected <strong>{slicerColumns.find((c) => c.name === crossFilter.field)?.label ?? crossFilter.field}</strong> ={" "}
+            {tr("Selected")} <strong>{tr(slicerColumns.find((c) => c.name === crossFilter.field)?.label) ?? crossFilter.field}</strong> ={" "}
             <strong>{String(crossFilter.value)}</strong>
-            <span className="hidden text-[var(--text-muted)] sm:inline"> — other charts are filtered to it. Click it again to clear.</span>
+            <span className="hidden text-[var(--text-muted)] sm:inline"> {tr("— other charts are filtered to it. Click it again to clear.")}</span>
           </span>
           <button
             onClick={() => setCrossFilter(null)}
-            className="ml-auto shrink-0 rounded-md px-2 py-0.5 text-xs font-medium text-[var(--accent)] hover:bg-[var(--accent)]/10"
+            className="ms-auto shrink-0 rounded-md px-2 py-0.5 text-xs font-medium text-[var(--accent)] hover:bg-[var(--accent)]/10"
           >
-            Clear selection
+            {tr("Clear selection")}
           </button>
         </div>
       )}
@@ -1346,30 +1355,30 @@ function DashboardDetail({ dashboardId }: { dashboardId: number }) {
           <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent)]">
             <ChartIcon />
           </span>
-          <h2 className="mt-4 text-lg font-semibold tracking-tight">This dashboard is empty</h2>
+          <h2 className="mt-4 text-lg font-semibold tracking-tight">{tr("This dashboard is empty")}</h2>
           <p className="mx-auto mt-1 max-w-md text-sm text-[var(--text-muted)]">
-            {canEdit ? "Add your first chart — build it yourself, or describe it and let AI build it." : "No charts have been added yet."}
+            {canEdit ? tr("Add your first chart — build it yourself, or describe it and let AI build it.") : tr("No charts have been added yet.")}
           </p>
           {canEdit && datasets.length > 0 && (
             <div className="mx-auto mt-6 grid max-w-xl gap-3 sm:grid-cols-2">
               <button
                 onClick={() => setBuilder({})}
-                className="group rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-4 text-left shadow-sm transition-colors hover:border-[var(--accent)]/60"
+                className="group rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-4 text-start shadow-sm transition-colors hover:border-[var(--accent)]/60"
               >
-                <span className="text-sm font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent)]">Build a chart</span>
-                <span className="mt-1 block text-xs text-[var(--text-muted)]">Pick a dataset, a visual and fields, with a live preview.</span>
+                <span className="text-sm font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent)]">{tr("Build a chart")}</span>
+                <span className="mt-1 block text-xs text-[var(--text-muted)]">{tr("Pick a dataset, a visual and fields, with a live preview.")}</span>
               </button>
               <button
                 onClick={() => setAskAi(true)}
-                className="group rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-4 text-left shadow-sm transition-colors hover:border-[var(--accent)]/60"
+                className="group rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-4 text-start shadow-sm transition-colors hover:border-[var(--accent)]/60"
               >
                 <span className="flex items-center gap-1.5 text-sm font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent)]">
                   <span className="text-[var(--accent)]">
                     <SparkleIcon />
                   </span>
-                  Ask AI
+                  {tr("Ask AI")}
                 </span>
-                <span className="mt-1 block text-xs text-[var(--text-muted)]">Describe it in plain words — &ldquo;sales by region&rdquo;.</span>
+                <span className="mt-1 block text-xs text-[var(--text-muted)]">{tr("Describe it in plain words — “sales by region”.")}</span>
               </button>
             </div>
           )}

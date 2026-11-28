@@ -6,8 +6,10 @@ import { useSearchParams } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
 import { useAuth } from "@/lib/auth-context";
 import { api, ApiError, type User } from "@/lib/api";
+import { useT } from "@/i18n/ui";
 
 function CallbackContent() {
+  const tr = useT();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
   const txRef = searchParams.get("tx_ref");
@@ -21,7 +23,7 @@ function CallbackContent() {
       if (txRef) {
         if (flutterwaveStatus === "cancelled") {
           setStatus("failed");
-          setError("Payment was cancelled.");
+          setError(tr("Payment was cancelled."));
           return;
         }
         api
@@ -32,14 +34,14 @@ function CallbackContent() {
           })
           .catch((err) => {
             setStatus("failed");
-            setError(err instanceof ApiError ? err.message : "Could not verify this payment.");
+            setError(err instanceof ApiError ? err.message : tr("Could not verify this payment."));
           });
         return;
       }
 
       if (!sessionId) {
         setStatus("failed");
-        setError("No payment session was returned.");
+        setError(tr("No payment session was returned."));
         return;
       }
       api
@@ -50,7 +52,7 @@ function CallbackContent() {
         })
         .catch((err) => {
           setStatus("failed");
-          setError(err instanceof ApiError ? err.message : "Could not verify this payment.");
+          setError(err instanceof ApiError ? err.message : tr("Could not verify this payment."));
         });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -58,25 +60,25 @@ function CallbackContent() {
 
   return (
     <div className="flex min-h-[70vh] flex-col items-center justify-center px-6 text-center">
-      {status === "checking" && <p className="text-sm text-[var(--text-muted)]">Confirming your payment...</p>}
+      {status === "checking" && <p className="text-sm text-[var(--text-muted)]">{tr("Confirming your payment...")}</p>}
       {status === "success" && (
         <>
-          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">You&apos;re upgraded</h1>
-          <p className="mt-2 text-sm text-[var(--text-muted)]">Your new plan is active right away.</p>
+          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">{tr("You're upgraded")}</h1>
+          <p className="mt-2 text-sm text-[var(--text-muted)]">{tr("Your new plan is active right away.")}</p>
           <Link
             href="/dashboards"
             className="mt-6 rounded-md bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-white"
           >
-            Go to dashboards
+            {tr("Go to dashboards")}
           </Link>
         </>
       )}
       {status === "failed" && (
         <>
-          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Payment not confirmed</h1>
+          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">{tr("Payment not confirmed")}</h1>
           <p className="mt-2 max-w-sm text-sm text-[var(--status-critical)]">{error}</p>
           <Link href="/pricing" className="mt-6 text-sm text-[var(--accent)]">
-            Back to pricing
+            {tr("Back to pricing")}
           </Link>
         </>
       )}

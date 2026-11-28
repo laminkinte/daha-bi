@@ -25,6 +25,7 @@ import { computeInsight } from "@/lib/insights";
 import { useChartTheme } from "@/lib/chart-theme";
 import { formatValue } from "@/lib/format-value";
 import { describeChart } from "@/lib/chart-describe";
+import { useT } from "@/i18n/ui";
 
 function ImageIcon() {
   return (
@@ -122,7 +123,7 @@ function MenuItem({
     <button
       role="menuitem"
       onClick={onClick}
-      className={`flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-[13px] ${
+      className={`flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-start text-[13px] ${
         danger
           ? "text-[var(--status-critical)] hover:bg-[var(--status-critical)]/10"
           : "text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
@@ -231,6 +232,7 @@ function ChartStylePanel({
   onUpdated: () => void;
   onClose: () => void;
 }) {
+  const tr = useT();
   const theme = useChartTheme();
   const initial = chart.config.style ?? {};
   const [xAxisLabel, setXAxisLabel] = useState(initial.x_axis_label ?? "");
@@ -318,7 +320,7 @@ function ChartStylePanel({
       onClose();
       onUpdated();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to save chart style.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to save chart style."));
     } finally {
       setSaving(false);
     }
@@ -330,19 +332,19 @@ function ChartStylePanel({
 
   return (
     <>
-        <div className="chart-popover absolute right-0 top-full z-30 mt-1.5 max-h-[28rem] w-80 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-3 text-xs shadow-lg">
-          <h4 className="mb-2 font-medium text-[var(--text-primary)]">Customize chart</h4>
+        <div className="chart-popover absolute end-0 top-full z-30 mt-1.5 max-h-[28rem] w-80 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-3 text-xs shadow-lg">
+          <h4 className="mb-2 font-medium text-[var(--text-primary)]">{tr("Customize chart")}</h4>
 
           <div className="flex flex-col gap-2.5">
             {(isCategorical || isLine || isScatter) && (
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className={labelClass}>X axis label</label>
+                  <label className={labelClass}>{tr("X axis label")}</label>
                   <input value={xAxisLabel} onChange={(e) => setXAxisLabel(e.target.value)} className={inputClass} placeholder={chart.config.x_field ?? ""} />
                 </div>
                 <div>
-                  <label className={labelClass}>Y axis label</label>
-                  <input value={yAxisLabel} onChange={(e) => setYAxisLabel(e.target.value)} className={inputClass} placeholder={chart.config.y_field ?? "value"} />
+                  <label className={labelClass}>{tr("Y axis label")}</label>
+                  <input value={yAxisLabel} onChange={(e) => setYAxisLabel(e.target.value)} className={inputClass} placeholder={chart.config.y_field ?? tr("value")} />
                 </div>
               </div>
             )}
@@ -350,13 +352,13 @@ function ChartStylePanel({
             {canTrendline && (
               <label className={checkboxRow}>
                 <input type="checkbox" checked={showTrendline} onChange={(e) => setShowTrendline(e.target.checked)} />
-                Show trendline
+                {tr("Show trendline")}
               </label>
             )}
 
             {isLine && !chart.config.series_field && (
               <div>
-                <label className={labelClass}>Forecast periods</label>
+                <label className={labelClass}>{tr("Forecast periods")}</label>
                 <input
                   type="number"
                   min={0}
@@ -364,27 +366,27 @@ function ChartStylePanel({
                   value={forecastPeriods}
                   onChange={(e) => setForecastPeriods(e.target.value)}
                   className={inputClass}
-                  placeholder="0 — off"
+                  placeholder={tr("0 — off")}
                 />
                 <p className="mt-1 text-[var(--text-muted)]">
-                  Projects this many future periods forward using a simple trend line.
+                  {tr("Projects this many future periods forward using a simple trend line.")}
                 </p>
               </div>
             )}
 
             {canTransform && (
               <div>
-                <label className={labelClass}>Values</label>
+                <label className={labelClass}>{tr("Values")}</label>
                 <select value={transform} onChange={(e) => setTransform(e.target.value as NonNullable<ChartStyle["transform"]>)} className={inputClass}>
-                  <option value="none">As returned</option>
-                  <option value="cumulative">Running total</option>
+                  <option value="none">{tr("As returned")}</option>
+                  <option value="cumulative">{tr("Running total")}</option>
                 </select>
               </div>
             )}
 
             {canColorRules && (
               <div>
-                <label className={labelClass}>Conditional color</label>
+                <label className={labelClass}>{tr("Conditional color")}</label>
                 <div className="flex flex-col gap-1.5">
                   {colorRules.map((rule, i) => (
                     <div key={i} className="flex items-center gap-1.5">
@@ -414,50 +416,50 @@ function ChartStylePanel({
                     </div>
                   ))}
                   <button type="button" onClick={addColorRule} className="self-start text-[var(--accent)]">
-                    + Add rule
+                    {tr("+ Add rule")}
                   </button>
                 </div>
-                <p className="mt-1 text-[var(--text-muted)]">First matching rule wins; otherwise the theme color is used.</p>
+                <p className="mt-1 text-[var(--text-muted)]">{tr("First matching rule wins; otherwise the theme color is used.")}</p>
               </div>
             )}
 
             {(chart.type === "bar" || isLine || chart.type === "pie" || isKpi) && (
               <div>
-                <label className={labelClass}>Style</label>
+                <label className={labelClass}>{tr("Style")}</label>
                 <select value={variant} onChange={(e) => setVariant(e.target.value)} className={inputClass}>
                   {chart.type === "bar" &&
                     BAR_VARIANTS.map((o) => (
                       <option key={o.value} value={o.value}>
-                        {o.label}
+                        {tr(o.label)}
                       </option>
                     ))}
                   {isLine &&
                     LINE_VARIANTS.map((o) => (
                       <option key={o.value} value={o.value}>
-                        {o.label}
+                        {tr(o.label)}
                       </option>
                     ))}
                   {chart.type === "pie" &&
                     PIE_VARIANTS.map((o) => (
                       <option key={o.value} value={o.value}>
-                        {o.label}
+                        {tr(o.label)}
                       </option>
                     ))}
                   {isKpi &&
                     KPI_VARIANTS.map((o) => (
                       <option key={o.value} value={o.value}>
-                        {o.label}
+                        {tr(o.label)}
                       </option>
                     ))}
                 </select>
                 {chart.type === "bar" && (variant === "grouped" || variant === "stacked") && !chart.config.series_field && (
                   <p className="mt-1 text-[var(--status-warning)]">
-                    This chart has no series field, so it will render as a single series.
+                    {tr("This chart has no series field, so it will render as a single series.")}
                   </p>
                 )}
                 {isKpi && variant === "sparkline" && !chart.config.x_field && (
                   <p className="mt-1 text-[var(--status-warning)]">
-                    This chart has no trend field, so no trend will be shown.
+                    {tr("This chart has no trend field, so no trend will be shown.")}
                   </p>
                 )}
               </div>
@@ -465,24 +467,24 @@ function ChartStylePanel({
 
             {((isKpi && variant === "progress") || isGauge) && (
               <div>
-                <label className={labelClass}>{isGauge ? "Target (the end of the dial)" : "Target"}</label>
+                <label className={labelClass}>{isGauge ? tr("Target (the end of the dial)") : tr("Target")}</label>
                 <input
                   type="number"
                   value={target}
                   onChange={(e) => setTarget(e.target.value)}
                   className={inputClass}
-                  placeholder="e.g. 100000"
+                  placeholder={tr("e.g. 100000")}
                 />
               </div>
             )}
 
             {canSort && (
               <div>
-                <label className={labelClass}>Sort</label>
+                <label className={labelClass}>{tr("Sort")}</label>
                 <select value={sort} onChange={(e) => setSort(e.target.value as NonNullable<ChartStyle["sort"]>)} className={inputClass}>
                   {SORT_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>
-                      {o.label}
+                      {tr(o.label)}
                     </option>
                   ))}
                 </select>
@@ -492,29 +494,29 @@ function ChartStylePanel({
             <div className="flex flex-wrap gap-x-3 gap-y-1.5">
               <label className={checkboxRow}>
                 <input type="checkbox" checked={showLegend} onChange={(e) => setShowLegend(e.target.checked)} />
-                Legend
+                {tr("Legend")}
               </label>
               <label className={checkboxRow}>
                 <input type="checkbox" checked={showDataLabels} onChange={(e) => setShowDataLabels(e.target.checked)} />
-                Data labels
+                {tr("Data labels")}
               </label>
               {(isCategorical || isLine) && chart.type !== "pie" && (
                 <label className={checkboxRow}>
                   <input type="checkbox" checked={showGridlines} onChange={(e) => setShowGridlines(e.target.checked)} />
-                  Gridlines
+                  {tr("Gridlines")}
                 </label>
               )}
               {isLine && (
                 <label className={checkboxRow}>
                   <input type="checkbox" checked={showPoints} onChange={(e) => setShowPoints(e.target.checked)} />
-                  Show points
+                  {tr("Show points")}
                 </label>
               )}
             </div>
 
             {(perCategoryColors && categoryLabels.length > 0) && (
               <div>
-                <label className={labelClass}>Colors</label>
+                <label className={labelClass}>{tr("Colors")}</label>
                 <div className="flex flex-col gap-1">
                   {categoryLabels.map((label, i) => (
                     <div key={label} className="flex items-center gap-2">
@@ -533,7 +535,7 @@ function ChartStylePanel({
 
             {!perCategoryColors && chart.type !== "table" && (
               <div>
-                <label className={labelClass}>{isKpi && variant === "tile" ? "Tile color" : "Color"}</label>
+                <label className={labelClass}>{isKpi && variant === "tile" ? tr("Tile color") : tr("Color")}</label>
                 <input
                   type="color"
                   value={colorFor(0)}
@@ -545,7 +547,7 @@ function ChartStylePanel({
 
             {colors.some(Boolean) && (
               <button type="button" onClick={() => setColors([])} className="self-start text-[var(--text-muted)] hover:text-[var(--text-primary)]">
-                Reset colors to theme
+                {tr("Reset colors to theme")}
               </button>
             )}
           </div>
@@ -556,10 +558,10 @@ function ChartStylePanel({
               disabled={saving}
               className="rounded bg-[var(--accent)] px-3 py-1.5 font-medium text-white disabled:opacity-60"
             >
-              {saving ? "Saving..." : "Save"}
+              {saving ? tr("Saving...") : tr("Save")}
             </button>
             <button onClick={onClose} className="rounded border border-[var(--border)] px-3 py-1.5 text-[var(--text-secondary)]">
-              Cancel
+              {tr("Cancel")}
             </button>
           </div>
           {error && <p className="mt-2 text-[var(--status-critical)]">{error}</p>}
@@ -589,6 +591,7 @@ function isoDate(d: Date) {
 }
 
 function AlertsPanel({ chart }: { chart: Chart }) {
+  const tr = useT();
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [condition, setCondition] = useState<"above" | "below" | "anomaly">("above");
   const [threshold, setThreshold] = useState("");
@@ -624,7 +627,7 @@ function AlertsPanel({ chart }: { chart: Chart }) {
       setThreshold("");
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to create alert.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to create alert."));
     } finally {
       setSubmitting(false);
     }
@@ -641,8 +644,8 @@ function AlertsPanel({ chart }: { chart: Chart }) {
 
   return (
     <>
-        <div className="chart-popover absolute right-0 top-full z-30 mt-1.5 w-72 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-3 text-xs shadow-lg">
-          <h4 className="mb-2 font-medium text-[var(--text-primary)]">Alerts</h4>
+        <div className="chart-popover absolute end-0 top-full z-30 mt-1.5 w-72 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-3 text-xs shadow-lg">
+          <h4 className="mb-2 font-medium text-[var(--text-primary)]">{tr("Alerts")}</h4>
 
           {alerts.length > 0 && (
             <div className="mb-3 flex flex-col gap-1.5">
@@ -652,7 +655,7 @@ function AlertsPanel({ chart }: { chart: Chart }) {
                   className="flex items-center justify-between rounded border border-[var(--border)] bg-[var(--page-plane)] px-2 py-1.5"
                 >
                   <span className="text-[var(--text-secondary)]">
-                    {a.condition === "anomaly" ? `Anomaly (±${a.sensitivity}σ)` : `${a.condition} ${a.threshold}`}
+                    {a.condition === "anomaly" ? tr("Anomaly (±{sensitivity}σ)", { sensitivity: a.sensitivity }) : `${a.condition} ${a.threshold}`}
                   </span>
                   <div className="flex items-center gap-2">
                     <span
@@ -662,7 +665,7 @@ function AlertsPanel({ chart }: { chart: Chart }) {
                           : "bg-[var(--status-good)]/15 text-[var(--status-good)]"
                       }`}
                     >
-                      {a.last_status === "breached" ? "Breached" : "OK"}
+                      {a.last_status === "breached" ? tr("Breached") : "OK"}
                     </span>
                     <button onClick={() => onRemove(a.id)} className="text-[var(--text-muted)] hover:text-[var(--status-critical)]">
                       ✕
@@ -679,17 +682,17 @@ function AlertsPanel({ chart }: { chart: Chart }) {
               onChange={(e) => setCondition(e.target.value as "above" | "below" | "anomaly")}
               className="rounded border border-[var(--border)] bg-transparent px-1.5 py-1"
             >
-              <option value="above">Above</option>
-              <option value="below">Below</option>
+              <option value="above">{tr("Above")}</option>
+              <option value="below">{tr("Below")}</option>
               <option value="anomaly" disabled={!hasTrend}>
-                Anomaly{!hasTrend ? " (needs x-axis)" : ""}
+                {tr("Anomaly")}{!hasTrend ? tr(" (needs x-axis)") : ""}
               </option>
             </select>
             {condition === "anomaly" ? (
               <input
                 value={sensitivity}
                 onChange={(e) => setSensitivity(e.target.value)}
-                placeholder="sensitivity (σ)"
+                placeholder={tr("sensitivity (σ)")}
                 type="number"
                 step="0.5"
                 min="0.5"
@@ -699,7 +702,7 @@ function AlertsPanel({ chart }: { chart: Chart }) {
               <input
                 value={threshold}
                 onChange={(e) => setThreshold(e.target.value)}
-                placeholder="threshold"
+                placeholder={tr("threshold")}
                 type="number"
                 className="w-20 rounded border border-[var(--border)] bg-transparent px-1.5 py-1"
               />
@@ -709,12 +712,12 @@ function AlertsPanel({ chart }: { chart: Chart }) {
               disabled={submitting}
               className="rounded bg-[var(--accent)] px-2 py-1 text-white disabled:opacity-60"
             >
-              Add
+              {tr("Add")}
             </button>
           </div>
           {condition === "anomaly" && (
             <p className="mt-1 text-[var(--text-muted)]">
-              Flags the latest period when it&apos;s more than this many standard deviations from recent history.
+              {tr("Flags the latest period when it's more than this many standard deviations from recent history.")}
             </p>
           )}
           {error && <p className="mt-1.5 text-[var(--status-critical)]">{error}</p>}
@@ -724,6 +727,7 @@ function AlertsPanel({ chart }: { chart: Chart }) {
 }
 
 function GoalsPanel({ chart }: { chart: Chart }) {
+  const tr = useT();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [name, setName] = useState("");
   const [direction, setDirection] = useState<"increase" | "decrease">("increase");
@@ -762,7 +766,7 @@ function GoalsPanel({ chart }: { chart: Chart }) {
       setDeadline("");
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to create goal.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to create goal."));
     } finally {
       setSubmitting(false);
     }
@@ -781,11 +785,11 @@ function GoalsPanel({ chart }: { chart: Chart }) {
     setRecommending(id);
     try {
       const res = await api.post<{ recommendation: string }>(`/goals/${id}/recommend`);
-      setRecommendations((prev) => ({ ...prev, [id]: res.recommendation || "No recommendation available right now." }));
+      setRecommendations((prev) => ({ ...prev, [id]: res.recommendation || tr("No recommendation available right now.") }));
     } catch (err) {
       setRecommendations((prev) => ({
         ...prev,
-        [id]: err instanceof ApiError ? err.message : "Failed to get a recommendation.",
+        [id]: err instanceof ApiError ? err.message : tr("Failed to get a recommendation."),
       }));
     } finally {
       setRecommending(null);
@@ -794,8 +798,8 @@ function GoalsPanel({ chart }: { chart: Chart }) {
 
   return (
     <>
-        <div className="chart-popover absolute right-0 top-full z-30 mt-1.5 w-80 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-3 text-xs shadow-lg">
-          <h4 className="mb-2 font-medium text-[var(--text-primary)]">Goals</h4>
+        <div className="chart-popover absolute end-0 top-full z-30 mt-1.5 w-80 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-3 text-xs shadow-lg">
+          <h4 className="mb-2 font-medium text-[var(--text-primary)]">{tr("Goals")}</h4>
 
           {goals.length > 0 && (
             <div className="mb-3 flex flex-col gap-2">
@@ -803,7 +807,7 @@ function GoalsPanel({ chart }: { chart: Chart }) {
                 <div key={g.id} className="rounded border border-[var(--border)] bg-[var(--page-plane)] p-2">
                   <div className="flex items-center justify-between">
                     <span className="text-[var(--text-secondary)]">
-                      {g.name} — {g.direction} to {g.target_value}
+                      {g.name} — {g.direction} {tr("to")} {g.target_value}
                     </span>
                     <button onClick={() => onRemove(g.id)} className="text-[var(--text-muted)] hover:text-[var(--status-critical)]">
                       ✕
@@ -825,7 +829,7 @@ function GoalsPanel({ chart }: { chart: Chart }) {
                     disabled={recommending === g.id}
                     className="mt-1.5 text-[10px] text-[var(--accent)] hover:underline disabled:opacity-60"
                   >
-                    {recommending === g.id ? "Thinking..." : "Get AI recommendation"}
+                    {recommending === g.id ? tr("Thinking...") : tr("Get AI recommendation")}
                   </button>
                   {recommendations[g.id] && (
                     <p className="mt-1 text-[10px] text-[var(--text-secondary)]">{recommendations[g.id]}</p>
@@ -839,7 +843,7 @@ function GoalsPanel({ chart }: { chart: Chart }) {
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Goal name (e.g. Hit $1M revenue)"
+              placeholder={tr("Goal name (e.g. Hit $1M revenue)")}
               className="rounded border border-[var(--border)] bg-transparent px-1.5 py-1"
             />
             <div className="flex items-center gap-1.5">
@@ -848,13 +852,13 @@ function GoalsPanel({ chart }: { chart: Chart }) {
                 onChange={(e) => setDirection(e.target.value as "increase" | "decrease")}
                 className="rounded border border-[var(--border)] bg-transparent px-1.5 py-1"
               >
-                <option value="increase">Increase to</option>
-                <option value="decrease">Decrease to</option>
+                <option value="increase">{tr("Increase to")}</option>
+                <option value="decrease">{tr("Decrease to")}</option>
               </select>
               <input
                 value={targetValue}
                 onChange={(e) => setTargetValue(e.target.value)}
-                placeholder="target"
+                placeholder={tr("target")}
                 type="number"
                 className="w-24 rounded border border-[var(--border)] bg-transparent px-1.5 py-1"
               />
@@ -870,7 +874,7 @@ function GoalsPanel({ chart }: { chart: Chart }) {
               disabled={submitting}
               className="rounded bg-[var(--accent)] px-2 py-1 text-white disabled:opacity-60"
             >
-              {submitting ? "Adding..." : "Add goal"}
+              {submitting ? tr("Adding...") : tr("Add goal")}
             </button>
           </div>
           {error && <p className="mt-1.5 text-[var(--status-critical)]">{error}</p>}
@@ -897,6 +901,7 @@ function ScenarioPanel({
   format: Chart["config"]["format"];
   currency: Chart["config"]["currency"];
 }) {
+  const tr = useT();
   const [adjustments, setAdjustments] = useState<Record<string, string>>({});
 
   const baseline = values.reduce((a, b) => a + b, 0);
@@ -913,8 +918,8 @@ function ScenarioPanel({
 
   return (
     <>
-        <div className="chart-popover absolute right-0 top-full z-30 mt-1.5 max-h-96 w-72 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-3 text-xs shadow-lg">
-          <h4 className="mb-2 font-medium text-[var(--text-primary)]">What if...</h4>
+        <div className="chart-popover absolute end-0 top-full z-30 mt-1.5 max-h-96 w-72 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-3 text-xs shadow-lg">
+          <h4 className="mb-2 font-medium text-[var(--text-primary)]">{tr("What if...")}</h4>
           <div className="flex flex-col gap-1.5">
             {labels.slice(0, 30).map((label) => (
               <div key={label} className="flex items-center justify-between gap-2">
@@ -927,7 +932,7 @@ function ScenarioPanel({
                     value={adjustments[label] ?? ""}
                     onChange={(e) => setAdjustment(label, e.target.value)}
                     placeholder="0"
-                    className="w-14 rounded border border-[var(--border)] bg-transparent px-1.5 py-1 text-right"
+                    className="w-14 rounded border border-[var(--border)] bg-transparent px-1.5 py-1 text-end"
                   />
                   <span className="text-[var(--text-muted)]">%</span>
                 </div>
@@ -936,11 +941,11 @@ function ScenarioPanel({
           </div>
           <div className="mt-3 border-t border-[var(--border)] pt-2">
             <div className="flex items-center justify-between text-[var(--text-secondary)]">
-              <span>Baseline total</span>
+              <span>{tr("Baseline total")}</span>
               <span className="tabular-nums">{formatValue(baseline, format, currency)}</span>
             </div>
             <div className="mt-1 flex items-center justify-between font-medium text-[var(--text-primary)]">
-              <span>Projected total</span>
+              <span>{tr("Projected total")}</span>
               <span className="tabular-nums">{formatValue(adjusted, format, currency)}</span>
             </div>
             {hasAdjustments && (
@@ -948,7 +953,7 @@ function ScenarioPanel({
                 className="mt-1 flex items-center justify-between"
                 style={{ color: delta >= 0 ? "var(--status-good)" : "var(--status-critical)" }}
               >
-                <span>Change</span>
+                <span>{tr("Change")}</span>
                 <span className="tabular-nums">
                   {delta >= 0 ? "+" : ""}
                   {formatValue(delta, format, currency)}
@@ -961,7 +966,7 @@ function ScenarioPanel({
               onClick={() => setAdjustments({})}
               className="mt-2 text-[var(--accent)] hover:underline"
             >
-              Reset
+              {tr("Reset")}
             </button>
           )}
         </div>
@@ -1002,6 +1007,7 @@ export default function ChartCard({
   commentCount?: number;
   onComment?: (chart: Chart) => void;
 }) {
+  const tr = useT();
   const theme = useChartTheme();
   const [data, setData] = useState<ChartData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -1076,7 +1082,7 @@ export default function ChartCard({
         setData(result);
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof ApiError ? err.message : "Failed to load chart data.");
+        if (!cancelled) setError(err instanceof ApiError ? err.message : tr("Failed to load chart data."));
       });
     return () => {
       cancelled = true;
@@ -1107,12 +1113,12 @@ export default function ChartCard({
   }
 
   async function onDelete() {
-    if (!confirm(`Delete chart "${chart.title}"?`)) return;
+    if (!confirm(tr("Delete chart \"{title}\"?", { title: chart.title }))) return;
     try {
       await api.del(`/charts/${chart.id}`);
       onDeleted?.();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to delete chart.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to delete chart."));
     }
   }
 
@@ -1121,7 +1127,7 @@ export default function ChartCard({
       await api.post(`/charts/${chart.id}/duplicate`);
       onUpdated?.();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to duplicate chart.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to duplicate chart."));
     }
   }
 
@@ -1158,16 +1164,16 @@ export default function ChartCard({
       <div className="flex shrink-0 items-start gap-1.5 px-4 pt-3.5">
         <div
           className={`flex min-w-0 flex-1 items-start gap-1.5 ${editable ? "chart-drag-handle cursor-grab active:cursor-grabbing" : ""}`}
-          title={editable ? "Drag to move" : undefined}
+          title={editable ? tr("Drag to move") : undefined}
         >
           {editable && (
-            <span data-export-ignore="true" className="-ml-1.5 mt-[3px] shrink-0 text-[var(--text-muted)] opacity-50">
+            <span data-export-ignore="true" className="-ms-1.5 mt-[3px] shrink-0 text-[var(--text-muted)] opacity-50">
               <GripIcon />
             </span>
           )}
           <div className="min-w-0">
-            <h3 className="truncate text-[15px] font-semibold leading-snug tracking-tight text-[var(--text-primary)]" title={chart.title}>
-              {chart.title}
+            <h3 className="truncate text-[15px] font-semibold leading-snug tracking-tight text-[var(--text-primary)]" title={tr(chart.title)}>
+              {tr(chart.title)}
             </h3>
             {chart.type !== "kpi" && chart.type !== "gauge" && (
               <p className="truncate text-xs text-[var(--text-muted)]" title={describeChart(chart)}>
@@ -1177,9 +1183,9 @@ export default function ChartCard({
           </div>
         </div>
 
-        <div ref={toolsRef} data-export-ignore="true" className="relative -mr-2 -mt-0.5 flex shrink-0 items-center">
+        <div ref={toolsRef} data-export-ignore="true" className="relative -me-2 -mt-0.5 flex shrink-0 items-center">
           {canSwitchView && (
-            <div className="mr-1 hidden items-center rounded-lg border border-[var(--border)] p-0.5 sm:flex" role="group" aria-label="Show as">
+            <div className="me-1 hidden items-center rounded-lg border border-[var(--border)] p-0.5 sm:flex" role="group" aria-label={tr("Show as")}>
               {(["line", "bar"] as const).map((v) => {
                 const on = (viewAs ?? chart.type) === v;
                 return (
@@ -1187,7 +1193,7 @@ export default function ChartCard({
                     key={v}
                     onClick={() => setViewAs(v === chart.type ? null : v)}
                     aria-pressed={on}
-                    title={v === "line" ? "Show as line" : "Show as bars"}
+                    title={v === "line" ? tr("Show as line") : tr("Show as bars")}
                     className={`flex h-6 w-7 items-center justify-center rounded-md ${on ? "bg-[var(--accent-soft)] text-[var(--accent)]" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
                   >
                     {v === "line" ? (
@@ -1210,14 +1216,14 @@ export default function ChartCard({
             <button
               onClick={() => onComment(chart)}
               className={`${TOOL_BTN} relative ${commentCount ? "!text-[var(--accent)]" : ""}`}
-              title={commentCount ? `${commentCount} open comment${commentCount === 1 ? "" : "s"}` : "Comment on this chart"}
-              aria-label={commentCount ? `${commentCount} comment${commentCount === 1 ? "" : "s"}` : "Comment on this chart"}
+              title={commentCount ? tr("{commentCount} open comment{v1}", { commentCount: commentCount, v1: commentCount === 1 ? "" : "s" }) : tr("Comment on this chart")}
+              aria-label={commentCount ? tr("{commentCount} comment{v1}", { commentCount: commentCount, v1: commentCount === 1 ? "" : "s" }) : tr("Comment on this chart")}
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" />
               </svg>
               {!!commentCount && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[9.5px] font-semibold leading-none text-white">
+                <span className="absolute -end-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[9.5px] font-semibold leading-none text-white">
                   {commentCount > 9 ? "9+" : commentCount}
                 </span>
               )}
@@ -1227,19 +1233,19 @@ export default function ChartCard({
             <button
               onClick={() => setShowFilter((s) => !s)}
               className={`${TOOL_BTN} relative ${showFilter || filtersOn ? TOOL_BTN_ON : ""}`}
-              title="Filter"
-              aria-label="Filter"
+              title={tr("Filter")}
+              aria-label={tr("Filter")}
             >
               <FilterIcon />
-              {filtersOn && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />}
+              {filtersOn && <span className="absolute end-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />}
             </button>
           )}
           {editable && chart.type !== "table" && chart.type !== "feed" && (
             <button
               onClick={() => openPanel("style")}
               className={`${TOOL_BTN} ${panel === "style" ? TOOL_BTN_ON : ""}`}
-              title="Customize look"
-              aria-label="Customize look"
+              title={tr("Customize look")}
+              aria-label={tr("Customize look")}
             >
               <PaletteIcon />
             </button>
@@ -1250,8 +1256,8 @@ export default function ChartCard({
               setMenuOpen((o) => !o);
             }}
             className={`${TOOL_BTN} ${menuOpen ? TOOL_BTN_ON : ""}`}
-            title="More actions"
-            aria-label="More actions"
+            title={tr("More actions")}
+            aria-label={tr("More actions")}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
           >
@@ -1259,21 +1265,21 @@ export default function ChartCard({
           </button>
 
           {menuOpen && (
-            <div role="menu" className="chart-popover absolute right-0 top-full z-30 mt-1.5 w-52 rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-1.5 shadow-[var(--shadow-pop)]">
+            <div role="menu" className="chart-popover absolute end-0 top-full z-30 mt-1.5 w-52 rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-1.5 shadow-[var(--shadow-pop)]">
               {editable && onEdit && (
-                <MenuItem icon={<PencilIcon />} label="Edit chart" onClick={() => { setMenuOpen(false); onEdit(chart); }} />
+                <MenuItem icon={<PencilIcon />} label={tr("Edit chart")} onClick={() => { setMenuOpen(false); onEdit(chart); }} />
               )}
-              {scenarioData && <MenuItem icon={<FlaskIcon />} label="What-if scenario" onClick={() => openPanel("scenario")} />}
-              {!readOnly && chart.type === "kpi" && <MenuItem icon={<BellIcon />} label="Alerts" onClick={() => openPanel("alerts")} />}
-              {!readOnly && chart.type === "kpi" && <MenuItem icon={<FlagIcon />} label="Goals" onClick={() => openPanel("goals")} />}
+              {scenarioData && <MenuItem icon={<FlaskIcon />} label={tr("What-if scenario")} onClick={() => openPanel("scenario")} />}
+              {!readOnly && chart.type === "kpi" && <MenuItem icon={<BellIcon />} label={tr("Alerts")} onClick={() => openPanel("alerts")} />}
+              {!readOnly && chart.type === "kpi" && <MenuItem icon={<FlagIcon />} label={tr("Goals")} onClick={() => openPanel("goals")} />}
               {data && (
                 <>
                   <div className="my-1 h-px bg-[var(--border)]" />
-                  <MenuItem icon={<DownloadIcon />} label="Download CSV" onClick={() => { setMenuOpen(false); downloadChartCsv(chart, data); }} />
+                  <MenuItem icon={<DownloadIcon />} label={tr("Download CSV")} onClick={() => { setMenuOpen(false); downloadChartCsv(chart, data); }} />
                   {canExportImage && (
                     <MenuItem
                       icon={<ImageIcon />}
-                      label="Download PNG"
+                      label={tr("Download PNG")}
                       onClick={() => {
                         setMenuOpen(false);
                         if (chartAreaRef.current) downloadChartPng(chartAreaRef.current, `${chart.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`);
@@ -1285,8 +1291,8 @@ export default function ChartCard({
               {editable && (
                 <>
                   <div className="my-1 h-px bg-[var(--border)]" />
-                  <MenuItem icon={<CopyIcon />} label="Duplicate" onClick={() => { setMenuOpen(false); onDuplicate(); }} />
-                  <MenuItem icon={<TrashIcon />} label="Delete" danger onClick={() => { setMenuOpen(false); onDelete(); }} />
+                  <MenuItem icon={<CopyIcon />} label={tr("Duplicate")} onClick={() => { setMenuOpen(false); onDuplicate(); }} />
+                  <MenuItem icon={<TrashIcon />} label={tr("Delete")} danger onClick={() => { setMenuOpen(false); onDelete(); }} />
                 </>
               )}
             </div>
@@ -1309,7 +1315,7 @@ export default function ChartCard({
           >
             {chart.dataset.columns.map((c) => (
               <option key={c.name} value={c.name}>
-                {c.label}
+                {tr(c.label)}
               </option>
             ))}
           </select>
@@ -1320,37 +1326,37 @@ export default function ChartCard({
           >
             {OPERATORS.map((op) => (
               <option key={op.value} value={op.value}>
-                {op.label}
+                {tr(op.label)}
               </option>
             ))}
           </select>
           <input
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="value"
+            placeholder={tr("value")}
             className="w-24 rounded border border-[var(--border)] bg-transparent px-2 py-1"
           />
           <button
             onClick={applyFilter}
             className="rounded bg-[var(--accent)] px-2 py-1 text-white"
           >
-            Apply
+            {tr("Apply")}
           </button>
 
-          <span className="mx-1 text-[var(--text-muted)]">or date range on this field:</span>
+          <span className="mx-1 text-[var(--text-muted)]">{tr("or date range on this field:")}</span>
           {DATE_RANGES.map((r) => (
             <button
               key={r.label}
               onClick={() => applyDateRange(r.days)}
               className="rounded border border-[var(--border)] px-2 py-1 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
             >
-              Last {r.label}
+              {tr("Last")} {tr(r.label)}
             </button>
           ))}
 
           {manualFilters.length > 0 && (
             <button onClick={clearFilter} className="text-[var(--text-muted)]">
-              Clear
+              {tr("Clear")}
             </button>
           )}
         </div>
@@ -1358,7 +1364,7 @@ export default function ChartCard({
 
       {crossFilterApplies && crossFilter && (
         <div className="mx-4 mt-3 flex items-center gap-1.5 rounded-md bg-[var(--accent)]/10 px-2.5 py-1.5 text-xs text-[var(--accent)]">
-          Cross-filtered: {crossFilter.field} = {crossFilter.value}
+          {tr("Cross-filtered:")} {crossFilter.field} = {crossFilter.value}
         </div>
       )}
 
@@ -1386,7 +1392,7 @@ export default function ChartCard({
           }`}
         >
           <SparkIcon />
-          {insight.text}
+          {tr(insight.text)}
         </div>
       )}
     </div>

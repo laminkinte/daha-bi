@@ -1,3 +1,4 @@
+import { translate, uiLocaleTag } from "@/i18n/ui";
 export type ValueFormat = "number" | "currency" | "percent";
 
 export type CurrencyOption = { code: string; label: string };
@@ -74,15 +75,15 @@ export function formatValue(
         maximumFractionDigits: 0,
       }).format(value);
     } catch {
-      return `${currency} ${value.toLocaleString()}`;
+      return `${currency} ${value.toLocaleString(uiLocaleTag())}`;
     }
   }
 
   if (format === "percent") {
-    return `${value.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`;
+    return `${value.toLocaleString(uiLocaleTag(), { maximumFractionDigits: 1 })}%`;
   }
 
-  return value.toLocaleString();
+  return value.toLocaleString(uiLocaleTag());
 }
 
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -91,7 +92,7 @@ const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Se
 export function formatPeriod(label: string): string {
   const m = /^(\d{4})-(\d{2})(?:-(\d{2}))?$/.exec(String(label));
   if (!m) return String(label);
-  const month = MONTH_SHORT[Number(m[2]) - 1];
+  const month = translate(MONTH_SHORT[Number(m[2]) - 1]);
   if (!month) return String(label);
   return m[3] ? `${Number(m[3])} ${month} ${m[1]}` : `${month} ${m[1]}`;
 }
@@ -102,7 +103,7 @@ export function formatPeriod(label: string): string {
  */
 export function formatCompact(value: number, format: ValueFormat = "number", currency = "NGN"): string {
   if (!Number.isFinite(value)) return "";
-  if (format === "percent") return `${value.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`;
+  if (format === "percent") return `${value.toLocaleString(uiLocaleTag(), { maximumFractionDigits: 1 })}%`;
   const compact = (opts: Intl.NumberFormatOptions) =>
     new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1, ...opts }).format(value);
   if (format === "currency") {

@@ -1,5 +1,6 @@
 import type { Chart, ChartData } from "./api";
 import { formatValue } from "./format-value";
+import { translate, uiLocaleTag } from "@/i18n/ui";
 
 export type Insight = {
   text: string;
@@ -7,7 +8,7 @@ export type Insight = {
 };
 
 function formatNumber(n: number): string {
-  return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
+  return n.toLocaleString(uiLocaleTag(), { maximumFractionDigits: 1 });
 }
 
 export function computeInsight(chart: Chart, data: ChartData): Insight | null {
@@ -24,7 +25,7 @@ export function computeInsight(chart: Chart, data: ChartData): Insight | null {
     const tone: Insight["tone"] = pct > 0.5 ? "up" : pct < -0.5 ? "down" : "neutral";
     const arrow = tone === "up" ? "↑" : tone === "down" ? "↓" : "→";
     return {
-      text: `${arrow} ${formatNumber(Math.abs(pct))}% from ${labels[0]} to ${labels[labels.length - 1]}`,
+      text: `${arrow} ` + translate("{pct}% from {from} to {to}", { pct: formatNumber(Math.abs(pct)), from: labels[0], to: labels[labels.length - 1] }),
       tone,
     };
   }
@@ -39,7 +40,7 @@ export function computeInsight(chart: Chart, data: ChartData): Insight | null {
     if (maxIdx === minIdx) return null;
     const fmt = (n: number) => formatValue(n, chart.config.format, chart.config.currency);
     return {
-      text: `Highest: ${labels[maxIdx]} (${fmt(values[maxIdx])}) · Lowest: ${labels[minIdx]} (${fmt(values[minIdx])})`,
+      text: translate("Highest: {high} ({highValue}) · Lowest: {low} ({lowValue})", { high: labels[maxIdx], highValue: fmt(values[maxIdx]), low: labels[minIdx], lowValue: fmt(values[minIdx]) }),
       tone: "neutral",
     };
   }

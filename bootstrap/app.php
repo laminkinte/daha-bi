@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->api(prepend: [\App\Http\Middleware\SetLocale::class]);
         $middleware->alias([
             'admin' => EnsureUserIsAdmin::class,
             'active' => \App\Http\Middleware\TrackUserActivity::class,

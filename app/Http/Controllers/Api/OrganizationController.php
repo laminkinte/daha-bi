@@ -179,6 +179,6 @@ class OrganizationController extends Controller
 
         $ownerCount = $organization->members()->wherePivot('role', 'owner')->count();
 
-        abort_if($ownerCount <= 1, Response::HTTP_UNPROCESSABLE_ENTITY, 'An organization must have at least one owner.');
+        abort_if($ownerCount <= 1, Response::HTTP_UNPROCESSABLE_ENTITY, __('An organization must have at least one owner.'));
     }
 }

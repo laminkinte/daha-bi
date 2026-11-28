@@ -8,6 +8,7 @@ import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
 import { LandingIcon } from "@/lib/landing-icons";
 import { api, type SiteSettings } from "@/lib/api";
+import { useT } from "@/i18n/ui";
 
 function CheckIcon() {
   return (
@@ -104,6 +105,7 @@ function AnimatedStatValue({ value }: { value: string }) {
 }
 
 function ProductPreview() {
+  const tr = useT();
   const bars = [55, 80, 45, 95, 65, 40];
   return (
     <div className="mx-auto max-w-3xl rounded-xl border border-[var(--border)] bg-[var(--surface-1)] shadow-sm transition-all duration-500 hover:-translate-y-1 hover:shadow-lg">
@@ -111,13 +113,13 @@ function ProductPreview() {
         <span className="h-2.5 w-2.5 rounded-full bg-[var(--status-critical)]/50" />
         <span className="h-2.5 w-2.5 rounded-full bg-[var(--status-warning)]/60" />
         <span className="h-2.5 w-2.5 rounded-full bg-[var(--status-good)]/60" />
-        <span className="ml-3 text-xs text-[var(--text-muted)]">Regional Sales Overview</span>
+        <span className="ms-3 text-xs text-[var(--text-muted)]">{tr("Regional Sales Overview")}</span>
       </div>
       <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4">
         <div className="col-span-2 rounded-lg border border-[var(--border)] p-3 sm:col-span-1">
-          <div className="text-[10px] uppercase tracking-wide text-[var(--text-muted)]">Total revenue</div>
+          <div className="text-[10px] uppercase tracking-wide text-[var(--text-muted)]">{tr("Total revenue")}</div>
           <div className="mt-1 text-xl font-semibold text-[var(--text-primary)]">₦673,968</div>
-          <div className="mt-0.5 text-[10px] text-[var(--status-good)]">↑ 12% this month</div>
+          <div className="mt-0.5 text-[10px] text-[var(--status-good)]">{tr("↑ 12% this month")}</div>
         </div>
         <div className="col-span-2 rounded-lg border border-[var(--border)] p-3 sm:col-span-1">
           <div
@@ -149,8 +151,8 @@ function ProductPreview() {
             />
           </svg>
         </div>
-        <div className="col-span-2 rounded-lg border border-[var(--border)] p-3 text-left">
-          <div className="text-[10px] uppercase tracking-wide text-[var(--text-muted)]">Top regions</div>
+        <div className="col-span-2 rounded-lg border border-[var(--border)] p-3 text-start">
+          <div className="text-[10px] uppercase tracking-wide text-[var(--text-muted)]">{tr("Top regions")}</div>
           {[
             ["Lagos", 92],
             ["Nairobi", 78],
@@ -175,7 +177,7 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
     <div className="border-b border-[var(--border)] py-4">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between gap-4 text-left"
+        className="flex w-full items-center justify-between gap-4 text-start"
       >
         <span className="font-medium text-[var(--text-primary)]">{question}</span>
         <span className="text-[var(--text-muted)]">
@@ -188,6 +190,7 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
 }
 
 function LandingPage() {
+  const tr = useT();
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   // Was swallowed before, leaving visitors on "Loading..." forever whenever the API was down.
   const [loadFailed, setLoadFailed] = useState(false);
@@ -210,7 +213,7 @@ function LandingPage() {
         <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 px-6 text-center text-sm text-[var(--text-muted)]">
           {loadFailed ? (
             <>
-              <p>We couldn&apos;t load this page right now.</p>
+              <p>{tr("We couldn't load this page right now.")}</p>
               <button
                 onClick={() => {
                   setLoadFailed(false);
@@ -218,11 +221,11 @@ function LandingPage() {
                 }}
                 className="rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-4 py-2 font-medium text-[var(--text-primary)] hover:border-[var(--accent)]"
               >
-                Try again
+                {tr("Try again")}
               </button>
             </>
           ) : (
-            "Loading..."
+            tr("Loading...")
           )}
         </div>
       </div>
@@ -244,31 +247,31 @@ function LandingPage() {
       <div className="relative mx-auto max-w-4xl px-6 py-20 text-center sm:py-24">
         <span className="inline-flex items-center gap-2 rounded-full border border-[var(--accent)]/25 bg-[var(--accent-soft)] px-3 py-1 text-xs font-medium text-[var(--accent)]">
           <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
-          AI-powered BI for growing businesses
+          {tr("AI-powered BI for growing businesses")}
         </span>
         <h1 className="mt-5 text-4xl font-semibold leading-[1.1] tracking-tight text-[var(--text-primary)] sm:text-6xl">
-          {hero.headline_prefix}{" "}
+          {tr(hero.headline_prefix)}{" "}
           <span className="bg-clip-text text-transparent" style={{ backgroundImage: "var(--accent-glow)" }}>
-            {hero.headline_highlight}
+            {tr(hero.headline_highlight)}
           </span>{" "}
-          {hero.headline_suffix}
+          {tr(hero.headline_suffix)}
         </h1>
-        <p className="mx-auto mt-5 max-w-2xl text-lg text-[var(--text-secondary)]">{hero.subheadline}</p>
+        <p className="mx-auto mt-5 max-w-2xl text-lg text-[var(--text-secondary)]">{tr(hero.subheadline)}</p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/register"
             className="rounded-xl bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[var(--accent)]/20 transition-transform hover:-translate-y-0.5"
           >
-            Get started free
+            {tr("Get started free")}
           </Link>
           <Link
             href="/pricing"
             className="rounded-xl border border-[var(--border)] bg-[var(--surface-1)] px-6 py-3 text-sm font-semibold text-[var(--text-primary)] shadow-sm hover:border-[var(--accent)]/50"
           >
-            See pricing
+            {tr("See pricing")}
           </Link>
         </div>
-        <p className="mt-4 text-xs text-[var(--text-muted)]">No credit card required.</p>
+        <p className="mt-4 text-xs text-[var(--text-muted)]">{tr("No credit card required.")}</p>
 
         <Reveal className="mt-16 px-4" delay={150}>
           <ProductPreview />
@@ -281,7 +284,7 @@ function LandingPage() {
           {settings.landing_stats.map((s, i) => (
             <Reveal key={s.label} delay={i * 80}>
               <AnimatedStatValue value={s.value} />
-              <div className="mt-1 text-xs text-[var(--text-muted)]">{s.label}</div>
+              <div className="mt-1 text-xs text-[var(--text-muted)]">{tr(s.label)}</div>
             </Reveal>
           ))}
         </div>
@@ -290,7 +293,7 @@ function LandingPage() {
       <section className="py-20">
         <div className="mx-auto max-w-5xl px-6">
           <Reveal>
-            <h2 className="text-center text-2xl font-semibold text-[var(--text-primary)]">How it works</h2>
+            <h2 className="text-center text-2xl font-semibold text-[var(--text-primary)]">{tr("How it works")}</h2>
           </Reveal>
           <div className="mt-12 grid grid-cols-1 gap-10 sm:grid-cols-3">
             {settings.landing_steps.map((step, i) => (
@@ -298,8 +301,8 @@ function LandingPage() {
                 <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-[var(--accent)] text-sm font-semibold text-white">
                   {i + 1}
                 </div>
-                <h3 className="mt-4 font-medium text-[var(--text-primary)]">{step.title}</h3>
-                <p className="mt-1.5 text-sm text-[var(--text-secondary)]">{step.description}</p>
+                <h3 className="mt-4 font-medium text-[var(--text-primary)]">{tr(step.title)}</h3>
+                <p className="mt-1.5 text-sm text-[var(--text-secondary)]">{tr(step.description)}</p>
               </Reveal>
             ))}
           </div>
@@ -310,7 +313,7 @@ function LandingPage() {
         <div className="mx-auto max-w-6xl px-6">
           <Reveal>
             <h2 className="text-center text-2xl font-semibold text-[var(--text-primary)]">
-              Everything you need, nothing you don&apos;t
+              {tr("Everything you need, nothing you don't")}
             </h2>
           </Reveal>
           <div className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
@@ -320,8 +323,8 @@ function LandingPage() {
                   <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-[var(--accent)]/10 text-[var(--accent)] transition-transform duration-300 group-hover:scale-110">
                     <LandingIcon name={icon} />
                   </div>
-                  <h3 className="mt-4 font-medium text-[var(--text-primary)]">{title}</h3>
-                  <p className="mt-1.5 text-sm text-[var(--text-secondary)]">{description}</p>
+                  <h3 className="mt-4 font-medium text-[var(--text-primary)]">{tr(title)}</h3>
+                  <p className="mt-1.5 text-sm text-[var(--text-secondary)]">{tr(description)}</p>
                 </div>
               </Reveal>
             ))}
@@ -332,18 +335,18 @@ function LandingPage() {
       <section className="py-20">
         <Reveal className="mx-auto max-w-3xl px-6 text-center">
           <h2 className="text-2xl font-semibold text-[var(--text-primary)]">
-            Start with the free plan, upgrade when you need to
+            {tr("Start with the free plan, upgrade when you need to")}
           </h2>
           <p className="mt-3 text-[var(--text-secondary)]">
-            No setup fees, no long-term contract. See what&apos;s included at every tier.
+            {tr("No setup fees, no long-term contract. See what's included at every tier.")}
           </p>
-          <ul className="mx-auto mt-6 flex max-w-md flex-col gap-2 text-left text-sm text-[var(--text-secondary)]">
+          <ul className="mx-auto mt-6 flex max-w-md flex-col gap-2 text-start text-sm text-[var(--text-secondary)]">
             {[
               "Unlimited dashboards and charts",
               "CSV and MySQL data sources",
               "SQL & Python notebook",
               "One free public share link",
-            ].map((item) => (
+            ].map((s) => tr(s)).map((item) => (
               <li key={item} className="flex items-center gap-2">
                 <span className="text-[var(--status-good)]">
                   <CheckIcon />
@@ -356,7 +359,7 @@ function LandingPage() {
             href="/register"
             className="mt-8 inline-block rounded-md bg-[var(--accent)] px-6 py-3 text-sm font-medium text-white transition-transform hover:scale-105"
           >
-            Create your free account
+            {tr("Create your free account")}
           </Link>
         </Reveal>
       </section>
@@ -364,11 +367,11 @@ function LandingPage() {
       <section className="border-t border-[var(--border)] bg-[var(--surface-1)] py-20">
         <Reveal className="mx-auto max-w-2xl px-6">
           <h2 className="text-center text-2xl font-semibold text-[var(--text-primary)]">
-            Frequently asked questions
+            {tr("Frequently asked questions")}
           </h2>
           <div className="mt-10">
             {settings.landing_faqs.map((f) => (
-              <FaqItem key={f.question} question={f.question} answer={f.answer} />
+              <FaqItem key={f.question} question={tr(f.question)} answer={tr(f.answer)} />
             ))}
           </div>
         </Reveal>
@@ -380,24 +383,24 @@ function LandingPage() {
             className="relative overflow-hidden rounded-3xl px-6 py-14 text-center text-white sm:px-12"
             style={{ background: "linear-gradient(135deg, #0a5c47 0%, #0b7a5e 45%, #12a37c 100%)" }}
           >
-            <div aria-hidden className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-[#f0b429] opacity-25 blur-3xl" />
-            <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-16 h-64 w-64 rounded-full bg-white opacity-10 blur-3xl" />
-            <h2 className="relative text-3xl font-semibold tracking-tight sm:text-4xl">Ready to see your numbers clearly?</h2>
+            <div aria-hidden className="pointer-events-none absolute -end-20 -top-24 h-72 w-72 rounded-full bg-[#f0b429] opacity-25 blur-3xl" />
+            <div aria-hidden className="pointer-events-none absolute -bottom-24 -start-16 h-64 w-64 rounded-full bg-white opacity-10 blur-3xl" />
+            <h2 className="relative text-3xl font-semibold tracking-tight sm:text-4xl">{tr("Ready to see your numbers clearly?")}</h2>
             <p className="relative mx-auto mt-3 max-w-lg text-white/80">
-              Create a free account and have your first dashboard up in minutes.
+              {tr("Create a free account and have your first dashboard up in minutes.")}
             </p>
             <div className="relative mt-8 flex flex-wrap items-center justify-center gap-3">
               <Link
                 href="/register"
                 className="rounded-xl bg-white px-6 py-3 text-sm font-semibold text-[#0a5c47] shadow-lg transition-transform hover:-translate-y-0.5"
               >
-                Get started free
+                {tr("Get started free")}
               </Link>
               <Link
                 href="/pricing"
                 className="rounded-xl px-6 py-3 text-sm font-semibold text-white ring-1 ring-white/40 hover:bg-white/10"
               >
-                See pricing
+                {tr("See pricing")}
               </Link>
             </div>
           </div>
@@ -410,6 +413,7 @@ function LandingPage() {
 }
 
 export default function Home() {
+  const tr = useT();
   const { user, loading } = useAuth();
   const router = useRouter();
 
@@ -421,7 +425,7 @@ export default function Home() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-[var(--text-muted)]">
-        Loading...
+        {tr("Loading...")}
       </div>
     );
   }
@@ -429,7 +433,7 @@ export default function Home() {
   if (user) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-[var(--text-muted)]">
-        Redirecting...
+        {tr("Redirecting...")}
       </div>
     );
   }

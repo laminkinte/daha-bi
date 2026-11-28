@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useT } from "@/i18n/ui";
 
 /**
  * Centered dialog with a dimmed backdrop. Escape and the backdrop close it; focus moves into the
@@ -26,6 +27,7 @@ export function Modal({
   children: ReactNode;
   footer?: ReactNode;
 }) {
+  const tr = useT();
   const panel = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
   useEffect(() => {
@@ -74,8 +76,8 @@ export function Modal({
           </div>
           <button
             onClick={onClose}
-            aria-label="Close"
-            className="-mr-1.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
+            aria-label={tr("Close")}
+            className="-me-1.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M6 6l12 12M18 6 6 18" />

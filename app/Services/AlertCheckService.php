@@ -112,7 +112,7 @@ class AlertCheckService
     protected function notify(Alert $alert, float $value, ?float $baselineMean = null, ?float $baselineStddev = null): void
     {
         try {
-            Mail::to($alert->user->email)->send(new AlertBreachedMail($alert, $value, $baselineMean, $baselineStddev));
+            Mail::to($alert->user)->send(new AlertBreachedMail($alert, $value, $baselineMean, $baselineStddev));
         } catch (\Throwable $e) {
             Log::warning('Failed to send alert breach email', ['alert_id' => $alert->id, 'error' => $e->getMessage()]);
         }

@@ -29,8 +29,8 @@ class CommentActivity extends Notification
         $where = $this->comment->dashboard->name;
 
         return $this->kind === 'mention'
-            ? "{$who} mentioned you on \"{$where}\""
-            : "{$who} replied to your comment on \"{$where}\"";
+            ? __(':who mentioned you on ":where"', ['who' => $who, 'where' => $where])
+            : __(':who replied to your comment on ":where"', ['who' => $who, 'where' => $where]);
     }
 
     protected function link(): string
@@ -47,10 +47,10 @@ class CommentActivity extends Notification
             ->from(config('mail.from.address'), \App\Mail\SentOnBehalf::senderName($author))
             ->replyTo($author->email, $author->name)
             ->subject($this->headline())
-            ->greeting('Hi '.$notifiable->name.',')
+            ->greeting(__('Hi :name,', ['name' => $notifiable->name]))
             ->line($this->headline().':')
             ->line('“'.Str::limit($this->comment->body, 280).'”')
-            ->action('Open the conversation', $this->link());
+            ->action(__('Open the conversation'), $this->link());
     }
 
     public function toArray(object $notifiable): array

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ChangeEvent } from "react";
+import { useT } from "@/i18n/ui";
 
 function EyeIcon() {
   return (
@@ -39,6 +40,7 @@ export default function PasswordInput({
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   className?: string;
 }) {
+  const tr = useT();
   const [show, setShow] = useState(false);
 
   return (
@@ -53,14 +55,14 @@ export default function PasswordInput({
         onChange={onChange}
         className={
           className ??
-          "w-full rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3.5 py-2.5 pr-10 text-sm text-[var(--text-primary)] outline-none"
+          "w-full rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3.5 py-2.5 pe-10 text-sm text-[var(--text-primary)] outline-none"
         }
       />
       <button
         type="button"
         onClick={() => setShow((s) => !s)}
-        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-        aria-label={show ? "Hide password" : "Show password"}
+        className="absolute end-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+        aria-label={show ? tr("Hide password") : tr("Show password")}
         tabIndex={-1}
       >
         {show ? <EyeOffIcon /> : <EyeIcon />}

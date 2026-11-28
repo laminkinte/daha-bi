@@ -45,9 +45,9 @@ export default function Markdown({ text }: { text: string }) {
       const items = list.items.map((it, i) => <li key={i}>{inline(it, `${k}-${i}`)}</li>);
       blocks.push(
         list.ordered ? (
-          <ol key={k} className="list-decimal space-y-1 pl-5">{items}</ol>
+          <ol key={k} className="list-decimal space-y-1 ps-5">{items}</ol>
         ) : (
-          <ul key={k} className="list-disc space-y-1 pl-5 marker:text-[var(--accent)]">{items}</ul>
+          <ul key={k} className="list-disc space-y-1 ps-5 marker:text-[var(--accent)]">{items}</ul>
         )
       );
       list = null;

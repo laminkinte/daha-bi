@@ -1,6 +1,9 @@
+"use client";
+
 /* eslint-disable @next/next/no-img-element -- brand logos come from the API at runtime, any size */
 import { brandCss, brandInitial } from "@/lib/brand";
 import type { Branding } from "@/lib/api";
+import { useT } from "@/i18n/ui";
 
 /**
  * Re-themes the page's accent colour to a workspace's brand colour. Safe to inline: the colour
@@ -35,6 +38,7 @@ export function BrandLogo({ branding, size = 32 }: { branding: Branding | null |
 }
 
 export function PoweredBy() {
+  const tr = useT();
   return (
     <a
       href="https://github.com/laminkinte/daha-bi"
@@ -42,8 +46,8 @@ export function PoweredBy() {
       rel="noreferrer"
       className="inline-flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
     >
-      <span className="flex h-4 w-4 items-center justify-center rounded bg-[#0b7a5e] text-[9px] font-bold text-white">D</span>
-      Powered by Daha BI
+      <span className="flex h-4 w-4 items-center justify-center rounded bg-[#0b7a5e] text-[9px] font-bold text-white">{tr("D")}</span>
+      {tr("Powered by Daha BI")}
     </a>
   );
 }

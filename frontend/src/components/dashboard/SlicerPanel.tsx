@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError, type ChartFilter } from "@/lib/api";
+import { useT } from "@/i18n/ui";
 
 /** What one slicer currently has selected: a set of values, or a date range. Empty = "All". */
 export type SlicerSelection = { kind: "in"; values: string[] } | { kind: "range"; from: string; to: string };
@@ -52,7 +53,7 @@ function FilterIcon() {
 }
 
 const CONTROL =
-  "flex w-full items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-left text-sm text-[var(--text-primary)] outline-none transition-colors hover:border-[var(--baseline)] focus-visible:border-[var(--accent)]";
+  "flex w-full items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-start text-sm text-[var(--text-primary)] outline-none transition-colors hover:border-[var(--baseline)] focus-visible:border-[var(--accent)]";
 
 /** Range presets are anchored to the newest date in the data, not today — datasets are often historical. */
 function rangePresets(maxDate: string): { label: string; from: string; to: string }[] {
@@ -85,6 +86,7 @@ function Slicer({
   onChange: (sel: SlicerSelection | undefined) => void;
   onRemove?: () => void;
 }) {
+  const tr = useT();
   const [values, setValues] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -96,11 +98,11 @@ function Slicer({
     api
       .getRetrying<{ values: string[] }>(`/dashboards/${dashboardId}/slicer-values?field=${encodeURIComponent(column.name)}`)
       .then((r) => !cancelled && setValues(r.values))
-      .catch((err) => !cancelled && setError(err instanceof ApiError ? err.message : "Couldn't load values."));
+      .catch((err) => !cancelled && setError(err instanceof ApiError ? err.message : tr("Couldn't load values.")));
     return () => {
       cancelled = true;
     };
-  }, [dashboardId, column.name]);
+  }, [dashboardId, column.name, tr]);
 
   useEffect(() => {
     if (!open) return;
@@ -134,20 +136,20 @@ function Slicer({
   return (
     <div ref={box} className="relative min-w-0">
       <div className="mb-1.5 flex items-center justify-between gap-2">
-        <span className="truncate text-xs font-semibold text-[var(--text-secondary)]" title={column.label}>
-          {column.label}
+        <span className="truncate text-xs font-semibold text-[var(--text-secondary)]" title={tr(column.label)}>
+          {tr(column.label)}
         </span>
         <span className="flex shrink-0 items-center gap-2">
           {active && (
             <button onClick={() => onChange(undefined)} className="text-[11px] font-medium text-[var(--accent)] hover:underline">
-              Clear
+              {tr("Clear")}
             </button>
           )}
           {onRemove && (
             <button
               onClick={onRemove}
-              title="Remove this filter from the dashboard"
-              aria-label={`Remove ${column.label} filter`}
+              title={tr("Remove this filter from the dashboard")}
+              aria-label={tr("Remove {label} filter", { label: column.label })}
               className="text-[var(--text-muted)] hover:text-[var(--status-critical)]"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
@@ -195,7 +197,7 @@ function Slicer({
                       : "border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)]/50"
                   }`}
                 >
-                  {p.label}
+                  {tr(p.label)}
                 </button>
               );
             })}
@@ -215,14 +217,14 @@ function Slicer({
             </span>
           </button>
           {open && (
-            <div className="absolute left-0 right-0 top-full z-40 mt-1.5 min-w-[14rem] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-1)] shadow-[var(--shadow-pop)]">
+            <div className="absolute start-0 end-0 top-full z-40 mt-1.5 min-w-[14rem] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-1)] shadow-[var(--shadow-pop)]">
               {values.length > 8 && (
                 <div className="border-b border-[var(--border)] p-2">
                   <input
                     autoFocus
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder={`Search ${column.label.toLowerCase()}…`}
+                    placeholder={tr("Search {v0}…", { v0: column.label.toLowerCase() })}
                     className="w-full rounded-md border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1.5 text-xs outline-none focus:border-[var(--accent)]"
                   />
                 </div>
@@ -230,10 +232,10 @@ function Slicer({
               <div role="listbox" aria-multiselectable className="max-h-64 overflow-y-auto p-1">
                 <button
                   onClick={() => onChange(undefined)}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-[var(--surface-2)]"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-start text-[13px] hover:bg-[var(--surface-2)]"
                 >
                   <Check on={picked.length === 0} />
-                  <span className="font-medium">All</span>
+                  <span className="font-medium">{tr("All")}</span>
                 </button>
                 {shown.map((v) => (
                   <button
@@ -241,16 +243,16 @@ function Slicer({
                     role="option"
                     aria-selected={picked.includes(v)}
                     onClick={() => toggle(v)}
-                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-[var(--text-primary)] hover:bg-[var(--surface-2)]"
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-start text-[13px] text-[var(--text-primary)] hover:bg-[var(--surface-2)]"
                   >
                     <Check on={picked.includes(v)} />
                     <span className="truncate">{v}</span>
                   </button>
                 ))}
-                {shown.length === 0 && <p className="px-2 py-3 text-center text-xs text-[var(--text-muted)]">No matches.</p>}
+                {shown.length === 0 && <p className="px-2 py-3 text-center text-xs text-[var(--text-muted)]">{tr("No matches.")}</p>}
               </div>
               {values.length === 200 && (
-                <p className="border-t border-[var(--border)] px-3 py-1.5 text-[11px] text-[var(--text-muted)]">Showing the first 200 values.</p>
+                <p className="border-t border-[var(--border)] px-3 py-1.5 text-[11px] text-[var(--text-muted)]">{tr("Showing the first 200 values.")}</p>
               )}
             </div>
           )}
@@ -300,6 +302,7 @@ export default function SlicerPanel({
   onSlicersChange: (fields: string[]) => void;
   onReset: () => void;
 }) {
+  const tr = useT();
   const [adding, setAdding] = useState(false);
   const available = columns.filter((c) => !slicers.includes(c.name));
   const activeCount = slicers.filter((f) => isActive(selections[f])).length;
@@ -312,14 +315,14 @@ export default function SlicerPanel({
           <span className="text-[var(--accent)]">
             <FilterIcon />
           </span>
-          Filters
+          {tr("Filters")}
           {activeCount > 0 && (
             <span className="rounded-full bg-[var(--accent)] px-1.5 py-px text-[10px] font-semibold text-white">{activeCount}</span>
           )}
         </h2>
         {activeCount > 0 && (
           <button onClick={onReset} className="text-xs font-medium text-[var(--accent)] hover:underline">
-            Reset all
+            {tr("Reset all")}
           </button>
         )}
       </div>
@@ -342,8 +345,8 @@ export default function SlicerPanel({
         {slicers.length === 0 && (
           <p className="text-xs leading-5 text-[var(--text-muted)] sm:col-span-2 lg:col-span-2">
             {canEdit
-              ? "Add a filter to slice every chart on this dashboard at once — by region, product, date…"
-              : "No filters have been set up for this dashboard."}
+              ? tr("Add a filter to slice every chart on this dashboard at once — by region, product, date…")
+              : tr("No filters have been set up for this dashboard.")}
           </p>
         )}
 
@@ -361,10 +364,10 @@ export default function SlicerPanel({
                 }}
                 className="w-full rounded-lg border border-[var(--accent)] bg-[var(--surface-1)] px-3 py-2 text-sm outline-none"
               >
-                <option value="">Choose a field…</option>
+                <option value="">{tr("Choose a field…")}</option>
                 {available.map((c) => (
                   <option key={c.name} value={c.name}>
-                    {c.label}
+                    {tr(c.label)}
                   </option>
                 ))}
               </select>
@@ -376,7 +379,7 @@ export default function SlicerPanel({
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
                   <path d="M12 5v14M5 12h14" />
                 </svg>
-                Add filter
+                {tr("Add filter")}
               </button>
             )}
           </div>

@@ -8,6 +8,7 @@ import "leaflet/dist/leaflet.css";
 import { countryFeatures, resolveCountryName, type CountryProperties } from "@/lib/geo-countries";
 import { formatValue } from "@/lib/format-value";
 import type { Chart } from "@/lib/api";
+import { useT } from "@/i18n/ui";
 
 /**
  * Same sequential ramp as the rest of the app's choropleths (see ChartRenderer.tsx) — kept as its
@@ -41,6 +42,7 @@ export default function PowerMapChart({
   currency: Chart["config"]["currency"];
   onDrillDown?: (value: string) => void;
 }) {
+  const tr = useT();
   const geoRef = useRef<LeafletGeoJSON>(null);
 
   const { valueByCountry, originalLabelByCountry, min, max, range } = useMemo(() => {
@@ -82,7 +84,7 @@ export default function PowerMapChart({
     const path = layer as Path;
 
     layer.bindTooltip(
-      `<strong>${name}</strong><br/>${value !== undefined ? formatValue(value, format, currency) : "No data"}`,
+      `<strong>${name}</strong><br/>${value !== undefined ? formatValue(value, format, currency) : tr("No data")}`,
       { sticky: true, className: "power-map-tooltip" }
     );
 
@@ -132,7 +134,7 @@ export default function PowerMapChart({
       </MapContainer>
 
       {matchedCount > 0 && (
-        <div className="pointer-events-none absolute bottom-2 left-2 z-[1000] flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs shadow-md" style={{ background: isDark ? "#121a1c" : "#ffffff", borderColor: isDark ? "#223033" : "#e3e8e9", color: isDark ? "#c3c2b7" : "#52514e" }}>
+        <div className="pointer-events-none absolute bottom-2 start-2 z-[1000] flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs shadow-md" style={{ background: isDark ? "#121a1c" : "#ffffff", borderColor: isDark ? "#223033" : "#e3e8e9", color: isDark ? "#c3c2b7" : "#52514e" }}>
           <span className="tabular-nums">{formatValue(min, format, currency)}</span>
           <div
             className="h-2 w-20 rounded-full"
@@ -143,10 +145,10 @@ export default function PowerMapChart({
       )}
       {labels.length > 0 && matchedCount === 0 && (
         <div
-          className="pointer-events-none absolute bottom-2 left-2 z-[1000] rounded-md border px-2.5 py-1.5 text-xs shadow-md"
+          className="pointer-events-none absolute bottom-2 start-2 z-[1000] rounded-md border px-2.5 py-1.5 text-xs shadow-md"
           style={{ background: isDark ? "#121a1c" : "#ffffff", borderColor: isDark ? "#223033" : "#e3e8e9", color: isDark ? "#898781" : "#898781" }}
         >
-          None of the region values matched a recognized country name.
+          {tr("None of the region values matched a recognized country name.")}
         </div>
       )}
     </div>

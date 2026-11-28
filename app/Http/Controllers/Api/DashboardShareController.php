@@ -67,7 +67,7 @@ class DashboardShareController extends Controller
 
         $sent = true;
         try {
-            Mail::to($share->invited_email)->send(new DashboardShareMail($share->load('dashboard.organization', 'createdBy'), self::url($token)));
+            Mail::to($share->invited_email)->locale(app()->getLocale())->send(new DashboardShareMail($share->load('dashboard.organization', 'createdBy'), self::url($token)));
         } catch (Throwable $e) {
             Log::warning('Share email failed: '.$e->getMessage());
             $sent = false;
@@ -122,7 +122,7 @@ class DashboardShareController extends Controller
     public function preview(Request $request, string $token)
     {
         $share = DashboardShare::findByToken($token);
-        abort_unless($share, Response::HTTP_NOT_FOUND, 'This share link is not valid. It may have been withdrawn.');
+        abort_unless($share, Response::HTTP_NOT_FOUND, __('This share link is not valid. It may have been withdrawn.'));
 
         return [
             'dashboard' => $share->dashboard->name,
@@ -139,9 +139,9 @@ class DashboardShareController extends Controller
     public function accept(Request $request, string $token)
     {
         $share = DashboardShare::findByToken($token);
-        abort_unless($share, Response::HTTP_NOT_FOUND, 'This share link is not valid.');
-        abort_if($share->accepted_at, Response::HTTP_UNPROCESSABLE_ENTITY, 'This share has already been accepted.');
-        abort_if($share->expires_at->isPast(), Response::HTTP_UNPROCESSABLE_ENTITY, 'This share link has expired. Ask for a new one.');
+        abort_unless($share, Response::HTTP_NOT_FOUND, __('This share link is not valid.'));
+        abort_if($share->accepted_at, Response::HTTP_UNPROCESSABLE_ENTITY, __('This share has already been accepted.'));
+        abort_if($share->expires_at->isPast(), Response::HTTP_UNPROCESSABLE_ENTITY, __('This share link has expired. Ask for a new one.'));
 
         $validated = $request->validate(['organization_id' => ['required', 'integer']]);
         $user = $request->user();
@@ -150,13 +150,13 @@ class DashboardShareController extends Controller
         abort_unless(
             in_array($user->roleInOrganization($organization->id), ['owner', 'admin'], true),
             Response::HTTP_FORBIDDEN,
-            'Only an owner or admin of that workspace can accept a company share.'
+            __('Only an owner or admin of that workspace can accept a company share.')
         );
-        abort_if($organization->id === $share->dashboard->organization_id, Response::HTTP_UNPROCESSABLE_ENTITY, 'This dashboard already belongs to that workspace.');
+        abort_if($organization->id === $share->dashboard->organization_id, Response::HTTP_UNPROCESSABLE_ENTITY, __('This dashboard already belongs to that workspace.'));
         abort_if(
             DashboardShare::where('dashboard_id', $share->dashboard_id)->where('organization_id', $organization->id)->exists(),
             Response::HTTP_UNPROCESSABLE_ENTITY,
-            'That workspace already has this dashboard.'
+            __('That workspace already has this dashboard.')
         );
 
         $share->update(['organization_id' => $organization->id, 'accepted_at' => now(), 'accepted_by_id' => $user->id]);
@@ -180,11 +180,11 @@ class DashboardShareController extends Controller
             ->unique()->all();
 
         return collect($filters)->map(function (array $f) use ($columns) {
-            abort_unless(in_array($f['field'], $columns, true), Response::HTTP_UNPROCESSABLE_ENTITY, "Unknown field: {$f['field']}");
+            abort_unless(in_array($f['field'], $columns, true), Response::HTTP_UNPROCESSABLE_ENTITY, __('Unknown field: :field', ['field' => $f['field']]));
             $value = $f['operator'] === 'in'
                 ? array_values(array_filter(array_map('strval', (array) $f['value']), 'strlen'))
                 : (string) (is_array($f['value']) ? reset($f['value']) : $f['value']);
-            abort_if($value === '' || $value === [], Response::HTTP_UNPROCESSABLE_ENTITY, 'Each row filter needs a value.');
+            abort_if($value === '' || $value === [], Response::HTTP_UNPROCESSABLE_ENTITY, __('Each row filter needs a value.'));
 
             return ['field' => $f['field'], 'operator' => $f['operator'], 'value' => $value];
         })->values()->all();

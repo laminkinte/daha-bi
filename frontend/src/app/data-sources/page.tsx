@@ -15,6 +15,7 @@ import {
 } from "@/lib/api";
 import TableRowsPreview from "@/components/TableRowsPreview";
 import { PageHeader, PAGE_CONTAINER } from "@/components/PageHeader";
+import { useT } from "@/i18n/ui";
 
 const DEFAULT_PORTS: Record<DatabaseDriver, string> = { mysql: "3306", postgres: "5432", sqlserver: "1433" };
 const DRIVER_LABELS: Record<DatabaseDriver, string> = { mysql: "MySQL", postgres: "PostgreSQL", sqlserver: "SQL Server" };
@@ -82,6 +83,7 @@ function ConnectorMark({ type, size = 36 }: { type: string; size?: number }) {
 }
 
 function CsvUploadForm({ onDone }: { onDone: () => void }) {
+  const tr = useT();
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -104,7 +106,7 @@ function CsvUploadForm({ onDone }: { onDone: () => void }) {
       if (fileRef.current) fileRef.current.value = "";
       onDone();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to upload file.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to upload file."));
     } finally {
       setSubmitting(false);
     }
@@ -113,7 +115,7 @@ function CsvUploadForm({ onDone }: { onDone: () => void }) {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
       <div>
-        <label className="mb-1 block text-sm text-[var(--text-secondary)]">Name</label>
+        <label className="mb-1 block text-sm text-[var(--text-secondary)]">{tr("Name")}</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -122,7 +124,7 @@ function CsvUploadForm({ onDone }: { onDone: () => void }) {
         />
       </div>
       <div>
-        <label className="mb-1 block text-sm text-[var(--text-secondary)]">CSV or Excel file</label>
+        <label className="mb-1 block text-sm text-[var(--text-secondary)]">{tr("CSV or Excel file")}</label>
         <input
           ref={fileRef}
           type="file"
@@ -137,13 +139,14 @@ function CsvUploadForm({ onDone }: { onDone: () => void }) {
         disabled={submitting}
         className="self-start rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
       >
-        {submitting ? "Uploading..." : "Upload file"}
+        {submitting ? tr("Uploading...") : tr("Upload file")}
       </button>
     </form>
   );
 }
 
 function DatabaseConnectForm({ driver, onDone }: { driver: DatabaseDriver; onDone: () => void }) {
+  const tr = useT();
   const [mode, setMode] = useState<"table" | "query">("table");
   const [form, setForm] = useState({
     name: "",
@@ -176,7 +179,7 @@ function DatabaseConnectForm({ driver, onDone }: { driver: DatabaseDriver; onDon
       });
       onDone();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : `Failed to connect to ${DRIVER_LABELS[driver]}.`);
+      setError(err instanceof ApiError ? err.message : tr("Failed to connect to {v0}.", { v0: DRIVER_LABELS[driver] }));
     } finally {
       setSubmitting(false);
     }
@@ -185,7 +188,7 @@ function DatabaseConnectForm({ driver, onDone }: { driver: DatabaseDriver; onDon
   return (
     <form onSubmit={onSubmit} className="grid grid-cols-2 gap-3 text-sm">
       <div className="col-span-2">
-        <label className="mb-1 block text-[var(--text-secondary)]">Name</label>
+        <label className="mb-1 block text-[var(--text-secondary)]">{tr("Name")}</label>
         <input
           value={form.name}
           onChange={(e) => update("name", e.target.value)}
@@ -194,7 +197,7 @@ function DatabaseConnectForm({ driver, onDone }: { driver: DatabaseDriver; onDon
         />
       </div>
       <div>
-        <label className="mb-1 block text-[var(--text-secondary)]">Host</label>
+        <label className="mb-1 block text-[var(--text-secondary)]">{tr("Host")}</label>
         <input
           value={form.host}
           onChange={(e) => update("host", e.target.value)}
@@ -203,7 +206,7 @@ function DatabaseConnectForm({ driver, onDone }: { driver: DatabaseDriver; onDon
         />
       </div>
       <div>
-        <label className="mb-1 block text-[var(--text-secondary)]">Port</label>
+        <label className="mb-1 block text-[var(--text-secondary)]">{tr("Port")}</label>
         <input
           value={form.port}
           onChange={(e) => update("port", e.target.value)}
@@ -212,7 +215,7 @@ function DatabaseConnectForm({ driver, onDone }: { driver: DatabaseDriver; onDon
         />
       </div>
       <div>
-        <label className="mb-1 block text-[var(--text-secondary)]">Database</label>
+        <label className="mb-1 block text-[var(--text-secondary)]">{tr("Database")}</label>
         <input
           value={form.database}
           onChange={(e) => update("database", e.target.value)}
@@ -221,7 +224,7 @@ function DatabaseConnectForm({ driver, onDone }: { driver: DatabaseDriver; onDon
         />
       </div>
       <div>
-        <label className="mb-1 block text-[var(--text-secondary)]">Username</label>
+        <label className="mb-1 block text-[var(--text-secondary)]">{tr("Username")}</label>
         <input
           value={form.username}
           onChange={(e) => update("username", e.target.value)}
@@ -230,7 +233,7 @@ function DatabaseConnectForm({ driver, onDone }: { driver: DatabaseDriver; onDon
         />
       </div>
       <div className="col-span-2">
-        <label className="mb-1 block text-[var(--text-secondary)]">Password</label>
+        <label className="mb-1 block text-[var(--text-secondary)]">{tr("Password")}</label>
         <input
           type="password"
           value={form.password}
@@ -245,20 +248,20 @@ function DatabaseConnectForm({ driver, onDone }: { driver: DatabaseDriver; onDon
           onClick={() => setMode("table")}
           className={`flex-1 rounded py-1.5 ${mode === "table" ? "bg-[var(--surface-1)] font-medium text-[var(--accent)] shadow-sm" : "text-[var(--text-muted)]"}`}
         >
-          Pick a table
+          {tr("Pick a table")}
         </button>
         <button
           type="button"
           onClick={() => setMode("query")}
           className={`flex-1 rounded py-1.5 ${mode === "query" ? "bg-[var(--surface-1)] font-medium text-[var(--accent)] shadow-sm" : "text-[var(--text-muted)]"}`}
         >
-          Write SQL query
+          {tr("Write SQL query")}
         </button>
       </div>
 
       {mode === "table" ? (
         <div className="col-span-2">
-          <label className="mb-1 block text-[var(--text-secondary)]">Table</label>
+          <label className="mb-1 block text-[var(--text-secondary)]">{tr("Table")}</label>
           <input
             value={form.table}
             onChange={(e) => update("table", e.target.value)}
@@ -269,13 +272,13 @@ function DatabaseConnectForm({ driver, onDone }: { driver: DatabaseDriver; onDon
       ) : (
         <div className="col-span-2">
           <label className="mb-1 block text-[var(--text-secondary)]">
-            SQL query <span className="text-[var(--text-muted)]">(SELECT only)</span>
+            {tr("SQL query")} <span className="text-[var(--text-muted)]">{tr("(SELECT only)")}</span>
           </label>
           <textarea
             value={form.query}
             onChange={(e) => update("query", e.target.value)}
             rows={4}
-            placeholder="SELECT region, SUM(revenue) AS total FROM sales GROUP BY region"
+            placeholder={tr("SELECT region, SUM(revenue) AS total FROM sales GROUP BY region")}
             className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 font-mono text-xs"
             required
           />
@@ -288,28 +291,29 @@ function DatabaseConnectForm({ driver, onDone }: { driver: DatabaseDriver; onDon
         disabled={submitting}
         className="col-span-2 self-start rounded-md bg-[var(--accent)] px-4 py-2 font-medium text-white disabled:opacity-60"
       >
-        {submitting ? "Connecting..." : "Connect & Import"}
+        {submitting ? tr("Connecting...") : tr("Connect & Import")}
       </button>
     </form>
   );
 }
 
 function RestApiHeaderFields({ headers, onChange }: { headers: RestApiHeader[]; onChange: (h: RestApiHeader[]) => void }) {
+  const tr = useT();
   return (
     <div className="col-span-2">
-      <label className="mb-1 block text-[var(--text-secondary)]">Headers (optional)</label>
+      <label className="mb-1 block text-[var(--text-secondary)]">{tr("Headers (optional)")}</label>
       {headers.map((h, i) => (
         <div key={i} className="mb-1.5 flex gap-1.5">
           <input
             value={h.key}
             onChange={(e) => onChange(headers.map((row, j) => (j === i ? { ...row, key: e.target.value } : row)))}
-            placeholder="Header name"
+            placeholder={tr("Header name")}
             className="w-1/2 rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-xs"
           />
           <input
             value={h.value}
             onChange={(e) => onChange(headers.map((row, j) => (j === i ? { ...row, value: e.target.value } : row)))}
-            placeholder="Value"
+            placeholder={tr("Value")}
             className="w-1/2 rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-xs"
           />
           <button
@@ -326,7 +330,7 @@ function RestApiHeaderFields({ headers, onChange }: { headers: RestApiHeader[]; 
         onClick={() => onChange([...headers, { key: "", value: "" }])}
         className="text-xs text-[var(--accent)] hover:underline"
       >
-        + Add header
+        {tr("+ Add header")}
       </button>
     </div>
   );
@@ -357,36 +361,37 @@ function RestApiAuthFields({
   setBasicPassword: (v: string) => void;
   passwordPlaceholder?: string;
 }) {
+  const tr = useT();
   return (
     <>
       <div className="col-span-2">
-        <label className="mb-1 block text-[var(--text-secondary)]">Authentication</label>
+        <label className="mb-1 block text-[var(--text-secondary)]">{tr("Authentication")}</label>
         <select
           value={authType}
           onChange={(e) => setAuthType(e.target.value as RestApiAuthType)}
           className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2"
         >
-          <option value="none">None</option>
-          <option value="bearer">Bearer token</option>
-          <option value="api_key">API key header</option>
-          <option value="basic">Basic auth</option>
+          <option value="none">{tr("None")}</option>
+          <option value="bearer">{tr("Bearer token")}</option>
+          <option value="api_key">{tr("API key header")}</option>
+          <option value="basic">{tr("Basic auth")}</option>
         </select>
       </div>
       {(authType === "bearer" || authType === "api_key") && (
         <>
           {authType === "api_key" && (
             <div>
-              <label className="mb-1 block text-[var(--text-secondary)]">Header name</label>
+              <label className="mb-1 block text-[var(--text-secondary)]">{tr("Header name")}</label>
               <input
                 value={authHeaderName}
                 onChange={(e) => setAuthHeaderName(e.target.value)}
-                placeholder="X-API-Key"
+                placeholder={tr("X-API-Key")}
                 className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2"
               />
             </div>
           )}
           <div className={authType === "api_key" ? "" : "col-span-2"}>
-            <label className="mb-1 block text-[var(--text-secondary)]">{authType === "bearer" ? "Token" : "Key"}</label>
+            <label className="mb-1 block text-[var(--text-secondary)]">{authType === "bearer" ? tr("Token") : tr("Key")}</label>
             <input
               type="password"
               value={authToken}
@@ -400,7 +405,7 @@ function RestApiAuthFields({
       {authType === "basic" && (
         <>
           <div>
-            <label className="mb-1 block text-[var(--text-secondary)]">Username</label>
+            <label className="mb-1 block text-[var(--text-secondary)]">{tr("Username")}</label>
             <input
               value={basicUsername}
               onChange={(e) => setBasicUsername(e.target.value)}
@@ -408,7 +413,7 @@ function RestApiAuthFields({
             />
           </div>
           <div>
-            <label className="mb-1 block text-[var(--text-secondary)]">Password</label>
+            <label className="mb-1 block text-[var(--text-secondary)]">{tr("Password")}</label>
             <input
               type="password"
               value={basicPassword}
@@ -424,6 +429,7 @@ function RestApiAuthFields({
 }
 
 function RestApiConnectForm({ onDone }: { onDone: () => void }) {
+  const tr = useT();
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [method, setMethod] = useState<"GET" | "POST">("GET");
@@ -459,7 +465,7 @@ function RestApiConnectForm({ onDone }: { onDone: () => void }) {
       });
       onDone();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to connect to the API.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to connect to the API."));
     } finally {
       setSubmitting(false);
     }
@@ -468,7 +474,7 @@ function RestApiConnectForm({ onDone }: { onDone: () => void }) {
   return (
     <form onSubmit={onSubmit} className="grid grid-cols-2 gap-3 text-sm">
       <div className="col-span-2">
-        <label className="mb-1 block text-[var(--text-secondary)]">Name</label>
+        <label className="mb-1 block text-[var(--text-secondary)]">{tr("Name")}</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -477,15 +483,15 @@ function RestApiConnectForm({ onDone }: { onDone: () => void }) {
         />
       </div>
       <div className="col-span-2">
-        <label className="mb-1 block text-[var(--text-secondary)]">Endpoint URL</label>
+        <label className="mb-1 block text-[var(--text-secondary)]">{tr("Endpoint URL")}</label>
         <div className="flex gap-2">
           <select
             value={method}
             onChange={(e) => setMethod(e.target.value as "GET" | "POST")}
             className="rounded-md border border-[var(--border)] bg-transparent px-2 py-2"
           >
-            <option value="GET">GET</option>
-            <option value="POST">POST</option>
+            <option value="GET">{tr("GET")}</option>
+            <option value="POST">{tr("POST")}</option>
           </select>
           <input
             value={url}
@@ -514,12 +520,12 @@ function RestApiConnectForm({ onDone }: { onDone: () => void }) {
 
       {method === "POST" && (
         <div className="col-span-2">
-          <label className="mb-1 block text-[var(--text-secondary)]">Request body (JSON, optional)</label>
+          <label className="mb-1 block text-[var(--text-secondary)]">{tr("Request body (JSON, optional)")}</label>
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={3}
-            placeholder='{"key": "value"}'
+            placeholder={tr("{\"key\": \"value\"}")}
             className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 font-mono text-xs"
           />
         </div>
@@ -527,12 +533,12 @@ function RestApiConnectForm({ onDone }: { onDone: () => void }) {
 
       <div className="col-span-2">
         <label className="mb-1 block text-[var(--text-secondary)]">
-          JSON path to records <span className="text-[var(--text-muted)]">(optional — leave blank if the response is already a list)</span>
+          {tr("JSON path to records")} <span className="text-[var(--text-muted)]">{tr("(optional — leave blank if the response is already a list)")}</span>
         </label>
         <input
           value={jsonPath}
           onChange={(e) => setJsonPath(e.target.value)}
-          placeholder="e.g. data.results"
+          placeholder={tr("e.g. data.results")}
           className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2"
         />
       </div>
@@ -543,13 +549,14 @@ function RestApiConnectForm({ onDone }: { onDone: () => void }) {
         disabled={submitting}
         className="col-span-2 self-start rounded-md bg-[var(--accent)] px-4 py-2 font-medium text-white disabled:opacity-60"
       >
-        {submitting ? "Connecting..." : "Connect & Import"}
+        {submitting ? tr("Connecting...") : tr("Connect & Import")}
       </button>
     </form>
   );
 }
 
 function EditDataSourceForm({ dataSource, onDone, onCancel }: { dataSource: DataSource; onDone: () => void; onCancel: () => void }) {
+  const tr = useT();
   const [loaded, setLoaded] = useState<DataSource | null>(dataSource.type === "csv" ? dataSource : null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [mode, setMode] = useState<"table" | "query">("table");
@@ -608,7 +615,7 @@ function EditDataSourceForm({ dataSource, onDone, onCancel }: { dataSource: Data
           setMode(c.query ? "query" : "table");
         }
       })
-      .catch((err) => setLoadError(err instanceof ApiError ? err.message : "Failed to load connection details."));
+      .catch((err) => setLoadError(err instanceof ApiError ? err.message : tr("Failed to load connection details.")));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataSource.id]);
 
@@ -651,7 +658,7 @@ function EditDataSourceForm({ dataSource, onDone, onCancel }: { dataSource: Data
       setError(
         err instanceof ApiError
           ? err.message
-          : `Failed to update ${isDatabase ? DRIVER_LABELS[dataSource.type as DatabaseDriver] : "data"} source.`
+          : tr("Failed to update {v0} source.", { v0: isDatabase ? DRIVER_LABELS[dataSource.type as DatabaseDriver] : "data" })
       );
     } finally {
       setSubmitting(false);
@@ -663,13 +670,13 @@ function EditDataSourceForm({ dataSource, onDone, onCancel }: { dataSource: Data
   }
 
   if (!loaded) {
-    return <p className="mt-3 text-sm text-[var(--text-muted)]">Loading connection details...</p>;
+    return <p className="mt-3 text-sm text-[var(--text-muted)]">{tr("Loading connection details...")}</p>;
   }
 
   return (
     <form onSubmit={onSubmit} className="mt-3 grid grid-cols-2 gap-3 rounded-md border border-[var(--border)] bg-[var(--page-plane)] p-3 text-sm">
       <div className="col-span-2">
-        <label className="mb-1 block text-[var(--text-secondary)]">Name</label>
+        <label className="mb-1 block text-[var(--text-secondary)]">{tr("Name")}</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -681,7 +688,7 @@ function EditDataSourceForm({ dataSource, onDone, onCancel }: { dataSource: Data
       {isDatabase && (
         <>
           <div>
-            <label className="mb-1 block text-[var(--text-secondary)]">Host</label>
+            <label className="mb-1 block text-[var(--text-secondary)]">{tr("Host")}</label>
             <input
               value={form.host}
               onChange={(e) => update("host", e.target.value)}
@@ -690,7 +697,7 @@ function EditDataSourceForm({ dataSource, onDone, onCancel }: { dataSource: Data
             />
           </div>
           <div>
-            <label className="mb-1 block text-[var(--text-secondary)]">Port</label>
+            <label className="mb-1 block text-[var(--text-secondary)]">{tr("Port")}</label>
             <input
               value={form.port}
               onChange={(e) => update("port", e.target.value)}
@@ -699,7 +706,7 @@ function EditDataSourceForm({ dataSource, onDone, onCancel }: { dataSource: Data
             />
           </div>
           <div>
-            <label className="mb-1 block text-[var(--text-secondary)]">Database</label>
+            <label className="mb-1 block text-[var(--text-secondary)]">{tr("Database")}</label>
             <input
               value={form.database}
               onChange={(e) => update("database", e.target.value)}
@@ -708,7 +715,7 @@ function EditDataSourceForm({ dataSource, onDone, onCancel }: { dataSource: Data
             />
           </div>
           <div>
-            <label className="mb-1 block text-[var(--text-secondary)]">Username</label>
+            <label className="mb-1 block text-[var(--text-secondary)]">{tr("Username")}</label>
             <input
               value={form.username}
               onChange={(e) => update("username", e.target.value)}
@@ -717,12 +724,12 @@ function EditDataSourceForm({ dataSource, onDone, onCancel }: { dataSource: Data
             />
           </div>
           <div className="col-span-2">
-            <label className="mb-1 block text-[var(--text-secondary)]">Password</label>
+            <label className="mb-1 block text-[var(--text-secondary)]">{tr("Password")}</label>
             <input
               type="password"
               value={form.password}
               onChange={(e) => update("password", e.target.value)}
-              placeholder="Leave blank to keep the current password"
+              placeholder={tr("Leave blank to keep the current password")}
               className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2"
             />
           </div>
@@ -733,20 +740,20 @@ function EditDataSourceForm({ dataSource, onDone, onCancel }: { dataSource: Data
               onClick={() => setMode("table")}
               className={`flex-1 rounded py-1.5 ${mode === "table" ? "bg-[var(--page-plane)] font-medium text-[var(--accent)] shadow-sm" : "text-[var(--text-muted)]"}`}
             >
-              Pick a table
+              {tr("Pick a table")}
             </button>
             <button
               type="button"
               onClick={() => setMode("query")}
               className={`flex-1 rounded py-1.5 ${mode === "query" ? "bg-[var(--page-plane)] font-medium text-[var(--accent)] shadow-sm" : "text-[var(--text-muted)]"}`}
             >
-              Write SQL query
+              {tr("Write SQL query")}
             </button>
           </div>
 
           {mode === "table" ? (
             <div className="col-span-2">
-              <label className="mb-1 block text-[var(--text-secondary)]">Table</label>
+              <label className="mb-1 block text-[var(--text-secondary)]">{tr("Table")}</label>
               <input
                 value={form.table}
                 onChange={(e) => update("table", e.target.value)}
@@ -757,7 +764,7 @@ function EditDataSourceForm({ dataSource, onDone, onCancel }: { dataSource: Data
           ) : (
             <div className="col-span-2">
               <label className="mb-1 block text-[var(--text-secondary)]">
-                SQL query <span className="text-[var(--text-muted)]">(SELECT only)</span>
+                {tr("SQL query")} <span className="text-[var(--text-muted)]">{tr("(SELECT only)")}</span>
               </label>
               <textarea
                 value={form.query}
@@ -774,15 +781,15 @@ function EditDataSourceForm({ dataSource, onDone, onCancel }: { dataSource: Data
       {isRestApi && (
         <>
           <div className="col-span-2">
-            <label className="mb-1 block text-[var(--text-secondary)]">Endpoint URL</label>
+            <label className="mb-1 block text-[var(--text-secondary)]">{tr("Endpoint URL")}</label>
             <div className="flex gap-2">
               <select
                 value={method}
                 onChange={(e) => setMethod(e.target.value as "GET" | "POST")}
                 className="rounded-md border border-[var(--border)] bg-transparent px-2 py-2"
               >
-                <option value="GET">GET</option>
-                <option value="POST">POST</option>
+                <option value="GET">{tr("GET")}</option>
+                <option value="POST">{tr("POST")}</option>
               </select>
               <input
                 value={url}
@@ -807,17 +814,17 @@ function EditDataSourceForm({ dataSource, onDone, onCancel }: { dataSource: Data
             setBasicUsername={setBasicUsername}
             basicPassword={basicPassword}
             setBasicPassword={setBasicPassword}
-            passwordPlaceholder="Leave blank to keep the current value"
+            passwordPlaceholder={tr("Leave blank to keep the current value")}
           />
 
           {method === "POST" && (
             <div className="col-span-2">
-              <label className="mb-1 block text-[var(--text-secondary)]">Request body (JSON, optional)</label>
+              <label className="mb-1 block text-[var(--text-secondary)]">{tr("Request body (JSON, optional)")}</label>
               <textarea
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 rows={3}
-                placeholder='{"key": "value"}'
+                placeholder={tr("{\"key\": \"value\"}")}
                 className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 font-mono text-xs"
               />
             </div>
@@ -825,12 +832,12 @@ function EditDataSourceForm({ dataSource, onDone, onCancel }: { dataSource: Data
 
           <div className="col-span-2">
             <label className="mb-1 block text-[var(--text-secondary)]">
-              JSON path to records <span className="text-[var(--text-muted)]">(optional)</span>
+              {tr("JSON path to records")} <span className="text-[var(--text-muted)]">{tr("(optional)")}</span>
             </label>
             <input
               value={jsonPath}
               onChange={(e) => setJsonPath(e.target.value)}
-              placeholder="e.g. data.results"
+              placeholder={tr("e.g. data.results")}
               className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2"
             />
           </div>
@@ -844,14 +851,14 @@ function EditDataSourceForm({ dataSource, onDone, onCancel }: { dataSource: Data
           disabled={submitting}
           className="rounded-md bg-[var(--accent)] px-4 py-2 font-medium text-white disabled:opacity-60"
         >
-          {submitting ? "Saving..." : "Save changes"}
+          {submitting ? tr("Saving...") : tr("Save changes")}
         </button>
         <button
           type="button"
           onClick={onCancel}
           className="rounded-md border border-[var(--border)] px-4 py-2 text-[var(--text-secondary)]"
         >
-          Cancel
+          {tr("Cancel")}
         </button>
       </div>
     </form>
@@ -859,6 +866,7 @@ function EditDataSourceForm({ dataSource, onDone, onCancel }: { dataSource: Data
 }
 
 function TablesBrowser({ dataSourceId }: { dataSourceId: number }) {
+  const tr = useT();
   const [tables, setTables] = useState<MysqlTable[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -867,21 +875,21 @@ function TablesBrowser({ dataSourceId }: { dataSourceId: number }) {
     api
       .getRetrying<MysqlTable[]>(`/data-sources/${dataSourceId}/tables`)
       .then(setTables)
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to load tables."));
-  }, [dataSourceId]);
+      .catch((err) => setError(err instanceof ApiError ? err.message : tr("Failed to load tables.")));
+  }, [dataSourceId, tr]);
 
   return (
     <div className="mt-3 rounded-md border border-[var(--border)] bg-[var(--page-plane)] p-3 text-xs">
       {error && <p className="text-[var(--status-critical)]">{error}</p>}
-      {!tables && !error && <p className="text-[var(--text-muted)]">Loading tables...</p>}
-      {tables?.length === 0 && <p className="text-[var(--text-muted)]">No tables found in this database.</p>}
+      {!tables && !error && <p className="text-[var(--text-muted)]">{tr("Loading tables...")}</p>}
+      {tables?.length === 0 && <p className="text-[var(--text-muted)]">{tr("No tables found in this database.")}</p>}
       {tables && tables.length > 0 && (
         <div className="grid gap-2 sm:grid-cols-2">
           {tables.map((t) => (
             <div key={t.table}>
               <button
                 onClick={() => setExpanded((e) => (e === t.table ? null : t.table))}
-                className="text-left font-medium text-[var(--text-primary)] hover:text-[var(--accent)]"
+                className="text-start font-medium text-[var(--text-primary)] hover:text-[var(--accent)]"
               >
                 {t.table}
               </button>
@@ -900,6 +908,7 @@ function TablesBrowser({ dataSourceId }: { dataSourceId: number }) {
 }
 
 function DataSourcesList() {
+  const tr = useT();
   const [sources, setSources] = useState<DataSource[] | null>(null);
   const [tab, setTab] = useState<"csv" | DatabaseDriver | "rest_api">("csv");
   const [actionError, setActionError] = useState<string | null>(null);
@@ -913,13 +922,13 @@ function DataSourcesList() {
   useEffect(load, []);
 
   async function onDelete(id: number) {
-    if (!confirm("Delete this data source and its datasets?")) return;
+    if (!confirm(tr("Delete this data source and its datasets?"))) return;
     setActionError(null);
     try {
       await api.del(`/data-sources/${id}`);
       load();
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : "Failed to delete data source.");
+      setActionError(err instanceof ApiError ? err.message : tr("Failed to delete data source."));
     }
   }
 
@@ -928,7 +937,7 @@ function DataSourcesList() {
     try {
       await api.post(`/data-sources/${id}/resync`);
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : "Failed to resync data source.");
+      setActionError(err instanceof ApiError ? err.message : tr("Failed to resync data source."));
     } finally {
       load();
     }
@@ -938,12 +947,12 @@ function DataSourcesList() {
     <div className={`${PAGE_CONTAINER} max-w-5xl`}>
       <PageHeader
         icon="database"
-        title="Data Sources"
-        description="Connect a CSV/Excel upload, a live database (MySQL, PostgreSQL, SQL Server) or a REST API to power your dashboards."
+        title={tr("Data Sources")}
+        description={tr("Connect a CSV/Excel upload, a live database (MySQL, PostgreSQL, SQL Server) or a REST API to power your dashboards.")}
       />
 
       <div className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--surface-1)] p-4 sm:p-5">
-        <h2 className="text-sm font-semibold text-[var(--text-primary)]">Add a data source</h2>
+        <h2 className="text-sm font-semibold text-[var(--text-primary)]">{tr("Add a data source")}</h2>
         <div className="mb-5 mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
           {(["csv", ...(Object.keys(DRIVER_LABELS) as DatabaseDriver[]), "rest_api"] as ConnectorKey[]).map((key) => {
             const selected = tab === key;
@@ -953,7 +962,7 @@ function DataSourcesList() {
                 key={key}
                 onClick={() => setTab(key)}
                 aria-pressed={selected}
-                className={`flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition-colors ${
+                className={`flex items-center gap-2.5 rounded-xl border p-2.5 text-start transition-colors ${
                   selected
                     ? "border-[var(--accent)] bg-[var(--accent-soft)] ring-1 ring-[var(--accent)]"
                     : "border-[var(--border)] hover:border-[var(--accent)]/50 hover:bg-[var(--surface-2)]"
@@ -962,7 +971,7 @@ function DataSourcesList() {
                 <ConnectorMark type={key} size={34} />
                 <span className="min-w-0">
                   <span className="block truncate text-[13px] font-semibold text-[var(--text-primary)]">{label}</span>
-                  <span className="hidden truncate text-[11px] text-[var(--text-muted)] sm:block">{CONNECTOR_META[key]?.blurb}</span>
+                  <span className="hidden truncate text-[11px] text-[var(--text-muted)] sm:block">{tr(CONNECTOR_META[key]?.blurb)}</span>
                 </span>
               </button>
             );
@@ -983,7 +992,7 @@ function DataSourcesList() {
 
       {sources && sources.length > 0 && (
         <h2 className="mt-8 text-sm font-semibold text-[var(--text-primary)]">
-          Connected <span className="ml-1 font-normal text-[var(--text-muted)]">{sources.length}</span>
+          {tr("Connected")} <span className="ms-1 font-normal text-[var(--text-muted)]">{sources.length}</span>
         </h2>
       )}
       <div className="mt-3 grid gap-3">
@@ -996,8 +1005,8 @@ function DataSourcesList() {
         {sources?.length === 0 && (
           <EmptyState
             icon={<DatabaseIcon />}
-            title="No data sources yet"
-            description="Upload a CSV or connect a database table above to get started."
+            title={tr("No data sources yet")}
+            description={tr("Upload a CSV or connect a database table above to get started.")}
           />
         )}
         {sources?.map((s) => (
@@ -1014,9 +1023,9 @@ function DataSourcesList() {
                     <StatusBadge status={s.status} />
                   </div>
                   <div className="mt-0.5 text-xs text-[var(--text-muted)]">
-                    {(DRIVER_LABELS as Record<string, string>)[s.type] ?? (s.type === "rest_api" ? "REST API" : s.type.toUpperCase())}
+                    {(DRIVER_LABELS as Record<string, string>)[s.type] ?? (s.type === "rest_api" ? tr("REST API") : s.type.toUpperCase())}
                     {" · "}
-                    {s.datasets_count ?? 0} dataset{s.datasets_count === 1 ? "" : "s"}
+                    {s.datasets_count ?? 0} {tr("dataset")}{s.datasets_count === 1 ? "" : tr("s")}
                   </div>
                   {s.error_message && (
                     <div className="mt-1 text-xs text-[var(--status-critical)]">{s.error_message}</div>
@@ -1033,7 +1042,7 @@ function DataSourcesList() {
                         : "border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
                     }`}
                   >
-                    {expandedTables === s.id ? "Hide tables" : "Tables"}
+                    {expandedTables === s.id ? tr("Hide tables") : tr("Tables")}
                   </button>
                 )}
                 {s.type !== "csv" && (
@@ -1042,7 +1051,7 @@ function DataSourcesList() {
                     disabled={s.status === "syncing"}
                     className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)] disabled:opacity-60"
                   >
-                    {s.status === "syncing" ? "Syncing…" : "Resync"}
+                    {s.status === "syncing" ? tr("Syncing…") : tr("Resync")}
                   </button>
                 )}
                 <button
@@ -1053,13 +1062,13 @@ function DataSourcesList() {
                       : "border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
                   }`}
                 >
-                  {editing === s.id ? "Cancel" : "Edit"}
+                  {editing === s.id ? tr("Cancel") : tr("Edit")}
                 </button>
                 <button
                   onClick={() => onDelete(s.id)}
                   className="rounded-lg border border-transparent px-3 py-1.5 text-xs font-medium text-[var(--status-critical)] transition-colors hover:bg-[var(--status-critical)]/10"
                 >
-                  Delete
+                  {tr("Delete")}
                 </button>
               </div>
             </div>

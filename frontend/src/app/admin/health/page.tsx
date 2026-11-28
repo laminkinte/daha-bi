@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import RequireAuth from "@/components/RequireAuth";
 import { ADMIN_CARD, AdminPage, StatusDot } from "@/components/AdminShell";
 import { api, ApiError, type HealthCheck } from "@/lib/api";
+import { useT, uiLocaleTag } from "@/i18n/ui";
 
 type Health = {
   checks: HealthCheck[];
@@ -21,6 +22,7 @@ const HINTS: Record<string, string> = {
 };
 
 function HealthView() {
+  const tr = useT();
   const [data, setData] = useState<Health | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [checkedAt, setCheckedAt] = useState<Date | null>(null);
@@ -32,8 +34,8 @@ function HealthView() {
         setData(h);
         setCheckedAt(new Date());
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Couldn't run the health checks."));
-  }, []);
+      .catch((err) => setError(err instanceof ApiError ? err.message : tr("Couldn't run the health checks.")));
+  }, [tr]);
 
   useEffect(() => {
     load();
@@ -44,11 +46,11 @@ function HealthView() {
 
   return (
     <AdminPage
-      title="System health"
-      description="Is everything Daha BI depends on working?"
+      title={tr("System health")}
+      description={tr("Is everything Daha BI depends on working?")}
       actions={
         <button onClick={load} className="rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
-          Re-check
+          {tr("Re-check")}
         </button>
       }
     >
@@ -60,8 +62,8 @@ function HealthView() {
           }`}
         >
           <StatusDot status={fails ? "fail" : warns ? "warn" : "ok"} />
-          {fails ? `${fails} problem${fails > 1 ? "s" : ""} need fixing` : warns ? `All core systems up · ${warns} item${warns > 1 ? "s" : ""} to review` : "All systems operational"}
-          {checkedAt && <span className="ml-auto text-xs font-normal text-[var(--text-muted)]">Checked {checkedAt.toLocaleTimeString()}</span>}
+          {fails ? tr("{fails} problem{v1} need fixing", { fails: fails, v1: fails > 1 ? "s" : "" }) : warns ? tr("All core systems up · {warns} item{v1} to review", { warns: warns, v1: warns > 1 ? "s" : "" }) : tr("All systems operational")}
+          {checkedAt && <span className="ms-auto text-xs font-normal text-[var(--text-muted)]">{tr("Checked")} {checkedAt.toLocaleTimeString(uiLocaleTag())}</span>}
         </div>
       )}
 
@@ -73,16 +75,16 @@ function HealthView() {
               <StatusDot status={c.status} />
             </span>
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium text-[var(--text-primary)]">{c.label}</div>
-              <div className="text-sm text-[var(--text-secondary)]">{c.detail}</div>
-              {c.status !== "ok" && HINTS[c.key] && <div className="mt-1 text-xs text-[var(--text-muted)]">How to fix: {HINTS[c.key]}</div>}
+              <div className="text-sm font-medium text-[var(--text-primary)]">{tr(c.label)}</div>
+              <div className="text-sm text-[var(--text-secondary)]">{tr(c.detail)}</div>
+              {c.status !== "ok" && tr(HINTS[c.key]) && <div className="mt-1 text-xs text-[var(--text-muted)]">{tr("How to fix:")} {tr(HINTS[c.key])}</div>}
             </div>
             <span
               className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase ${
                 c.status === "ok" ? "bg-[var(--status-good)]/12 text-[var(--status-good)]" : c.status === "warn" ? "bg-[var(--status-warning)]/15 text-[var(--text-secondary)]" : "bg-[var(--status-critical)]/12 text-[var(--status-critical)]"
               }`}
             >
-              {c.status === "ok" ? "OK" : c.status === "warn" ? "Review" : "Failing"}
+              {c.status === "ok" ? "OK" : c.status === "warn" ? tr("Review") : tr("Failing")}
             </span>
           </div>
         ))}
@@ -90,11 +92,11 @@ function HealthView() {
 
       {data && (
         <div className={`${ADMIN_CARD} mt-4 p-5`}>
-          <h2 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Environment</h2>
+          <h2 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">{tr("Environment")}</h2>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
             {[
               ["Mode", data.environment.app_env],
-              ["Debug", data.environment.debug ? "ON — turn off!" : "Off"],
+              ["Debug", data.environment.debug ? tr("ON — turn off!") : tr("Off")],
               ["URL", data.environment.url],
               ["Database", data.environment.database],
               ["PHP", data.environment.php],
@@ -102,7 +104,7 @@ function HealthView() {
               ["Timezone", data.environment.timezone],
             ].map(([k, v]) => (
               <div key={k}>
-                <dt className="text-xs text-[var(--text-muted)]">{k}</dt>
+                <dt className="text-xs text-[var(--text-muted)]">{tr(k)}</dt>
                 <dd className={`truncate font-medium ${k === "Debug" && data.environment.debug ? "text-[var(--status-critical)]" : "text-[var(--text-primary)]"}`}>{v}</dd>
               </div>
             ))}

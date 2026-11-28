@@ -8,6 +8,7 @@ import Footer from "@/components/Footer";
 import { formatValue } from "@/lib/format-value";
 import { api, ApiError, type BillingInterval, type Organization, type OrgRole, type Plan, type PricingTier } from "@/lib/api";
 import BillingIntervalToggle, { yearlySavingsPercent } from "@/components/BillingIntervalToggle";
+import { useT } from "@/i18n/ui";
 
 function CheckIcon() {
   return (
@@ -18,6 +19,7 @@ function CheckIcon() {
 }
 
 function PricingContent() {
+  const tr = useT();
   const { user } = useAuth();
   const [tiers, setTiers] = useState<PricingTier[] | null>(null);
   const [busyPlan, setBusyPlan] = useState<Plan | null>(null);
@@ -51,7 +53,7 @@ function PricingContent() {
       const res = await api.post<{ url: string }>("/billing/stripe/checkout", { plan, interval });
       window.location.assign(res.url);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to start checkout.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to start checkout."));
       setBusyPlan(null);
     }
   }
@@ -64,7 +66,7 @@ function PricingContent() {
       const res = await api.post<{ link: string }>("/billing/flutterwave/checkout", { plan, interval });
       window.location.assign(res.link);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to start checkout.");
+      setError(err instanceof ApiError ? err.message : tr("Failed to start checkout."));
       setBusyPlan(null);
     }
   }
@@ -75,11 +77,10 @@ function PricingContent() {
       <div className="mx-auto max-w-6xl px-6 py-16">
       <div className="text-center">
         <h1 className="text-3xl font-semibold text-[var(--text-primary)] sm:text-4xl">
-          Simple pricing, wherever you are
+          {tr("Simple pricing, wherever you are")}
         </h1>
         <p className="mx-auto mt-3 max-w-xl text-[var(--text-secondary)]">
-          Start free. Upgrade only when your team actually needs more. One secure checkout, in US Dollars, that
-          accepts cards issued anywhere in the world.
+          {tr("Start free. Upgrade only when your team actually needs more. One secure checkout, in US Dollars, that accepts cards issued anywhere in the world.")}
         </p>
       </div>
 
@@ -101,10 +102,10 @@ function PricingContent() {
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
         {tiers?.map((tier) => {
           const isCurrent = user?.current_organization?.plan === tier.plan;
-          const cta = tier.plan === "free" ? "Get started free" : `Upgrade to ${tier.name}`;
+          const cta = tier.plan === "free" ? tr("Get started free") : tr("Upgrade to {name}", { name: tr(tier.name) });
           const isYearly = interval === "yearly" && tier.plan !== "free";
           const amountCents = isYearly ? tier.amount_usd_cents_yearly : tier.amount_usd_cents;
-          const periodLabel = tier.plan === "free" ? tier.period : isYearly ? "/ year" : tier.period;
+          const periodLabel = tr(tier.plan === "free" ? tier.period : isYearly ? "/ year" : tier.period);
           return (
             <div
               key={tier.name}
@@ -116,11 +117,11 @@ function PricingContent() {
             >
               {tier.highlighted && (
                 <div className="mb-3 inline-block rounded-full bg-[var(--accent)] px-2.5 py-0.5 text-xs font-medium text-white">
-                  Most popular
+                  {tr("Most popular")}
                 </div>
               )}
-              <h2 className="text-lg font-semibold text-[var(--text-primary)]">{tier.name}</h2>
-              <p className="mt-1 text-sm text-[var(--text-muted)]">{tier.tagline}</p>
+              <h2 className="text-lg font-semibold text-[var(--text-primary)]">{tr(tier.name)}</h2>
+              <p className="mt-1 text-sm text-[var(--text-muted)]">{tr(tier.tagline)}</p>
               <div className="mt-5 flex items-baseline gap-1">
                 <span className="text-3xl font-semibold tabular-nums text-[var(--text-primary)]">
                   {formatValue(amountCents / 100, "currency", "USD")}
@@ -137,22 +138,22 @@ function PricingContent() {
                       : "border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   }`}
                 >
-                  {tier.plan === "free" ? cta : "Start free trial"}
+                  {tier.plan === "free" ? cta : tr("Start free trial")}
                 </Link>
               ) : isCurrent ? (
                 <div className="mt-6 rounded-md border border-[var(--border)] px-4 py-2.5 text-center text-sm font-medium text-[var(--text-muted)]">
-                  Current plan
+                  {tr("Current plan")}
                 </div>
               ) : tier.plan === "free" ? (
                 <Link
                   href="/dashboards"
                   className="mt-6 block rounded-md border border-[var(--border)] px-4 py-2.5 text-center text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                 >
-                  Go to dashboards
+                  {tr("Go to dashboards")}
                 </Link>
               ) : !canManageBilling ? (
                 <div className="mt-6 rounded-md border border-[var(--border)] px-4 py-2.5 text-center text-sm text-[var(--text-muted)]">
-                  Ask your organization&apos;s owner or admin
+                  {tr("Ask your organization's owner or admin")}
                 </div>
               ) : (
                 <>
@@ -165,14 +166,14 @@ function PricingContent() {
                         : "border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                     }`}
                   >
-                    {busyPlan === tier.plan ? "Redirecting..." : cta}
+                    {busyPlan === tier.plan ? tr("Redirecting...") : cta}
                   </button>
                   <button
                     onClick={() => onSelectFlutterwave(tier.plan)}
                     disabled={busyPlan !== null}
                     className="mt-2 block w-full text-center text-xs text-[var(--accent)] hover:underline disabled:opacity-60"
                   >
-                    or pay with Flutterwave (NGN)
+                    {tr("or pay with Flutterwave (NGN)")}
                   </button>
                 </>
               )}
@@ -183,7 +184,7 @@ function PricingContent() {
                     <span className="mt-0.5 shrink-0 text-[var(--status-good)]">
                       <CheckIcon />
                     </span>
-                    {f}
+                    {tr(f)}
                   </li>
                 ))}
               </ul>
@@ -193,9 +194,9 @@ function PricingContent() {
       </div>
 
       <p className="mt-10 text-center text-sm text-[var(--text-muted)]">
-        Need something custom for a larger organization?{" "}
+        {tr("Need something custom for a larger organization?")}{" "}
         <a href="mailto:hello@daha.bi" className="text-[var(--accent)]">
-          Get in touch
+          {tr("Get in touch")}
         </a>
         .
       </p>

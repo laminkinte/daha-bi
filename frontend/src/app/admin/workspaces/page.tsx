@@ -7,8 +7,10 @@ import DataTable, { type Column } from "@/components/admin/DataTable";
 import { ADMIN_CARD, AdminPage, timeAgo } from "@/components/AdminShell";
 import { Modal, BTN_PRIMARY, BTN_SECONDARY, FIELD_INPUT, FIELD_LABEL } from "@/components/Modal";
 import { api, ApiError, type AdminWorkspace } from "@/lib/api";
+import { useT, uiLocaleTag } from "@/i18n/ui";
 
 function PlanDialog({ ws, onClose, onSaved }: { ws: AdminWorkspace; onClose: () => void; onSaved: () => void }) {
+  const tr = useT();
   const [plan, setPlan] = useState(ws.plan);
   const [status, setStatus] = useState(ws.plan_status || "active");
   const [trialDays, setTrialDays] = useState("30");
@@ -30,7 +32,7 @@ function PlanDialog({ ws, onClose, onSaved }: { ws: AdminWorkspace; onClose: () 
       onSaved();
       onClose();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't change the plan.");
+      setError(err instanceof ApiError ? err.message : tr("Couldn't change the plan."));
       setBusy(false);
     }
   }
@@ -39,52 +41,52 @@ function PlanDialog({ ws, onClose, onSaved }: { ws: AdminWorkspace; onClose: () 
     <Modal
       open
       onClose={onClose}
-      title={`Change plan — ${ws.name}`}
-      description="For pilots, partners and fixing billing mistakes. Recorded in the admin log."
+      title={tr("Change plan — {name}", { name: ws.name })}
+      description={tr("For pilots, partners and fixing billing mistakes. Recorded in the admin log.")}
       footer={
         <>
           <button type="button" onClick={onClose} className={BTN_SECONDARY}>
-            Cancel
+            {tr("Cancel")}
           </button>
           <button type="submit" form="plan-form" disabled={busy} className={BTN_PRIMARY}>
-            {busy ? "Saving…" : "Save plan"}
+            {busy ? tr("Saving…") : tr("Save plan")}
           </button>
         </>
       }
     >
       <form id="plan-form" onSubmit={save} className="grid gap-4 px-5 py-4 sm:grid-cols-2">
         <div>
-          <label className={FIELD_LABEL}>Plan</label>
+          <label className={FIELD_LABEL}>{tr("Plan")}</label>
           <select value={plan} onChange={(e) => setPlan(e.target.value as AdminWorkspace["plan"])} className={FIELD_INPUT}>
-            <option value="free">Free</option>
-            <option value="growth">Growth</option>
-            <option value="business">Business</option>
+            <option value="free">{tr("Free")}</option>
+            <option value="growth">{tr("Growth")}</option>
+            <option value="business">{tr("Business")}</option>
           </select>
         </div>
         <div>
-          <label className={FIELD_LABEL}>Status</label>
+          <label className={FIELD_LABEL}>{tr("Status")}</label>
           <select value={status} onChange={(e) => setStatus(e.target.value)} className={FIELD_INPUT}>
-            <option value="active">Active</option>
-            <option value="trialing">Trial</option>
-            <option value="past_due">Past due</option>
-            <option value="canceled">Canceled</option>
+            <option value="active">{tr("Active")}</option>
+            <option value="trialing">{tr("Trial")}</option>
+            <option value="past_due">{tr("Past due")}</option>
+            <option value="canceled">{tr("Canceled")}</option>
           </select>
         </div>
         {status === "trialing" && (
           <div>
-            <label className={FIELD_LABEL}>Trial length</label>
+            <label className={FIELD_LABEL}>{tr("Trial length")}</label>
             <select value={trialDays} onChange={(e) => setTrialDays(e.target.value)} className={FIELD_INPUT}>
               {["14", "30", "60", "90"].map((d) => (
                 <option key={d} value={d}>
-                  {d} days from today
+                  {d} {tr("days from today")}
                 </option>
               ))}
             </select>
           </div>
         )}
         <div className="sm:col-span-2">
-          <label className={FIELD_LABEL}>Note (why)</label>
-          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Pilot partner, 3 months free" className={FIELD_INPUT} />
+          <label className={FIELD_LABEL}>{tr("Note (why)")}</label>
+          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={tr("e.g. Pilot partner, 3 months free")} className={FIELD_INPUT} />
         </div>
         {error && <p className="text-sm text-[var(--status-critical)] sm:col-span-2">{error}</p>}
       </form>
@@ -93,6 +95,7 @@ function PlanDialog({ ws, onClose, onSaved }: { ws: AdminWorkspace; onClose: () 
 }
 
 function WorkspacesView() {
+  const tr = useT();
   const [rows, setRows] = useState<AdminWorkspace[] | null>(null);
   const [search, setSearch] = useState("");
   const [plan, setPlan] = useState("");
@@ -106,8 +109,8 @@ function WorkspacesView() {
     api
       .get<AdminWorkspace[]>(`/admin/organizations${q.toString() ? `?${q}` : ""}`)
       .then(setRows)
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to load workspaces."));
-  }, [search, plan]);
+      .catch((err) => setError(err instanceof ApiError ? err.message : tr("Failed to load workspaces.")));
+  }, [search, plan, tr]);
 
   useEffect(() => {
     const t = setTimeout(load, 250);
@@ -122,8 +125,8 @@ function WorkspacesView() {
       render: (w) => (
         <>
           <span className="font-medium text-[var(--text-primary)]">{w.name}</span>
-          {w.brand_name && <span className="ml-1.5 text-xs text-[var(--text-muted)]">({w.brand_name})</span>}
-          <span className="block text-xs text-[var(--text-muted)]">{w.owner ? `${w.owner.name} · ${w.owner.email}` : "No owner"}</span>
+          {w.brand_name && <span className="ms-1.5 text-xs text-[var(--text-muted)]">({w.brand_name})</span>}
+          <span className="block text-xs text-[var(--text-muted)]">{w.owner ? `${w.owner.name} · ${w.owner.email}` : tr("No owner")}</span>
         </>
       ),
     },
@@ -134,7 +137,7 @@ function WorkspacesView() {
       value: (w) => w.current_period_end ?? w.trial_ends_at ?? null,
       render: (w) => {
         const d = w.plan_status === "trialing" ? w.trial_ends_at : w.current_period_end;
-        return d ? new Date(d).toLocaleDateString() : "—";
+        return d ? new Date(d).toLocaleDateString(uiLocaleTag()) : "—";
       },
     },
     { key: "members", label: "Members", value: (w) => w.members_count, align: "right" },
@@ -149,31 +152,31 @@ function WorkspacesView() {
       excludeFromCsv: true,
       render: (w) => (
         <button onClick={() => setEditing(w)} className="text-xs font-medium text-[var(--accent)] hover:underline">
-          Change plan
+          {tr("Change plan")}
         </button>
       ),
     },
   ];
 
   return (
-    <AdminPage title="Workspaces" description="Every company on the platform, its plan and how much it uses.">
+    <AdminPage title={tr("Workspaces")} description={tr("Every company on the platform, its plan and how much it uses.")}>
       <div className={`${ADMIN_CARD} p-4`}>
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search workspaces…"
+            placeholder={tr("Search workspaces…")}
             className="w-full max-w-xs rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
           />
           <select value={plan} onChange={(e) => setPlan(e.target.value)} className="rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-sm">
-            <option value="">All plans</option>
-            <option value="free">Free</option>
-            <option value="growth">Growth</option>
-            <option value="business">Business</option>
+            <option value="">{tr("All plans")}</option>
+            <option value="free">{tr("Free")}</option>
+            <option value="growth">{tr("Growth")}</option>
+            <option value="business">{tr("Business")}</option>
           </select>
         </div>
         {error && <p className="mb-3 text-sm text-[var(--status-critical)]">{error}</p>}
-        <DataTable columns={columns} rows={rows} getRowKey={(w) => w.id} filename="daha-bi-workspaces" emptyMessage="No workspaces match." search={false} />
+        <DataTable columns={columns} rows={rows} getRowKey={(w) => w.id} filename="daha-bi-workspaces" emptyMessage={tr("No workspaces match.")} search={false} />
       </div>
       {editing && <PlanDialog ws={editing} onClose={() => setEditing(null)} onSaved={load} />}
     </AdminPage>
